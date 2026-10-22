@@ -1,5 +1,8 @@
 results/executed/
 results/features_HLM.npz
 results/results.json
+results/run*.log
+results/chemprop/
+lightning_logs/
 __pycache__/
 .ipynb_checkpoints/

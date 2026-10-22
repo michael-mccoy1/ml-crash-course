@@ -22,6 +22,11 @@ The site has an "Animations on/off" button in the header. Turn animations off if
 | 75–80 | GPT | Attention. | Show the lower-triangle heatmap; why the upper half is blank (no peeking at the future). Ring-closing digits often attend to their opening digit. |
 | 80–90 | Compare | Rank, then discuss. | Use the five questions on the page. |
 
+## Optional extensions
+
+- **logD to HLM (What is ML? tab):** tick logD_pred and run the comparison. Expect a small gain with eight descriptors (about +0.03 to +0.06) and almost none with full fingerprints. Discuss when a stacked feature helps.
+- **Chemprop (Neural networks tab):** step through message passing, then show the notebook 06 score (R² 0.46, 75 s on CPU).
+
 ## Expected outcomes (8 descriptors, scaffold split)
 
 Roughly: tree depth 4 R² ≈ 0.25, forest ≈ 0.29, boosting ≈ 0.28, MLP ≈ 0.3. Ranking among them is within noise; say so. The notebooks with ECFP + 200 descriptors reach LightGBM ≈ 0.51 and show clearer separation.
