@@ -14,7 +14,7 @@
 
 # %%
 import os, sys, subprocess
-REPO_URL = "https://github.com/YOUR-ORG/ml-crash-course.git"  # <- set after you publish
+REPO_URL = "https://github.com/michael-mccoy1/ml-crash-course.git"
 if "google.colab" in sys.modules:  # running in Colab
     subprocess.run([sys.executable, "-m", "pip", "-q", "install", "rdkit", "lightgbm"], check=True)
     if not os.path.exists("ml-crash-course"):
