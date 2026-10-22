@@ -93,3 +93,13 @@ def get_features(df, cache="features_HLM.npz"):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     np.savez_compressed(path, fp=fp, desc=desc, names=np.array(names))
     return fp, desc, names
+
+
+LOGD = os.path.join(ROOT, "data", "lipophilicity_az.csv")
+
+
+def load_logd():
+    """AstraZeneca logD7.4 set (ChEMBL deposit, 4,200 compounds; public via MoleculeNet)."""
+    df = pd.read_csv(LOGD).rename(columns={"smiles": "smiles", "exp": "y"})[["smiles", "y"]]
+    df["mol"] = df.smiles.apply(Chem.MolFromSmiles)
+    return df[df.mol.notna()].reset_index(drop=True)
