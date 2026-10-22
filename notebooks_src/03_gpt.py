@@ -1,12 +1,12 @@
 # %% [markdown]
-# # 03 · GPT (20 min)
-# **GPT = Generative Pre-trained Transformer**: a *decoder-only* transformer trained on one task — **predict the next token** given all previous tokens.
+# # 03: GPT (20 min)
+# **GPT = Generative Pre-trained Transformer**: a *decoder-only* transformer trained on one task, **predict the next token** given all previous tokens.
 #
 # Ingredients you will see in ~60 lines of code:
-# 1. **Tokenizer** – text → integer IDs (here: SMILES atoms/bonds/rings).
-# 2. **Embeddings** – token ID → vector, plus position information.
-# 3. **Causal self-attention** – each token looks at *earlier* tokens only, weighting them by relevance.
-# 4. **Next-token loss** – cross-entropy against the sequence shifted by one.
+# 1. **Tokenizer** - text to integer IDs (here: SMILES atoms/bonds/rings).
+# 2. **Embeddings** - token ID to vector, plus position information.
+# 3. **Causal self-attention** - each token looks at *earlier* tokens only, weighting them by relevance.
+# 4. **Next-token loss** - cross-entropy against the sequence shifted by one.
 #
 # ChatGPT-scale models are this same recipe with trillions of tokens, billions of parameters, plus instruction tuning. Here we train a **tiny chemistry GPT on SMILES** from scratch on CPU, then:
 # * **Generate** new molecules (the "G" in GPT)
@@ -139,7 +139,7 @@ Draw.MolsToGridImage([Chem.MolFromSmiles(s) for s in good], molsPerRow=3, subImg
 
 # %% [markdown]
 # ## 5. Reuse the GPT for prediction
-# The GPT's hidden states are a learned representation of each molecule. Mean-pool them → feature vector → fit a simple **ridge regression** to `y`. This is the same pattern as using LLM embeddings for downstream tasks.
+# The GPT's hidden states are a learned representation of each molecule. Mean-pool them to feature vector to fit a simple **ridge regression** to `y`. This is the same pattern as using LLM embeddings for downstream tasks.
 
 # %%
 @torch.no_grad()
@@ -158,7 +158,7 @@ ridge = RidgeCV(alphas=np.logspace(-1, 4, 12)).fit(sc.transform(E[tr]), y[tr])
 c.log_result("GPT embeddings + ridge", c.metrics(y[te], ridge.predict(sc.transform(E[te]))))
 
 # %% [markdown]
-# **Discuss:** this tiny GPT saw only ~2,500 molecules. Published chemistry language models (ChemBERTa, MolFormer, ...) pre-train on 10⁷–10⁹ molecules. What would you expect to change? And how does this differ from *prompting* a general LLM like ChatGPT/Claude with a SMILES string?
+# **Discuss:** this tiny GPT saw only ~2,500 molecules. Published chemistry language models (ChemBERTa, MolFormer, ...) pre-train on 10⁷-10⁹ molecules. What would you expect to change? And how does this differ from *prompting* a general LLM like ChatGPT/Claude with a SMILES string?
 
 # %% [markdown]
 # ### Optional: use a real pre-trained chemistry language model

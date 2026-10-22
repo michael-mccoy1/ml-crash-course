@@ -1,11 +1,11 @@
 # %% [markdown]
-# # 02 · Neural Networks (25 min)
-# **Idea:** stack layers of `output = activation(W·input + b)`; learn all `W`,`b` by gradient descent on the prediction error.
+# # 02: Neural Networks (25 min)
+# **Idea:** stack layers of `output = activation(W times input + b)`; learn all `W`,`b` by gradient descent on the prediction error.
 #
 # Three flavours we touch:
-# 1. **MLP** on a fixed feature table (fingerprints/descriptors) – the "plain" NN.
-# 2. **Graph neural network (GNN)** – learns features by passing messages along bonds. (Chemprop is the standard tool.)
-# 3. **Transformer/GPT** – next block.
+# 1. **MLP** on a fixed feature table (fingerprints/descriptors) - the "plain" NN.
+# 2. **Graph neural network (GNN)** - learns features by passing messages along bonds. (Chemprop is the standard tool.)
+# 3. **Transformer/GPT** - next block.
 #
 # Key lesson: NNs need *more care* than trees (scaling, regularisation, early stopping) and don't automatically win on small tabular data.
 
@@ -22,7 +22,7 @@ torch.manual_seed(0); np.random.seed(0)
 df = c.load("HLM"); fp, desc, names = c.get_features(df)
 tr, te = c.split(df, "scaffold"); y = df.y.values.astype(np.float32)
 
-# validation set carved from train (for early stopping – never touch test!)
+# validation set carved from train (for early stopping - never touch test!)
 rng = np.random.RandomState(0); perm = rng.permutation(tr)
 va, tr_in = perm[:len(perm)//8], perm[len(perm)//8:]
 
@@ -94,7 +94,7 @@ try:
     from torch_geometric.nn import GINEConv, global_add_pool, global_mean_pool
     HAVE_PYG = True
 except Exception as e:
-    HAVE_PYG = False; print("torch_geometric not available – skip:", e)
+    HAVE_PYG = False; print("torch_geometric not available - skip:", e)
 
 # %%
 if HAVE_PYG:

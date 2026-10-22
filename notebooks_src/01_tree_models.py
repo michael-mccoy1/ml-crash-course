@@ -1,10 +1,10 @@
 # %% [markdown]
-# # 01 · Tree Models (25 min)
+# # 01: Tree Models (25 min)
 # **Idea:** repeatedly ask yes/no questions about features ("is logP > 3.1?") to split compounds into groups with similar `y`; predict the group mean.
 #
-# * **Decision tree** – one tree. Interpretable, but overfits.
-# * **Random forest** – hundreds of trees on random data/feature subsets, averaged (*bagging*). Reduces variance.
-# * **Gradient boosting** (LightGBM/XGBoost) – trees built *sequentially*, each fixing the errors of the last. Usually the strongest on tabular data.
+# * **Decision tree** - one tree. Interpretable, but overfits.
+# * **Random forest** - hundreds of trees on random data/feature subsets, averaged (*bagging*). Reduces variance.
+# * **Gradient boosting** (LightGBM/XGBoost) - trees built *sequentially*, each fixing the errors of the last. Usually the strongest on tabular data.
 
 # %%
 import os, sys, subprocess
@@ -33,7 +33,7 @@ print(c.metrics(y[te], t.predict(desc[te])))
 
 # %% [markdown]
 # ## 2. Overfitting in one plot
-# Let the tree grow deeper. Training score → perfect; test score stalls then falls.
+# Let the tree grow deeper. Training score to perfect; test score stalls then falls.
 
 # %%
 depths = range(1, 25)
@@ -81,7 +81,7 @@ imp = pd.Series(gb.booster_.feature_importance("gain"), index=all_names).sort_va
 imp[::-1].plot.barh(); plt.xlabel("total gain"); plt.show()
 
 # %% [markdown]
-# ## 6. Random vs scaffold split – the honesty check
+# ## 6. Random vs scaffold split - the honesty check
 
 # %%
 for kind in ["random", "scaffold"]:
