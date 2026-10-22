@@ -6,7 +6,7 @@ The task: predict log10 human liver microsome clearance (HLM CLint) from molecul
 
 ## For participants: nothing to install
 
-Open the course website (GitHub Pages): **`https://<your-org>.github.io/<repo-name>/`**
+Open the course website (GitHub Pages): **`https://michael-mccoy1.github.io/ml-crash-course/`**
 
 Every model trains inside your browser tab. Move the sliders, press Train, and watch what changes.
 
@@ -22,7 +22,7 @@ Every model trains inside your browser tab. Move the sliders, press Train, and w
 
 The `notebooks/` folder repeats each block with full ECFP fingerprints and ~200 RDKit descriptors, adds a graph neural network and
 an optional ChemBERTa comparison. Open a notebook via
-`https://colab.research.google.com/github/<your-org>/<repo-name>/blob/main/notebooks/01_tree_models.ipynb`
+`https://colab.research.google.com/github/michael-mccoy1/ml-crash-course/blob/main/notebooks/01_tree_models.ipynb`
 (set `REPO_URL` in notebook 00 first).
 
 | Notebook | Content |
@@ -39,7 +39,7 @@ Reference scores (one run, scaffold split, full features): LightGBM R² 0.51, ML
 
 1. Create a repo and push this folder.
 2. Repo **Settings → Pages → Build and deployment → Deploy from a branch → `main` / `/docs`**.
-3. The site appears at `https://<your-org>.github.io/<repo-name>/` after about a minute.
+3. The site appears at `https://michael-mccoy1.github.io/ml-crash-course/` after about a minute.
 
 The site is a single static file, `docs/index.html`. It loads TensorFlow.js from a CDN; there is no server component.
 If you edit `applet/applet_template.html`, regenerate with `python build_applet.py`.
