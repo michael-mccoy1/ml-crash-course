@@ -6,15 +6,17 @@
 
 ## Run of show
 
+The site has an "Animations on/off" button in the header. Turn animations off if a laptop struggles.
+
 | Min | Tab | Say | Do |
 |---|---|---|---|
-| 0–5 | Start | HLM clearance: why chemists care (half-life, dose). Target is log10, higher = faster metabolism. | Read the question card. |
-| 5–10 | Start | Scaffold split holds out whole chemical series, like predicting the next series. Features are 8 physchem descriptors. | Untick features, ask which they expect to matter. |
+| 0–5 | What is ML? | HLM clearance: why chemists care (half-life, dose). Target is log10, higher = faster metabolism. | Read the question card. |
+| 5–10 | What is ML? | Scaffold split holds out whole chemical series, like predicting the next series. Features are 8 physchem descriptors. | Untick features, ask which they expect to matter. |
 | 10–15 | Trees | A tree is yes/no questions; the prediction is a leaf average. | Train with defaults. Read the printed rules aloud. |
 | 15–22 | Trees | Overfitting. | Point at the depth chart: train rises, test stalls. Ask which depth to pick and why not by the test curve. |
 | 22–35 | Trees | Forest = average many noisy trees; boosting = trees fixing errors. | Move forest depth 3 vs 16, boosting rate 0.01 vs 0.3. Tick only logP and re-train. |
-| 35–45 | Neural nets | Layers of weighted sums + ReLU, trained by gradient descent; inputs must be scaled. | Train defaults. Explain the two loss curves. |
-| 45–60 | Neural nets | Regularisation. | Units 256, dropout 0, epochs 200: curves split. Add dropout 0.4. Toggle "keep best epoch". Compare with the forest. |
+| 35–45 | Neural networks | Layers of weighted sums + ReLU, trained by gradient descent; inputs must be scaled. | Train defaults. Explain the two loss curves. |
+| 45–60 | Neural networks | Regularisation. | Units 256, dropout 0, epochs 200: curves split. Add dropout 0.4. Toggle "keep best epoch". Compare with the forest. |
 | 60–68 | GPT | Same machinery, different job: predict the next token. | Train 500 steps while you explain tokens, embeddings, attention. |
 | 68–75 | GPT | Sampling and temperature. | Generate at 0.3 and 1.6. Count syntax-ok. |
 | 75–80 | GPT | Attention. | Show the lower-triangle heatmap; why the upper half is blank (no peeking at the future). Ring-closing digits often attend to their opening digit. |
