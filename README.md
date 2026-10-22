@@ -12,10 +12,10 @@ Every model trains inside your browser tab. Move the sliders, press Train, and w
 
 | Tab | Time | What you explore |
 |---|---|---|
-| Start | 10 min | The data, features, scaffold split |
-| Trees | 25 min | Decision tree depth and overfitting, random forest, gradient boosting |
-| Neural nets | 25 min | Layers, units, dropout, learning rate, early stopping; live loss curves |
-| GPT | 20 min | Train a tiny transformer on SMILES, sample molecules, view attention |
+| What is ML? | 10 min | The big idea, an animated "watch a model learn" demo, the data and the scaffold split |
+| Trees | 25 min | A decision tree growing, a compound travelling down it, a forest voting, boosting round by round |
+| Neural networks | 25 min | A live network diagram whose weights change as it trains, loss and prediction plots |
+| GPT | 20 min | Tokenizer, training with a live "current attempt", next-token probabilities, attention heatmap |
 | Compare | 10 min | Your scores side by side, plus discussion questions |
 
 ## Optional deep dive (Colab, free Google account)
@@ -42,13 +42,13 @@ Reference scores (one run, scaffold split, full features): LightGBM R² 0.51, ML
 3. The site appears at `https://michael-mccoy1.github.io/ml-crash-course/` after about a minute.
 
 The site is a single static file, `docs/index.html`. It loads TensorFlow.js from a CDN; there is no server component.
-If you edit `applet/applet_template.html`, regenerate with `python build_applet.py`.
+If you edit `applet/site_template.html`, regenerate with `python build_applet.py`.
 
 ## Repository layout
 
 ```
 docs/index.html            the website (generated)
-applet/applet_template.html  source for the website
+applet/site_template.html  source for the website
 build_applet.py            template + data -> docs/index.html
 notebooks_src/*.py         notebook sources (percent format)
 build_notebooks.py         notebooks_src -> notebooks/*.ipynb
