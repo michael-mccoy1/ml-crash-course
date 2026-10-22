@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 05 · A second endpoint: logD as an input to HLM
+# # 05: A second endpoint: logD as an input to HLM
 # HLM clearance depends on lipophilicity. We can train a **logD model on a different public dataset** (AstraZeneca, 4,200 compounds, ChEMBL deposit) and feed its prediction into the HLM model as one extra feature. This is *stacking* across endpoints.
 #
 # * logD model is trained on AstraZeneca data only. It never sees an HLM value, so there is no leakage.

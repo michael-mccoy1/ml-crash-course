@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 04 · Head-to-Head & Discussion (10 min)
+# # 04: Head-to-Head & Discussion (10 min)
 # Every model from blocks 01-03 logged its score on the **same scaffold-split test set**. (Missing a row? Run that notebook first.)
 
 # %%
@@ -19,9 +19,9 @@ ax.set_xlabel("test R² (scaffold split, HLM)"); plt.tight_layout(); plt.show()
 
 # %% [markdown]
 # ## Discussion questions (use the paper)
-# 1. **Does the winner here match what Fang et al. found?** What would you need to change to claim one model family is "better"? (Hint: repeats over seeds/splits, confidence intervals — one split can mislead.)
+# 1. **Does the winner here match what Fang et al. found?** What would you need to change to claim one model family is "better"? (Hint: repeats over seeds/splits, confidence intervals, one split can mislead.)
 # 2. **Why do trees often win on tabular chemistry data** while NNs dominate images/text? (Few samples, heterogeneous hand-crafted features, irregular target functions.)
-# 3. **The GPT scored lowest — is it a bad model?** It is a *generative* model trained on 2.5k molecules; its strength is scale + generation, not small-data regression.
+# 3. **The GPT scored lowest, is it a bad model?** It is a *generative* model trained on 2.5k molecules; its strength is scale + generation, not small-data regression.
 # 4. **Retrospective vs prospective:** the paper evaluates on compounds measured *after* model building. Which of our splits is closest, and what's still missing?
 # 5. **Assay noise ceiling:** HLM log-CLint replicate error limits the achievable R². How would you estimate it?
 #

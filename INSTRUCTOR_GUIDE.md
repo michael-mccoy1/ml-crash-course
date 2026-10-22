@@ -1,45 +1,29 @@
 # Instructor Guide (90 minutes)
 
-**Anchor paper:** Fang et al., *Prospective Validation of Machine Learning Algorithms for ADME Prediction: An Industrial Perspective*, J. Chem. Inf. Model. 2023 (verify the exact citation before you circulate it). Biogen measured ADME endpoints for ~3,500 compounds and released them. The paper's lesson for us: judge models on data they could not have seen, and compare model families fairly.
-
-**Setup:** share the website link. Participants need a browser and nothing else. Ask them to keep the Compare tab for the end.
+Open the website and let participants follow along. Each lesson has a fixed options panel on the left. Steps on the right play once as they scroll into view, and every step has a Play button to replay and a Reset button. The two toggles in the header turn animation and autoplay off.
 
 ## Run of show
 
-The site has an "Animations on/off" button in the header. Turn animations off if a laptop struggles.
-
-| Min | Tab | Say | Do |
-|---|---|---|---|
-| 0–5 | What is ML? | HLM clearance: why chemists care (half-life, dose). Target is log10, higher = faster metabolism. | Read the question card. |
-| 5–10 | What is ML? | Scaffold split holds out whole chemical series, like predicting the next series. Features are 8 physchem descriptors. | Untick features, ask which they expect to matter. |
-| 10–15 | Trees | A tree is yes/no questions; the prediction is a leaf average. | Train with defaults. Read the printed rules aloud. |
-| 15–22 | Trees | Overfitting. | Point at the depth chart: train rises, test stalls. Ask which depth to pick and why not by the test curve. |
-| 22–35 | Trees | Forest = average many noisy trees; boosting = trees fixing errors. | Move forest depth 3 vs 16, boosting rate 0.01 vs 0.3. Tick only logP and re-train. |
-| 35–45 | Neural networks | Layers of weighted sums + ReLU, trained by gradient descent; inputs must be scaled. | Train defaults. Explain the two loss curves. |
-| 45–60 | Neural networks | Regularisation. | Units 256, dropout 0, epochs 200: curves split. Add dropout 0.4. Toggle "keep best epoch". Compare with the forest. |
-| 60–68 | GPT | Same machinery, different job: predict the next token. | Train 500 steps while you explain tokens, embeddings, attention. |
-| 68–75 | GPT | Sampling and temperature. | Generate at 0.3 and 1.6. Count syntax-ok. |
-| 75–80 | GPT | Attention. | Show the lower-triangle heatmap; why the upper half is blank (no peeking at the future). Ring-closing digits often attend to their opening digit. |
-| 80–90 | Compare | Rank, then discuss. | Use the five questions on the page. |
-
-## Optional extensions
-
-- **logD to HLM (What is ML? tab):** tick logD_pred and run the comparison. Expect a small gain with eight descriptors (about +0.03 to +0.06) and almost none with full fingerprints. Discuss when a stacked feature helps.
-- **Chemprop (Neural networks tab):** step through message passing, then show the notebook 06 score (R² 0.46, 75 s on CPU).
-
-## Expected outcomes (8 descriptors, scaffold split)
-
-Roughly: tree depth 4 R² ≈ 0.25, forest ≈ 0.29, boosting ≈ 0.28, MLP ≈ 0.3. Ranking among them is within noise; say so. The notebooks with ECFP + 200 descriptors reach LightGBM ≈ 0.51 and show clearer separation.
+| Minutes | Lesson | What to do |
+|---|---|---|
+| 0 to 12 | 01 Data and ML basics | Step 1 gives the idea. Step 3 shows how the unseen set is chosen: in HLM the scaffold split barely matters, in logD it matters a lot. Step 4 is the key picture for overfitting. Step 6 introduces logD feeding HLM. |
+| 12 to 24 | 02 Data quality | Step 1 shows the 31% pile-up at the assay floor. Step 2 compares three treatments of censored data. Step 5 shows why the unseen set must not be filtered. |
+| 24 to 44 | 03 Tree models | Step 1 shows how a tree picks a question. Ask the group to predict what happens at depth 3 versus 10 before pressing Play in step 2. Steps 4 and 5 show forests and boosting. |
+| 44 to 64 | 04 Neural networks | Let participants drag the weights in step 1. Step 3 compares learning rates. Train the network once in step 4 and keep the group on step 6 and 7 while it trains if needed. Step 9 introduces Chemprop. |
+| 64 to 82 | 05 GPT | Train once in step 4 (about 30 seconds at 400 steps) and discuss while it runs. Step 5 shows attention. Step 7 loads RDKit in the browser and checks generated molecules. |
+| 82 to 90 | 06 Compare | Walk the leaderboard and the accuracy against time chart. Use the discussion questions. |
 
 ## Points to land
 
-- **Trees:** one tree overfits; ensembles fix variance (forest) or bias (boosting); trees need no scaling and handle small tabular data well.
-- **Neural nets:** more capacity does not mean better test scores; validation data picks the stopping point; scale your inputs.
-- **GPT:** it is a generative model of text. Predicting clearance is not its job, which is why its regression score is lowest. Scale, not architecture, makes large models strong.
-- **Evaluation:** one split is one sample. The Compare tab's reference table comes from single runs; see notebook 04 for variance over splits.
+* The score depends on how the unseen set was chosen and how the data were treated. Report both.
+* Censoring changes which model looks best. Keeping everything is best on all unseen compounds, dropping censored values is best on measurable ones, and two models give both answers.
+* Trees need no scaling and are hard to beat on a few thousand compounds. Neural networks need care: scaling, validation, dropout, a stopping point.
+* A GPT is a generative model. Predicting clearance is not its job. Check what it writes with RDKit.
+* One endpoint can feed another (logD into HLM). The gain depends on how much the other features already say.
 
 ## If something goes wrong
 
-- Page loads but Train does nothing: TensorFlow.js is blocked by a network proxy. Participants can use the notebooks instead, or you can host `tf.min.js` in `docs/` and change the script tag.
-- GPT training is slow on old laptops: lower steps to 200–300 and use 1 layer.
-- Keep the tab in the foreground while training.
+* A blank page or no data: the site must be opened over http (GitHub Pages or `python -m http.server`), not from a file.
+* Training does not start: the TensorFlow.js script may be blocked by a network proxy. Participants can use the notebooks instead.
+* RDKit does not load (steps 7 and the predict-your-own-SMILES step): it comes from a public CDN and is about 7 MB. The rest of the site works without it.
+* Slow laptop: turn animations off in the header, lower the GPT training steps to 150 and use one transformer layer.
