@@ -162,7 +162,7 @@ var LESSONS = {}, LORDER = ['start', 'quality', 'trees', 'nn', 'gpt', 'compare']
 function Lesson(id, title){ this.id = id; this.title = title; this.steps = []; this.gloss = null; this.optsHTML = ''; this.onOpts = null; this.onData = null; LESSONS[id] = this; }
 Lesson.prototype.add = function(def){ this.steps.push(def); return this; };
 Lesson.prototype.glossary = function(items){ this.gloss = items; return this; };
-Lesson.prototype.refresh = function(){ var L = this; L.steps.forEach(function(s){ s.dirty = true; if (s.visible && s.handlers && s.handlers.render) { s.dirty = false; s.safe(function(){ return s.handlers.render(); }); } }); };
+Lesson.prototype.refresh = function(){ var L = this; L.steps.forEach(function(s){ s.dirty = true; if (s.visible && s.handlers && s.handlers.render) { s.dirty = false; s.api.tok++; s.api.clearTexts(); s.safe(function(){ return s.handlers.render(); }); } }); };
 
 function seg(items, cur, attr){ return '<div class="seg" ' + attr + '>' + items.map(function(it){ return '<button type="button" data-v="' + it[0] + '"' + (it[0] === cur ? ' class="on"' : '') + '>' + it[1] + '</button>'; }).join('') + '</div>'; }
 function optGroup(label, html, hint){ return '<div class="og"><div class="ol">' + label + '</div>' + html + (hint ? '<div class="hint">' + hint + '</div>' : '') + '</div>'; }
@@ -184,7 +184,7 @@ async function setEndpoint(key){
 
 function buildLesson(L){
   var root = $('lesson-' + L.id), n = L.steps.length + (L.gloss ? 1 : 0);
-  root.innerHTML = '<aside class="options"><div class="otitle">Options</div><div class="obody"></div></aside><div class="steps"><nav class="toc"></nav></div>';
+  root.innerHTML = '<aside class="options"><div class="otitle">Options</div><div class="obody"></div><div class="aff"><div class="hint">Change any option. This box shows which steps it drives.</div></div></aside><div class="steps"><nav class="toc"></nav></div>';
   qs('.obody', root).innerHTML = typeof L.optsHTML === 'function' ? L.optsHTML() : L.optsHTML; var stepsEl = qs('.steps', root), toc = qs('.toc', root);
   L.steps.forEach(function(s, i){ s.L = L; s.idx = i; buildStep(L, s, i, n, stepsEl); toc.appendChild(tocChip(L.id + '-s' + (i + 1), (i + 1) + '  ' + s.short)); });
   if (L.gloss) { var g = h('section', 'step gloss'); g.id = L.id + '-gl'; g.innerHTML = '<div class="shead"><i class="tick"></i><div><div class="eyebrow">GLOSSARY</div><h2>Terms in this lesson</h2></div></div><dl class="gl">' + L.gloss.map(function(t){ return '<div><dt>' + t[0] + '</dt><dd>' + t[1] + '</dd></div>'; }).join('') + '</dl>'; stepsEl.appendChild(g); toc.appendChild(tocChip(L.id + '-gl', 'Glossary')); }
@@ -195,17 +195,21 @@ function tocChip(target, label){ var b = h('button', 'tc', esc(label)); b.type =
 function buildStep(L, s, idx, total, parent){
   var sec = h('section', 'step'); sec.id = L.id + '-s' + (idx + 1); s.sec = sec;
   sec.innerHTML = '<div class="shead"><i class="tick"></i><div><div class="eyebrow">STEP ' + (idx + 1) + ' OF ' + total + '</div><h2>' + s.title + '</h2></div></div>' +
-    '<div class="ins"><div><b>Change</b><span>' + s.change + '</span></div><div><b>Watch</b><span>' + s.watch + '</span></div></div>' +
+    '<div class="ins"><div><b>Change</b><span>' + s.change + '</span></div><div><b>Watch</b><span>' + s.watch + '</span></div></div>' + usesHTML(s) +
     '<div class="stagewrap"><div class="screen"><div class="inner"></div></div><div class="sbar"><button type="button" class="btn sm" data-play>Play</button><button type="button" class="btn sm ghost" data-reset>Reset</button><span class="sx"></span></div></div>';
   parent.appendChild(sec);
   var screen = qs('.screen', sec), inner = qs('.inner', sec), sbar = qs('.sbar', sec), sx = qs('.sx', sec);
-  var cap = h('div', 'cap'), key = h('div', 'keybar'); inner.appendChild(cap); inner.appendChild(key);
+  var cap = h('div', 'cap'), key = h('div', 'keybar'), foot = h('div', 'foot'), busy = h('div', 'busy', '<div class="bs"><i></i><span></span></div>'); inner.appendChild(foot); inner.appendChild(cap); inner.appendChild(key); inner.appendChild(busy);
+  var km = /api\.key\(\s*'((?:\\.|[^'\\])*)'/.exec(String(s.build)); if (km) { s.keyText = km[1].replace(/\\'/g, "'"); foot.innerHTML = '<i>KEY POINT</i>' + esc(s.keyText); foot.classList.add('on'); }
+  function footSync(){ if (s.keyText) foot.classList.toggle('on', !cap.classList.contains('on') && !key.classList.contains('on')); }
   var api = { sec: sec, inner: inner, sbar: sbar, L: L, tok: 0, stepDef: s };
   api.el = function(cls, style, html){ var e = h('div', cls, html); if (style) e.style.cssText = style; inner.insertBefore(e, cap); return e; };
-  api.cap = function(t){ key.classList.remove('on'); if (t === null || t === undefined) { cap.classList.remove('on'); return; } cap.innerHTML = t; cap.classList.add('on'); };
-  api.key = function(t){ cap.classList.remove('on'); if (!t) { key.classList.remove('on'); return; } key.innerHTML = '<i>KEY POINT</i>' + t; key.classList.add('on'); };
-  api.clearTexts = function(){ cap.classList.remove('on'); key.classList.remove('on'); };
+  api.cap = function(t){ key.classList.remove('on'); if (t === null || t === undefined) { cap.classList.remove('on'); footSync(); return; } cap.innerHTML = t; cap.classList.add('on'); footSync(); };
+  api.key = function(t){ cap.classList.remove('on'); if (!t) { key.classList.remove('on'); footSync(); return; } key.innerHTML = '<i>KEY POINT</i>' + t; key.classList.add('on'); footSync(); };
+  api.clearTexts = function(){ cap.classList.remove('on'); key.classList.remove('on'); footSync(); };
   api.stat = function(t){ sx.innerHTML = t || ''; };
+  api.busy = function(t){ qs('span', busy).textContent = t || 'Updating'; busy.classList.add('on'); };
+  api.idle = function(){ busy.classList.remove('on'); };
   api.sleep = function(ms){ var tok = api.tok; return new Promise(function(res, rej){ setTimeout(function(){ if (api.tok !== tok) rej(new Cancel()); else res(); }, ANIM ? ms : 0); }); };
   api.anim = function(ms, fn){ var tok = api.tok; return new Promise(function(res, rej){ if (!ANIM) { fn(1); return res(); } var t0 = performance.now(); (function f(now){ if (api.tok !== tok) return rej(new Cancel()); var t = clamp((now - t0) / ms, 0, 1); fn(ease(t)); if (t < 1) requestAnimationFrame(f); else res(); })(t0); }); };
   api.beat = async function(text, ms){ api.cap(text); await api.sleep(ms || 2200); };
@@ -250,7 +254,7 @@ function sortedCol(f){ D.cache.sorted = D.cache.sorted || {}; if (!D.cache.sorte
 function percentile(f, v){ var a = sortedCol(f), lo = 0, hi = a.length; while (lo < hi) { var m = (lo + hi) >> 1; if (a[m] < v) lo = m + 1; else hi = m; } return lo / a.length; }
 function fineBins(feat, nb){ D.cache.fine = D.cache.fine || {}; var key = feat + nb; if (D.cache.fine[key]) return D.cache.fine[key]; var v = D.TRAIN.map(function(i){ return D.COL[feat][i]; }).sort(function(a, b){ return a - b; }), e = [];
   for (var q = 1; q < nb; q++) { var x = v[Math.floor(q / nb * v.length)]; if (!e.length || x > e[e.length - 1]) e.push(x); } var c = new Uint8Array(D.N); for (var i = 0; i < D.N; i++) { var val = D.COL[feat][i], k = 0; while (k < e.length && val > e[k]) k++; c[i] = k; } var ed = {}, cd = {}; ed[feat] = e; cd[feat] = c; return (D.cache.fine[key] = { edges: ed, codes: cd }); }
-function demoTree(){ if (!D.cache.demo) D.cache.demo = fitTree(D.BASE, D.TRAIN, 5, 20, 1); return D.cache.demo; }
+function demoTree(){ var f = activeFeats(); if (!f.length) return null; D.cache.demoT = D.cache.demoT || {}; var k = f.join(','); if (!D.cache.demoT[k]) D.cache.demoT[k] = fitTree(f, D.TRAIN, 5, 20, 1); return D.cache.demoT[k]; }
 function fmtFeat(f, v){ return (f === 'logP' || f === 'Fsp3') ? v.toFixed(2) : v.toFixed(0); }
 function structOf(i){ if (!STRUCTS) return null; var a = STRUCTS[EP] || []; for (var k = 0; k < a.length; k++) if (a[k].i === i) return a[k]; return null; }
 async function typeInto(el, text, api, cps){ var tok = api.tok; el.textContent = ''; var step = Math.max(1, Math.round((cps || 60) / 30)); for (var k = 0; k <= text.length; k += step) { api.checkTok(tok); el.textContent = text.slice(0, k); await new Promise(function(r){ setTimeout(r, ANIM ? 33 : 0); }); } el.textContent = text; }
@@ -260,3 +264,29 @@ function miniTreeSVG(w, hh){ var pts = [[0.5, 0.1], [0.27, 0.45], [0.73, 0.45], 
   return '<svg viewBox="0 0 ' + w + ' ' + hh + '" width="' + w + '" height="' + hh + '">' + s + '</svg>'; }
 
 function unitWord(){ return D.key === 'HLM' ? 'HLM clearance (log10)' : 'logD'; }
+
+
+/* ---------- which steps does an option drive? ---------- */
+function setUses(L, arr){ arr.forEach(function(u, i){ if (L.steps[i]) L.steps[i].uses = u; }); }
+function optLabel(id){
+  if (id === 'features') return 'Features'; if (id === 'endpoint') return 'Endpoint'; if (id === 'qcens') return 'Censored values'; if (id === 'qapply') return 'Use in other lessons'; if (id === 'nearly') return 'Keep the best epoch';
+  var l = document.querySelector('label[for="' + id + '"]'); if (l) return l.childNodes[0].textContent.trim(); return id;
+}
+function usesHTML(s){ if (!s.uses || !s.uses.length) return '<div class="uses">Options used here: none. This step runs on its own.</div>'; return '<div class="uses">Options used here: ' + s.uses.map(function(u){ return '<b>' + esc(optLabel(u)) + '</b>'; }).join(', ') + '</div>'; }
+function optKey(t){ if (!t || !t.closest) return null; if (!t.closest('aside.options')) return null; if (t.closest('.featchips')) return 'features'; if (t.closest('.seg[data-ep]')) return 'endpoint'; if (t.closest('.seg[data-cens]')) return 'qcens'; return t.id || null; }
+var affTimer = null;
+function showAffects(key){
+  var L = LESSONS[ACTIVE]; if (!L || !L.built || !key) return; var root = $('lesson-' + L.id), box = qs('.aff', root); if (!box) return; var hits = [];
+  L.steps.forEach(function(st, i){ if (st.uses && st.uses.indexOf(key) >= 0) hits.push(i); });
+  box.innerHTML = '<div class="ol">' + esc(optLabel(key)) + '</div>' + (hits.length ? '<div class="hint" style="margin-bottom:5px">Drives these steps:</div><div class="ah">' + hits.map(function(i){ return '<button type="button" data-g="' + L.id + '-s' + (i + 1) + '">' + (i + 1) + ' ' + esc(L.steps[i].short) + '</button>'; }).join('') + '</div>' : '<div class="hint">No step in this lesson uses this option.</div>');
+  qsa('.ah button', box).forEach(function(b){ b.addEventListener('click', function(){ var t = $(b.dataset.g); if (t) window.scrollTo({ top: t.getBoundingClientRect().top + window.scrollY - 70, behavior: ANIM ? 'smooth' : 'auto' }); }); });
+  qsa('.tc', root).forEach(function(c, i){ c.classList.toggle('hit', hits.indexOf(i) >= 0); }); clearTimeout(affTimer); affTimer = setTimeout(function(){ qsa('.tc.hit', root).forEach(function(c){ c.classList.remove('hit'); }); }, 4500);
+}
+['input', 'change'].forEach(function(ev){ document.addEventListener(ev, function(e){ var k = optKey(e.target); if (k) showAffects(k); }, true); });
+document.addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.seg button') : null; if (b && b.closest('aside.options')) { var k = optKey(b); if (k) showAffects(k); } }, true);
+
+/* ---------- wait for a slider to be released before heavy work ---------- */
+var HOLD = false;
+document.addEventListener('pointerdown', function(e){ if (e.target && e.target.matches && e.target.matches('aside.options input[type=range]')) HOLD = true; }, true);
+['pointerup', 'pointercancel'].forEach(function(ev){ window.addEventListener(ev, function(){ if (HOLD) { HOLD = false; var L = LESSONS[ACTIVE]; if (L && L.built) setTimeout(function(){ L.refresh(); }, 60); } }, true); });
+function waitRelease(){ return new Promise(function(res){ (function c(){ if (!HOLD) res(); else setTimeout(c, 150); })(); }); }

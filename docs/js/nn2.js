@@ -1,9 +1,8 @@
 "use strict";
 /* Lesson 4 continued: steps 6 to 9 and glossary */
 function nnAct(i){
-  var P = NN.prep, dl = denseLayers(NN.m), am = tf.model({ inputs: NN.m.inputs, outputs: dl.map(function(l){ return l.output; }) }), row = P.rowOf(i), outs = am.predict(tf.tensor2d([row])); if (!Array.isArray(outs)) outs = [outs];
-  var acts = outs.map(function(o){ return Array.from(o.dataSync()); }); outs.forEach(function(o){ o.dispose(); });
-  return { i: i, x: row, layers: acts, raw: P.feats.map(function(f){ return D.COL[f][i]; }), max: acts.map(function(a){ return Math.max.apply(null, a.slice(0, 9).concat([1e-6])); }), pred: acts[acts.length - 1][0] + P.ymu, meas: D.Y[i] };
+  var P = NN.prep, A = nnActivations(i), L = NN.m.sizes.length - 1, layers = []; for (var l = 1; l <= L; l++) layers.push(Array.from(A[l]));
+  return { i: i, x: Array.from(A[0]), layers: layers, raw: P.feats.map(function(f){ return D.COL[f][i]; }), max: layers.map(function(a){ return Math.max.apply(null, a.slice(0, 9).concat([1e-6])); }), pred: layers[layers.length - 1][0] + P.ymu, meas: D.Y[i] };
 }
 
 /* ---------- N6: one compound through the trained network ---------- */
@@ -18,12 +17,12 @@ L3.add({ short: 'One compound', title: 'Follow one compound through the trained 
     var op = api.el('pn fd', 'left:768px;top:28px;width:164px;height:408px', '<h4>Prediction</h4><div class="big pv" style="color:' + C.red + '">0</div><div class="lbl" style="margin-top:6px">measured</div><div class="big mv" style="font-size:26px">0</div><div class="pbar"><i style="background:' + C.red + ';width:0"></i></div><div class="pbar"><i style="background:' + C.char + ';width:0"></i></div><div class="note er" style="font-size:12px;color:#6B7280"></div>');
     api.addControl('<button type="button" class="btn sm ghost" data-next>Next compound</button>');
     function draw(stage){ drawNetSVG(qs('svg', dp), { W: 450, H: 380, sizes: netSizes(NN.prep.feats.length, NN.params.layers, NN.params.units), feats: NN.prep.feats, model: NN.m, act: act, stage: stage, maxShow: 9, padL: 92, padR: 44, sel: NN.sel }); }
-    async function setup(next){ await loadStructs(); if (!NN.m || nnStale()) { qs('svg', dp).innerHTML = '<text x="30" y="40" font-size="13" fill="' + C.mid + '">Training a network with your options</text>'; await tick(); await ensureNet(); }
-      if (!cur || next || cur._ep !== EP) { cur = await pickStruct(); cur._ep = EP; } act = nnAct(cur.i); NN.act = act; qs('.struct', sp).innerHTML = cur.svg; qs('.smi', fp).textContent = cur.smi; op.classList.remove('on'); draw(-1); }
-    qs('[data-next]', api.sbar).addEventListener('click', async function(){ api.tok++; await setup(true); var t = api.tok; api.stepDef.safe(function(){ return play(t); }); });
-    async function render(){ await setup(false); draw(99); showOut(); }
+    async function setup(next){ await loadStructs(); if (!(await nnReady(api))) return false;
+      if (!cur || next || cur._ep !== EP) { cur = await pickStruct(); cur._ep = EP; } act = nnAct(cur.i); NN.act = act; qs('.struct', sp).innerHTML = cur.svg; qs('.smi', fp).textContent = cur.smi; op.classList.remove('on'); draw(-1); return true; }
+    qs('[data-next]', api.sbar).addEventListener('click', async function(){ api.tok++; if (!(await setup(true))) return; var t = api.tok; api.stepDef.safe(function(){ return play(t); }); });
+    async function render(){ if (!(await setup(false))) return; draw(99); showOut(); }
     function showOut(){ var span = D.yhi - D.ylo; qs('.pv', op).textContent = act.pred.toFixed(2); qs('.mv', op).textContent = act.meas.toFixed(2); var bars = qsa('.pbar i', op); bars[0].style.width = clamp((act.pred - D.ylo) / span * 100, 0, 100) + '%'; bars[1].style.width = clamp((act.meas - D.ylo) / span * 100, 0, 100) + '%'; qs('.er', op).textContent = 'Error ' + (act.pred - act.meas >= 0 ? '+' : '') + (act.pred - act.meas).toFixed(2); op.classList.add('on'); }
-    async function play(tok){ await setup(false); var L = NN.params.layers; draw(-1); op.classList.remove('on'); await api.beat('Start with the compound and its features. This network has ' + NN.prep.feats.length + ' inputs.', 2800);
+    async function play(tok){ if (!(await setup(false))) return; var L = NN.params.layers; draw(-1); op.classList.remove('on'); await api.beat('Start with the compound and its features. This network has ' + NN.prep.feats.length + ' inputs.', 2800);
       draw(0); await api.beat('The features enter the input neurons. Red neurons are above average for the training set, dark ones below.', 3200);
       for (var l = 1; l <= L; l++) { draw(l); await api.beat('Hidden layer ' + l + ': every neuron adds up its weighted inputs and applies ReLU. Darker red means more active.', 3200); }
       draw(L + 1); showOut(); await api.beat('The last neuron combines the final layer into one number, the prediction. Compare it with the lab value.', 3400); api.key('A network turns features into a prediction through layers of weighted sums. Nothing in it is hand-written.'); }
@@ -39,15 +38,15 @@ L3.add({ short: 'Inside a neuron', title: 'Open one neuron and read its arithmet
     var tp = api.el('pn', 'left:408px;top:28px;width:524px;height:408px', '<div class="nt"></div>');
     function draw(){ drawNetSVG(qs('svg', dp), { W: 340, H: 360, sizes: netSizes(NN.prep.feats.length, NN.params.layers, NN.params.units), feats: NN.prep.feats, model: NN.m, act: NN.act, stage: 99, maxShow: 9, padL: 78, padR: 24, sel: NN.sel, noLabels: true, onPick: function(k){ api.tok++; NN.sel = k; table(1); draw(); } }); }
     function table(prog){
-      var dl = denseLayers(NN.m), w = dl[0].getWeights(), ker = w[0].dataSync(), bias = w[1].dataSync(), units = dl[0].units, j = NN.sel, f = NN.prep.feats, a = NN.act, rows = '', z = bias[j], zs = [];
+      var ker = NN.m.W[0], bias = NN.m.b[0], units = NN.m.sizes[1], j = NN.sel, f = NN.prep.feats, a = NN.act, rows = '', z = bias[j], zs = [];
       var n = Math.max(1, Math.round(prog * (f.length + 2)));
       f.forEach(function(ft, k){ var wt = ker[k * units + j], c = a.x[k] * wt; z += c; zs.push(z); if (k < n) rows += '<tr><td>' + esc(ft) + '</td><td>' + fmtFeat(ft, a.raw[k]) + '</td><td>' + a.x[k].toFixed(2) + '</td><td style="color:' + (wt >= 0 ? C.red : C.char) + '">' + (wt >= 0 ? '+' : '') + wt.toFixed(2) + '</td><td><b>' + (c >= 0 ? '+' : '') + c.toFixed(2) + '</b></td><td style="width:90px"><div style="position:relative;height:10px;background:#EDF2F3;border-radius:3px"><div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:#6B7280"></div><div style="position:absolute;top:0;bottom:0;border-radius:3px;background:' + (c >= 0 ? C.red : C.bg) + ';' + (c >= 0 ? 'left:50%;' : 'right:50%;') + 'width:' + Math.min(50, Math.abs(c) * 14) + '%"></div></div></td><td style="text-align:right">' + zs[k].toFixed(2) + '</td></tr>'; });
       var showB = n >= f.length + 1, showR = n >= f.length + 2;
       qs('.nt', tp).innerHTML = '<h4>Neuron ' + (j + 1) + ' of hidden layer 1</h4><div class="tblwrap"><table style="font-size:12px"><thead><tr><th>Feature</th><th>Value</th><th>Rescaled</th><th>Weight</th><th>Contribution</th><th></th><th style="text-align:right">Running total</th></tr></thead><tbody>' + rows + (showB ? '<tr><td>bias</td><td></td><td></td><td></td><td><b>' + (bias[j] >= 0 ? '+' : '') + bias[j].toFixed(2) + '</b></td><td></td><td style="text-align:right">' + z.toFixed(2) + '</td></tr>' : '') + '</tbody></table></div>' + (showR ? '<p style="font-size:13px;margin-top:10px">Total <b>' + z.toFixed(2) + '</b>. ReLU turns it into <b style="color:' + C.red + '">' + Math.max(0, z).toFixed(2) + '</b>' + (z <= 0 ? ', so this neuron is silent for this compound.' : ', so this neuron passes a signal to the next layer.') + '</p>' : '');
     }
-    async function ready(){ if (!NN.m || nnStale()) { await ensureNet(); } if (!NN.act) { var P = NN.prep; NN.act = nnAct(D.TEST[Math.floor(Math.random() * D.TEST.length)]); } }
-    async function render(){ await ready(); draw(); table(1); }
-    async function play(tok){ await ready(); draw(); table(0); await api.beat('Every neuron in the first hidden layer reads all the inputs. Pick one.', 2600); api.cap('Each row is one input: its value, the learned weight, and what it adds to the total.');
+    async function ready(){ if (!(await nnReady(api))) return false; if (!NN.act) NN.act = nnAct(D.TEST[Math.floor(Math.random() * D.TEST.length)]); return true; }
+    async function render(){ if (!(await ready())) return; draw(); table(1); }
+    async function play(tok){ if (!(await ready())) return; draw(); table(0); await api.beat('Every neuron in the first hidden layer reads all the inputs. Pick one.', 2600); api.cap('Each row is one input: its value, the learned weight, and what it adds to the total.');
       for (var k = 1; k <= NN.prep.feats.length + 2; k++) { table(k / (NN.prep.feats.length + 2)); await api.sleep(750); } api.cap('The bias is added, then ReLU switches the neuron on or off. Click another neuron to compare.'); await api.sleep(3200); api.key('Each neuron weighs the same inputs differently, so each one detects a different pattern.'); }
     return { render: render, play: play };
   } });
@@ -67,9 +66,9 @@ L3.add({ short: 'What it learned', title: 'See what the network learned about on
       cache.lines.forEach(function(l){ x.strokeStyle = 'rgba(52,55,63,.28)'; x.lineWidth = 1.5; x.beginPath(); for (var k = 0; k < n; k++) { k ? x.lineTo(sx(cache.xs[k]), sy(l[k])) : x.moveTo(sx(cache.xs[k]), sy(l[k])); } x.stroke(); }); x.strokeStyle = C.red; x.lineWidth = 4; x.beginPath(); for (var k2 = 0; k2 < n; k2++) { k2 ? x.lineTo(sx(cache.xs[k2]), sy(cache.avg[k2])) : x.moveTo(sx(cache.xs[k2]), sy(cache.avg[k2])); } x.stroke();
       var d = cache.avg[cache.avg.length - 1] - cache.avg[0]; qs('.rd', sp).innerHTML = '<p><b style="color:' + C.red + '">Red line</b>: average prediction over 15 unseen compounds.</p><p><b>Grey lines</b>: each compound on its own. They differ because the other features differ.</p><p>Across the range of ' + esc(cache.f) + ', the average prediction moves by <b>' + (d >= 0 ? '+' : '') + d.toFixed(2) + '</b>.</p><p class="note" style="color:#6B7280">A curve that is not a straight line shows the network learned a non-linear effect.</p>'; }
     sel.addEventListener('change', function(){ api.tok++; cache = compute(); draw(1); });
-    async function ready(){ if (!NN.m || nnStale()) await ensureNet(); fill(); if (sel.value) cache = compute(); }
-    async function render(){ await ready(); draw(1); }
-    async function play(tok){ await ready(); if (!cache) return; draw(0); await api.beat('Take 15 unseen compounds. For each one, change only ' + cache.f + ' and ask the network for a new prediction.', 3200); await api.anim(ANIM ? 4200 : 1, function(t){ draw(t); }); api.cap('The red line is the average effect of ' + cache.f + ' according to the network.'); await api.sleep(3400); api.key('You can look inside a neural network by asking it what happens when one input changes.'); }
+    async function ready(){ if (!(await nnReady(api))) return false; fill(); if (sel.value) cache = compute(); return true; }
+    async function render(){ if (!(await ready())) return; draw(1); }
+    async function play(tok){ if (!(await ready())) return; if (!cache) return; draw(0); await api.beat('Take 15 unseen compounds. For each one, change only ' + cache.f + ' and ask the network for a new prediction.', 3200); await api.anim(ANIM ? 4200 : 1, function(t){ draw(t); }); api.cap('The red line is the average effect of ' + cache.f + ' according to the network.'); await api.sleep(3400); api.key('You can look inside a neural network by asking it what happens when one input changes.'); }
     return { render: render, play: play };
   } });
 
@@ -121,3 +120,6 @@ L3.glossary([
   ['Message passing', 'Atoms exchange vectors with bonded neighbours over several rounds.'],
   ['Chemprop', 'A message-passing neural network for molecules that reads the graph instead of descriptors.']
 ]);
+
+[5, 6, 7].forEach(function(i){ L3.steps[i].needsNet = true; });
+setUses(L3, [['features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'features'], ['nlr', 'nepochs', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], []]);

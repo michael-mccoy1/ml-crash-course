@@ -62,3 +62,4 @@ L5.glossary([
   ['Dominated model', 'A model that another model beats on both accuracy and speed.'], ['Unseen compounds', 'Compounds held back from training, chosen by scaffold.'],
   ['Assay noise', 'Measurement error in the lab data. It limits the R2 any model can reach.']
 ]);
+setUses(L5, [['endpoint'], ['endpoint'], []]);
