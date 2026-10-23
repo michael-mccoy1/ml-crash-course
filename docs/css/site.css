@@ -228,3 +228,7 @@ details.filtgrp .fr{margin-top:6px}
 .iwhat{margin:8px 0 0;font-size:.92rem;line-height:1.5;color:#34373F}
 
 @media(max-width:900px){.stagewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.screen{min-width:720px}}
+aside.options,.pn,.tblwrap,.stagewrap,nav.tabs .in{scrollbar-width:thin;scrollbar-color:var(--silver) transparent}
+aside.options::-webkit-scrollbar,.pn::-webkit-scrollbar,.tblwrap::-webkit-scrollbar,.stagewrap::-webkit-scrollbar,nav.tabs .in::-webkit-scrollbar{width:6px;height:6px}
+aside.options::-webkit-scrollbar-thumb,.pn::-webkit-scrollbar-thumb,.tblwrap::-webkit-scrollbar-thumb,.stagewrap::-webkit-scrollbar-thumb,nav.tabs .in::-webkit-scrollbar-thumb{background:var(--silver);border-radius:3px}
+aside.options::-webkit-scrollbar-button{display:none}
