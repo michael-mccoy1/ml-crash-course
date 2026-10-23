@@ -29,7 +29,7 @@ var GUIDE = {
     'trees/Which features matter': { notice: 'Compare the two charts.', q: 'Why can a feature rank high on the left but cost little on the right?', a: 'A correlated feature can take its place.' },
     'trees/Filtering the data': { notice: 'Grey bars are the compounds removed.', q: 'Dropping censored values lowers one score and raises another. Why?', a: 'The model stops learning the pile at the floor, so it misses floor compounds but ranks measured ones better.' },
     'trees/Results': { notice: 'Cards marked current options use the options panel values.', q: 'Which model if training time matters most?', a: 'The single tree, if its unseen score is good enough.' },
-    'trees/Is it useful': { notice: 'Outside the dots the tree\'s line goes flat.', q: 'Which would you trust far outside the data?', a: 'Neither blindly. The tree cannot follow a trend. The line can, but is wrong if the trend bends.' },
+    'trees/Is it useful': { notice: 'Blocky, smoother, closest. All three go flat outside the data.', q: 'Which model would you trust for a compound far outside the data?', a: 'None blindly. All three repeat the last value they saw. Only a model that knows the trend could follow it.' },
 
     'nn/What a weight is': { notice: 'The thin lines show the misses.', q: 'Set the weight to zero. What does the model predict?', a: 'The bias for every compound. The input has no effect.' },
     'nn/One neuron': { notice: 'Red adds to the total. Grey subtracts.', q: 'What does ReLU do to a negative total?', a: 'It turns it into zero.' },

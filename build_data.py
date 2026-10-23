@@ -218,7 +218,7 @@ def main():
         for k, v in json.load(open(c.RESULTS)).items():
             meta[k.split("|")[2]] = v
     r2_az, secs_az = ref_scores(az)
-    refs = {"HLM": [["LightGBM, fingerprints + descriptors", 0.51, None], ["Neural network, fingerprints + descriptors", 0.43, None], ["Random forest, fingerprints + descriptors", 0.40, None], ["Graph neural network (PyTorch Geometric)", 0.29, None], ["GPT embeddings + ridge", 0.16, None]],
+    refs = {"HLM": [["LightGBM, fingerprints + descriptors", 0.51, 2.8], ["Neural network, fingerprints + descriptors", 0.43, None], ["Random forest, fingerprints + descriptors", 0.40, 2.3], ["Graph neural network (PyTorch Geometric)", 0.29, None], ["GPT embeddings + ridge", 0.16, None]],
             "logD": [["LightGBM, fingerprints + descriptors", r2_az, secs_az]]}
     if "Chemprop (D-MPNN)" in meta:
         refs["HLM"].append(["Chemprop", round(meta["Chemprop (D-MPNN)"]["R2"], 3), round(meta["Chemprop (D-MPNN)"]["train_secs"], 1)])

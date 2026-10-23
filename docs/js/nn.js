@@ -11,7 +11,7 @@ L3.optsHTML = function(){
     '<div class="og"><label style="display:flex;gap:8px;align-items:center;font-size:.86rem;font-weight:600"><input type="checkbox" id="nearly" checked style="accent-color:#E1242A"> Keep the best epoch</label><div class="hint">Restore the epoch with the lowest validation loss.</div></div>' +
     '<div class="og"><div class="ol">Last training</div><div class="rbox" id="nres"><div class="hint">Press Train in the workbench.</div></div></div>' + filterGroup();
 };
-function NP(){ return { layers: +$('nlayers').value, units: +$('nunits').value, drop: +$('ndrop').value, lr: +$('nlr').value, epochs: +$('nepochs').value, early: $('nearly').checked }; }
+function NP(){ var g = function(id, d){ var e = $(id); return e ? +e.value : d; }, e2 = $('nearly'); return { layers: g('nlayers', 2), units: g('nunits', 32), drop: g('ndrop', 0.1), lr: g('nlr', 0.003), epochs: g('nepochs', 40), early: e2 ? e2.checked : true }; }
 var NN = { m: null, params: null, feats: null, prep: null, prepKey: null, hist: null, pred: null, best: 0, secs: null, sel: 0, act: null, r2: null, busy: false, sig: null };
 
 function nnSig(){ var p = NP(); return JSON.stringify([p.layers, p.units, p.drop, p.lr, p.epochs, p.early, activeFeats(), EP, filtKey()]); }
