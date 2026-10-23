@@ -18,10 +18,10 @@ L6.add({ short: 'What AI means', title: 'Machine learning predicts, generative A
     var pn = api.el('pn', 'left:28px;top:28px;width:904px;height:408px', '<div style="display:grid;grid-template-columns:340px 1fr;gap:28px"><div class="ail"></div><div class="aid"></div></div>'), cur = 0;
     function box(i){ var L = AI_LAYERS[i], on = i === cur, inner = i < AI_LAYERS.length - 1 ? box(i + 1) : ''; return '<div data-l="' + i + '" style="cursor:pointer;border:2px solid ' + (on ? C.red : C.silver) + ';border-radius:10px;padding:8px 10px 10px;background:' + (on ? C.light : '#fff') + ';margin-top:' + (i ? 8 : 0) + 'px"><div style="font-size:14px;font-weight:700;color:' + C.char + '">' + L.name + '</div>' + inner + '</div>'; }
     function draw(){
-      var L = AI_LAYERS[cur], rows = [['What it is', L.what], ['In this course', L.course], ['Elsewhere', L.outside]];
-      qs('.ail', pn).innerHTML = box(0);
+      var L = AI_LAYERS[cur], rows = [['What it is', L.what], ['In this course', L.course], ['Elsewhere', L.outside]], host = qs('.ail', pn);
+      if (!host.firstChild) { host.innerHTML = box(0); qsa('[data-l]', pn).forEach(function(e){ e.addEventListener('click', function(ev){ ev.stopPropagation(); cur = +e.dataset.l; draw(); }); }); }
+      qsa('[data-l]', pn).forEach(function(e){ var on = +e.dataset.l === cur; e.style.borderColor = on ? C.red : C.silver; e.style.background = on ? C.light : '#fff'; });
       qs('.aid', pn).innerHTML = '<h4 style="font-size:20px;margin-bottom:6px;color:' + C.red + '">' + L.name + '</h4>' + rows.map(function(r){ return '<div style="padding:12px 0;border-top:1px solid ' + C.silver + '"><div class="lbl" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:700;color:' + C.char + '">' + r[0] + '</div><div style="font-size:16px;line-height:1.45;color:' + C.char + ';margin-top:2px">' + esc(r[1]) + '</div></div>'; }).join('');
-      qsa('[data-l]', pn).forEach(function(e){ e.addEventListener('click', function(ev){ ev.stopPropagation(); cur = +e.dataset.l; draw(); }); });
     }
     return { render: draw };
   } });
@@ -43,9 +43,10 @@ L6.add({ short: 'Predict or generate', title: 'Which tool fits which job',
     var pn = api.el('pn', 'left:28px;top:28px;width:904px;height:408px', '<div class="ait"></div>'), cur = 0;
     function card(title, v, text){ var vd = AI_VERDICT[v[0]]; return '<div style="border:1px solid ' + C.silver + ';border-radius:8px;padding:14px 16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:16px;color:' + C.char + '">' + title + '</b><span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:' + vd[1] + ';color:' + vd[2] + '">' + vd[0] + '</span></div><div style="font-size:15px;line-height:1.5;color:' + C.char + ';margin-top:10px">' + esc(text) + '</div></div>'; }
     function draw(){
-      var t = AI_TASKS[cur];
-      qs('.ait', pn).innerHTML = '<div style="display:grid;grid-template-columns:260px 1fr;gap:22px"><div>' + AI_TASKS.map(function(x, i){ return '<button type="button" data-t="' + i + '" style="display:block;width:100%;text-align:left;font:inherit;font-size:14px;padding:10px 12px;margin-bottom:6px;border-radius:6px;cursor:pointer;border:1px solid ' + (i === cur ? C.red : C.silver) + ';background:' + (i === cur ? C.light : '#fff') + ';color:' + C.char + ';font-weight:' + (i === cur ? 700 : 500) + '">' + esc(x.name) + '</button>'; }).join('') + '</div><div style="display:grid;gap:14px;align-content:start">' + card('Machine learning', t.ml, t.ml[1]) + card('Generative AI', t.gen, t.gen[1]) + '</div></div>';
-      qsa('[data-t]', pn).forEach(function(b){ b.addEventListener('click', function(){ cur = +b.dataset.t; draw(); }); });
+      var t = AI_TASKS[cur], host = qs('.ait', pn);
+      if (!qs('.aitr', pn)) { host.innerHTML = '<div style="display:grid;grid-template-columns:260px 1fr;gap:22px"><div>' + AI_TASKS.map(function(x, i){ return '<button type="button" data-t="' + i + '" style="display:block;width:100%;text-align:left;font:inherit;font-size:14px;padding:10px 12px;margin-bottom:6px;border-radius:6px;cursor:pointer;border:1px solid ' + C.silver + ';background:#fff;color:' + C.char + '">' + esc(x.name) + '</button>'; }).join('') + '</div><div class="aitr" style="display:grid;gap:14px;align-content:start"></div></div>'; qsa('[data-t]', pn).forEach(function(b){ b.addEventListener('click', function(){ cur = +b.dataset.t; draw(); }); }); }
+      qsa('[data-t]', pn).forEach(function(b){ var on = +b.dataset.t === cur; b.style.borderColor = on ? C.red : C.silver; b.style.background = on ? C.light : '#fff'; b.style.fontWeight = on ? 700 : 500; });
+      qs('.aitr', pn).innerHTML = card('Machine learning', t.ml, t.ml[1]) + card('Generative AI', t.gen, t.gen[1]);
     }
     return { render: draw };
   } });
@@ -132,9 +133,10 @@ L6.add({ short: 'How generative AI goes wrong', title: 'Where generative AI fail
   build: function(api){
     var pn = api.el('pn', 'left:28px;top:28px;width:904px;height:408px', '<div class="aif"></div>'), cur = 0;
     function draw(){
-      var f = AI_FAILS[cur];
-      qs('.aif', pn).innerHTML = '<div style="display:grid;grid-template-columns:260px 1fr;gap:22px"><div>' + AI_FAILS.map(function(x, i){ return '<button type="button" data-f="' + i + '" style="display:block;width:100%;text-align:left;font:inherit;font-size:14px;padding:10px 12px;margin-bottom:6px;border-radius:6px;cursor:pointer;border:1px solid ' + (i === cur ? C.red : C.silver) + ';background:' + (i === cur ? C.light : '#fff') + ';color:' + C.char + ';font-weight:' + (i === cur ? 700 : 500) + '">' + (i + 1) + '. ' + esc(x.name) + '</button>'; }).join('') + '</div><div><h4 style="font-size:20px;color:' + C.red + ';margin-bottom:6px">' + esc(f.name) + '</h4><div style="padding:12px 0;border-top:1px solid ' + C.silver + '"><div class="lbl" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:700;color:' + C.char + '">What it looks like</div><div style="font-size:16px;line-height:1.45;color:' + C.char + ';margin-top:2px">' + esc(f.look) + '</div></div><div style="padding:12px 0;border-top:1px solid ' + C.silver + '"><div class="lbl" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:700;color:' + C.char + '">How to catch it</div><div style="font-size:16px;line-height:1.45;color:' + C.char + ';margin-top:2px">' + esc(f.catch_) + '</div></div></div></div>';
-      qsa('[data-f]', pn).forEach(function(b){ b.addEventListener('click', function(){ cur = +b.dataset.f; draw(); }); });
+      var f = AI_FAILS[cur], host = qs('.aif', pn);
+      if (!qs('.aifr', pn)) { host.innerHTML = '<div style="display:grid;grid-template-columns:260px 1fr;gap:22px"><div>' + AI_FAILS.map(function(x, i){ return '<button type="button" data-f="' + i + '" style="display:block;width:100%;text-align:left;font:inherit;font-size:14px;padding:10px 12px;margin-bottom:6px;border-radius:6px;cursor:pointer;border:1px solid ' + C.silver + ';background:#fff;color:' + C.char + '">' + (i + 1) + '. ' + esc(x.name) + '</button>'; }).join('') + '</div><div class="aifr"></div></div>'; qsa('[data-f]', pn).forEach(function(b){ b.addEventListener('click', function(){ cur = +b.dataset.f; draw(); }); }); }
+      qsa('[data-f]', pn).forEach(function(b){ var on = +b.dataset.f === cur; b.style.borderColor = on ? C.red : C.silver; b.style.background = on ? C.light : '#fff'; b.style.fontWeight = on ? 700 : 500; });
+      qs('.aifr', pn).innerHTML = '<h4 style="font-size:20px;color:' + C.red + ';margin-bottom:6px">' + esc(f.name) + '</h4><div style="padding:12px 0;border-top:1px solid ' + C.silver + '"><div class="lbl" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:700;color:' + C.char + '">What it looks like</div><div style="font-size:16px;line-height:1.45;color:' + C.char + ';margin-top:2px">' + esc(f.look) + '</div></div><div style="padding:12px 0;border-top:1px solid ' + C.silver + '"><div class="lbl" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:700;color:' + C.char + '">How to catch it</div><div style="font-size:16px;line-height:1.45;color:' + C.char + ';margin-top:2px">' + esc(f.catch_) + '</div></div>';
     }
     return { render: draw };
   } });
