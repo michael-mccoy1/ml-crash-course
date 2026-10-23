@@ -21,6 +21,10 @@ L0.onOpts = function(){ updateInfo(); };
 function updateInfo(){ var e = $('dsinfo'); if (!e || !D) return; var c = D.cens ? D.cens.reduce(function(a, b){ return a + b; }, 0) : 0; e.innerHTML = esc(D.full) + '.<br>' + D.N + ' compounds: ' + D.TRAIN.length + ' to study, ' + D.TEST.length + ' held out by scaffold.' + (c ? '<br>' + pct(c, D.N) + '% of values sit at the assay floor.' : ''); }
 function unitWord(){ return D.key === 'HLM' ? 'HLM clearance (log10)' : 'logD'; }
 
+L0.add(lineStepDef({ short: 'What learning means', title: 'Machine learning is fitting a rule to examples',
+  watch: 'You have compounds with lab values. A model is a rule that turns something known about a compound, here one feature, into a predicted lab value. Learning means choosing the rule that misses the lab values by the least. The red line is the simplest rule there is, with two numbers: a weight (how steeply the line rises) and a bias (where it sits). The thin lines show how far it misses each compound.',
+  change: 'Drag Weight and Bias to bend the rule yourself, then press Find the best weights to let the computer do it. You can also choose another feature.' }));
+
 /* ---------- Step 1: structure to prediction ---------- */
 L0.add({ short: 'Structure to prediction', title: 'Machine learning reads chemical structure',
   change: 'Press Next compound. Untick a feature in the options and the model is refit without it.',
@@ -289,5 +293,5 @@ L0.glossary([
   ['RDKit', 'Open-source chemistry toolkit used here for structures, descriptors and fingerprints.']
 ]);
 
-setUses(L0, [['endpoint', 'features'], ['endpoint'], ['endpoint', 'features'], null, null, ['endpoint', 'features'], ['endpoint', 'features'], ['endpoint', 'features'], []]);
+setUses(L0, [null, ['endpoint', 'features'], ['endpoint'], ['endpoint', 'features'], null, null, ['endpoint', 'features'], ['endpoint', 'features'], ['endpoint', 'features'], []]);
 featListeners.push(function(){ if (L0.built) L0.refresh(); });

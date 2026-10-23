@@ -258,6 +258,28 @@ L6.add({ short: 'Fine-tune', bench: true, uses: ['endpoint', 'filters', 'plabels
     return { render: function(){ if (!running) { pre = FT.last && FT.last.key === keyOf() ? FT.last.pre : null; scr = pre ? FT.last.scr : null; } render(); } };
   } });
 
+/* ---------- fine-tuning a graph network: Chemprop, results from notebook 08 ---------- */
+L6.add({ short: 'Fine-tune Chemprop', uses: ['plabels'],
+  title: 'Fine-tuning a graph network: Chemprop pre-trained on logD, then adapted to HLM',
+  watch: 'Chemprop is a graph neural network, so it reads atoms and bonds directly. Here it was first trained on 4,200 logD measurements (AstraZeneca), then adapted to HLM clearance using only a few labelled HLM compounds. Three ways to start are compared. From scratch: random weights. Frozen encoder: the pre-trained message-passing layers stay fixed and only the small network on top learns. Full fine-tuning: every weight can move. These runs come from notebook 08 because Chemprop needs Python.',
+  change: 'Drag Labelled compounds in the options to read the scores at that size. Tick or untick a start to show or hide its line.',
+  build: function(api){
+    var cp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>HLM score on unseen scaffolds, by number of labelled HLM compounds</h4><canvas width="576" height="350"></canvas>');
+    var sp = api.el('pn', 'left:648px;top:28px;width:284px;height:408px', '<div class="cf" style="font-size:13px;line-height:1.45"></div>');
+    var ctl = api.addControl('<label><input type="checkbox" data-m="scratch" checked> From scratch</label> <label><input type="checkbox" data-m="frozen" checked> Frozen encoder</label> <label><input type="checkbox" data-m="full" checked> Full fine-tuning</label>'), show = { scratch: true, frozen: true, full: true };
+    var COL = { scratch: C.bg, frozen: C.char, full: C.red }, NAME = { scratch: 'From scratch', frozen: 'Frozen encoder', full: 'Full fine-tuning' };
+    function agg(runs){ var out = {}; ['scratch', 'frozen', 'full'].forEach(function(m){ var by = {}; runs.filter(function(r){ return r.mode === m; }).forEach(function(r){ (by[r.n] = by[r.n] || []).push(r); }); out[m] = Object.keys(by).map(Number).sort(function(a, b){ return a - b; }).map(function(n){ return { n: n, r2: mean(by[n].map(function(r){ return r.r2; })), secs: mean(by[n].map(function(r){ return r.secs; })), k: by[n].length }; }); }); return out; }
+    qsa('input[data-m]', ctl).forEach(function(b){ b.addEventListener('change', function(){ show[b.dataset.m] = b.checked; render(); }); });
+    async function render(){
+      var ex = await loadExtras(), ft = ex.chemprop_ft; if (!ft || !ft.runs || !ft.runs.length) { cv(qs('canvas', cp)); qs('.cf', sp).innerHTML = '<span class="note">The Chemprop results are not on this page yet. Run notebook 08 and rebuild the data.</span>'; return; }
+      var A = agg(ft.runs), n = +$('plabels').value, series = ['scratch', 'frozen', 'full'].filter(function(m){ return show[m]; }).map(function(m){ return { pts: A[m].map(function(p){ return [p.n, p.r2]; }), color: COL[m], dash: m === 'scratch' ? [6, 5] : null }; });
+      curveChart(qs('canvas', cp), series.length ? series : [{ pts: [], color: C.bg }], n);
+      var rows = ['scratch', 'frozen', 'full'].map(function(m){ var v = interp(A[m].map(function(p){ return [p.n, p.r2]; }), clamp(n, A[m][0].n, A[m][A[m].length - 1].n)); return '<div><span style="color:' + (m === 'scratch' ? C.mid : COL[m]) + '">' + NAME[m] + '</span><b>' + v.toFixed(2) + '</b></div>'; }).join(''), last = A.scratch[A.scratch.length - 1];
+      qs('.cf', sp).innerHTML = '<div class="lbl">At about ' + clamp(n, 50, 1000) + ' labelled compounds</div><div class="nums" style="margin:4px 0 10px">' + rows + '</div><p style="margin:0 0 8px"><b>How to read it.</b> Higher is better. The first point is 50 labelled compounds, where a model from scratch has almost nothing to learn from.</p><p style="margin:0 0 8px">The logD model that all three non-scratch starts came from scored ' + ft.pretrain.r2.toFixed(2) + ' on its own unseen scaffolds, after ' + Math.round(ft.pretrain.secs) + ' seconds of CPU training.</p><p class="note" style="font-size:12px">Each point is the mean of ' + last.k + ' random draws of the labelled compounds, 30 epochs each. Differences of a few hundredths are within noise.</p>';
+    }
+    return { render: render };
+  } });
+
 /* ---------- step 6: using it in a project ---------- */
 L6.add({ short: 'Using it in practice', uses: [],
   title: 'How a pre-trained model is used on your own data',
@@ -283,4 +305,4 @@ L6.glossary([
   ['Functional group', 'A small, recognisable piece of structure such as an amide or a carboxylic acid.'],
   ['Parameters', 'All the weights and biases a model learns.']
 ]);
-setUses(L6, [['endpoint', 'features', 'plabels'], [], ['endpoint'], [], ['endpoint', 'features', 'filters', 'plabels'], null, []]);
+setUses(L6, [['endpoint', 'features', 'plabels'], [], ['endpoint'], [], ['endpoint', 'features', 'filters', 'plabels'], null, ['plabels'], []]);

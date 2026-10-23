@@ -81,13 +81,17 @@ async function nnTrain(o){
     }
     var secs = (performance.now() - tN - over) / 1000, fin = p.early && bestM ? bestM : m, pred = mlpPredictAll(fin, P);
     var res = { model: fin, hist: { tr: tr, va: va }, best: bestEp, secs: secs, pred: pred, r2: r2(D.TEST, pred), params: p, prep: P };
-    if (o.keep) { NN.m = fin; NN.prep = P; NN.hist = res.hist; NN.best = bestEp; NN.secs = secs; NN.pred = pred; NN.r2 = res.r2; NN.params = p; NN.feats = P.feats; NN.sig = sig; var ms = record('Neural network', P.feats, pred, secs); ms.params = p.layers + ' layers of ' + p.units + ', dropout ' + p.drop; NN.act = null; NN.sel = 0; nnResultsBox(); }
+    if (o.keep) { NN.m = fin; NN.starter = false; NN.prep = P; NN.hist = res.hist; NN.best = bestEp; NN.secs = secs; NN.pred = pred; NN.r2 = res.r2; NN.params = p; NN.feats = P.feats; NN.sig = sig; var ms = record('Neural network', P.feats, pred, secs); ms.params = p.layers + ' layers of ' + p.units + ', dropout ' + p.drop; NN.act = null; NN.sel = 0; nnResultsBox(); }
     return res;
   } finally { if (o.keep) NN.busy = false; }
 }
 async function nnReady(api){
-  if (NN.m) { if (api) { api.idle(); api.stale(nnStale() ? 'Options changed since the last Train.' : ''); } return true; }
-  if (api) api.gate('Train the network in the workbench first.'); return false;
+  if (!NN.m) {
+    if (api) api.busy('Training a starter network with the default options (a few seconds)');
+    if (!NN.starting) NN.starting = (async function(){ await waitRelease(); await tick(); await nnTrain({ keep: true }); NN.starter = true; })();
+    try { await NN.starting; } finally { NN.starting = null; } if (api) api.idle(); if (!NN.m) return false;
+  }
+  if (api) { api.idle(); api.stale(nnStale() ? (NN.starter ? 'Showing a starter network. Press Train in the workbench to train with your options.' : 'Options changed since the last Train.') : ''); } return true;
 }
 function nnPredictRows(rows){ var m = NN.m, A = mlpBuf(m.sizes), F = m.sizes[0], flat = new Float32Array(rows.length * F); rows.forEach(function(rw, k){ for (var q = 0; q < F; q++) flat[k * F + q] = rw[q]; }); return rows.map(function(_, k){ return mlpForward(m, flat, k * F, A, null, 0, null) + NN.prep.ymu; }); }
 function nnActivations(i){ var m = NN.m, P = NN.prep, A = mlpBuf(m.sizes); mlpForward(m, P.all, i * P.F, A, null, 0, null); return A; }
@@ -120,53 +124,9 @@ function lossChart(canvas, hist, best, upto, xmax){
   var g = lineChart(canvas, [{ pts: pts1, color: C.char }, { pts: pts2, color: C.red }], { xl: 'epoch', yl: 'loss', y0: 0, x0: 1, x1: Math.max(2, xmax || n), xdec: 0, ydec: 2 }); if (best && g.sx && n >= best) { var x = g.x, X = g.sx(best); x.strokeStyle = C.dred; x.setLineDash([4, 4]); x.beginPath(); x.moveTo(X, g.box.t); x.lineTo(X, g.box.b); x.stroke(); x.setLineDash([]); x.fillStyle = C.dred; x.font = '600 11px Aptos, Segoe UI, sans-serif'; x.textAlign = X > g.w / 2 ? 'right' : 'left'; x.fillText('best epoch ' + best, X + (X > g.w / 2 ? -6 : 6), g.box.t + 12); } return g;
 }
 
-/* ---------- what a weight is: one input, one weight, one bias ---------- */
-L3.add({ short: 'What a weight is', uses: ['endpoint', 'features'],
-  title: 'A weight says how strongly one input pushes the prediction',
-  watch: 'Every neural network is built from weights. Start with the smallest model there is: one input, one weight and one bias. The prediction is the weight times the input, plus the bias. The red line is that prediction for every possible input. The thin vertical lines show how far it misses each compound.',
-  change: 'Drag Weight and Bias under the plot and watch the error. Then press Find the best weights and watch the computer adjust them step by step. You can also choose another input feature.',
-  build: function(api){
-    var P1 = api.el('pn', 'left:28px;top:28px;width:620px;height:392px', '<h4 class="wh"></h4><canvas width="596" height="346"></canvas>');
-    var P2 = api.el('pn', 'left:668px;top:28px;width:264px;height:392px', '<div class="wr" style="font-size:13px;line-height:1.45"></div>');
-    var P3 = api.el('pn', 'left:28px;top:432px;width:904px;height:92px;display:flex;gap:26px;align-items:center', '<div style="width:190px"><div class="lbl" style="margin-bottom:4px">Input feature</div><select class="wf"></select></div><div style="width:230px"><label class="row">Weight<output class="wv"></output></label><input type="range" class="ww" step="0.01"></div><div style="width:230px"><label class="row">Bias<output class="bv"></output></label><input type="range" class="wb" step="0.01"></div><div style="display:flex;flex-direction:column;gap:6px"><button type="button" class="btn sm" data-best>Find the best weights</button><button type="button" class="btn sm ghost" data-reset>Reset</button></div>');
-    var sel = qs('.wf', P3), ws = qs('.ww', P3), bs = qs('.wb', P3), S = { key: '', f: null, x: [], y: [], raw: [], mx: 0, sx: 1, my: 0, sy: 1, w: 0, b: 0, w0: 0, b0: 0, bestW: 0, bestB: 0, cmp: 0, step: -1 };
-    function prep(force){
-      var feats = activeFeats(); if (!feats.length) { S.f = null; return; } var f = sel.value && feats.indexOf(sel.value) >= 0 ? sel.value : feats[0], key = EP + '|' + f; if (!force && S.key === key) return;
-      var idx = D.TRAIN, raw = idx.map(function(i){ return D.COL[f][i]; }), y = idx.map(function(i){ return D.Y[i]; }), mx = mean(raw), sx = Math.sqrt(mean(raw.map(function(v){ return (v - mx) * (v - mx); }))) || 1, my = mean(y), sy = Math.sqrt(mean(y.map(function(v){ return (v - my) * (v - my); }))) || 1;
-      S.x = raw.map(function(v){ return (v - mx) / sx; }); S.y = y; S.raw = raw; S.mx = mx; S.sx = sx; S.my = my; S.sy = sy; S.f = f; S.key = key; var cov = 0; for (var i2 = 0; i2 < S.x.length; i2++) cov += S.x[i2] * (y[i2] - my); S.bestW = cov / S.x.length; S.bestB = my;
-      S.w0 = 0; S.b0 = D.yhi - (D.yhi - D.ylo) * 0.3; S.w = S.w0; S.b = S.b0; S.step = -1; S.cmp = Math.floor(S.x.length * 0.37);
-      var wm = Math.max(0.5, 2 * sy); ws.min = -wm; ws.max = wm; bs.min = D.ylo; bs.max = D.yhi; sel.innerHTML = feats.map(function(q){ return '<option' + (q === f ? ' selected' : '') + '>' + q + '</option>'; }).join('');
-    }
-    function mse(w, b){ var s = 0, n = S.x.length; for (var i = 0; i < n; i++) { var e = S.y[i] - (w * S.x[i] + b); s += e * e; } return s / n; }
-    function sync(){ ws.value = S.w; bs.value = S.b; qs('.wv', P3).textContent = (S.w >= 0 ? '+' : '') + S.w.toFixed(2); qs('.bv', P3).textContent = S.b.toFixed(2); }
-    function draw(){
-      if (!S.f) { cv(qs('canvas', P1)); qs('.wr', P2).innerHTML = '<span class="note">Switch on at least one feature.</span>'; return; }
-      var g = cv(qs('canvas', P1)), x = g.x, box = { l: 46, r: g.w - 10, t: 10, b: g.h - 46 }, X0 = -2.5, X1 = 2.5, lo = D.ylo, hi = D.yhi, sx = function(v){ return box.l + (v - X0) / (X1 - X0) * (box.r - box.l); }, sy = function(v){ return box.b - (v - lo) / (hi - lo) * (box.b - box.t); }, n = S.x.length;
-      qs('.wh', P1).textContent = 'Training compounds, ' + S.f + ' against ' + unitWord() + (S.step >= 0 ? '. Step ' + S.step + ' of 90' : '');
-      x.strokeStyle = C.silver; x.fillStyle = C.mid; x.textAlign = 'right'; for (var k = 0; k <= 4; k++) { var yy = box.b - k / 4 * (box.b - box.t); x.beginPath(); x.moveTo(box.l, yy); x.lineTo(box.r, yy); x.stroke(); x.fillText((lo + (hi - lo) * k / 4).toFixed(1), box.l - 6, yy + 4); }
-      x.textAlign = 'center'; for (var z = -2; z <= 2; z++) { x.fillText(fmtFeat(S.f, S.mx + z * S.sx), sx(z), box.b + 15); if (z === 0) { x.strokeStyle = 'rgba(52,55,63,.18)'; x.beginPath(); x.moveTo(sx(0), box.t); x.lineTo(sx(0), box.b); x.stroke(); } }
-      x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.fillText(S.f + ' (real values; the middle is the average)', (box.l + box.r) / 2, box.b + 34); x.font = '12px Aptos, Segoe UI, sans-serif';
-      var step = Math.ceil(n / 420); x.fillStyle = 'rgba(161,177,195,.55)'; for (var i = 0; i < n; i += step) { var px = sx(clamp(S.x[i], X0, X1)); x.beginPath(); x.arc(px, sy(clamp(S.y[i], lo, hi)), 2.6, 0, 6.3); x.fill(); }
-      var rs = Math.ceil(n / 34); x.strokeStyle = 'rgba(52,55,63,.5)'; x.lineWidth = 1; for (var j = 0; j < n; j += rs) { var xv = clamp(S.x[j], X0, X1), pr = S.w * S.x[j] + S.b; x.beginPath(); x.moveTo(sx(xv), sy(clamp(S.y[j], lo, hi))); x.lineTo(sx(xv), sy(clamp(pr, lo, hi))); x.stroke(); }
-      if (S.showBest) { x.setLineDash([6, 5]); x.strokeStyle = C.char; x.lineWidth = 1.6; x.beginPath(); x.moveTo(sx(X0), sy(clamp(S.bestW * X0 + S.bestB, lo, hi))); x.lineTo(sx(X1), sy(clamp(S.bestW * X1 + S.bestB, lo, hi))); x.stroke(); x.setLineDash([]); }
-      x.strokeStyle = C.red; x.lineWidth = 3.4; x.lineCap = 'round'; x.beginPath(); x.moveTo(sx(X0), sy(clamp(S.w * X0 + S.b, lo - 5, hi + 5))); x.lineTo(sx(X1), sy(clamp(S.w * X1 + S.b, lo - 5, hi + 5))); x.stroke(); x.lineWidth = 1;
-      var c = S.cmp, zc = S.x[c], pred = S.w * zc + S.b, meas = S.y[c], e = mse(S.w, S.b), eb = mse(S.bestW, S.bestB), aw = Math.abs(S.w), wsent = aw < 0.02 ? 'The weight is near zero, so this input has almost no effect on the prediction.' : 'When ' + S.f + ' rises by one standard deviation (' + fmtFeat(S.f, S.sx) + '), the prediction ' + (S.w > 0 ? 'rises' : 'falls') + ' by ' + aw.toFixed(2) + '. A bigger weight means a stronger push, and a negative weight pushes the other way.';
-      x.fillStyle = C.red; x.beginPath(); x.arc(sx(clamp(zc, X0, X1)), sy(clamp(meas, lo, hi)), 5.5, 0, 6.3); x.fill(); x.strokeStyle = '#fff'; x.lineWidth = 2; x.stroke(); x.lineWidth = 1;
-      qs('.wr', P2).innerHTML = '<div class="lbl">The model</div><div style="font-size:14px;font-weight:700;margin:3px 0 8px">prediction = ' + (S.w >= 0 ? '' : '-') + aw.toFixed(2) + ' times ' + S.f + ' + ' + S.b.toFixed(2) + '</div><p style="margin:0 0 7px"><b>Weight ' + (S.w >= 0 ? '+' : '') + S.w.toFixed(2) + '.</b> ' + wsent + '</p><p style="margin:0 0 7px"><b>Bias ' + S.b.toFixed(2) + '.</b> The prediction for an average compound.</p>' +
-        '<div class="lbl" style="margin-top:8px">The red dot is one compound</div><p style="margin:3px 0 7px">' + S.f + ' ' + fmtFeat(S.f, S.raw[c]) + ' is ' + zc.toFixed(2) + ' standard deviations from average. The model predicts ' + S.w.toFixed(2) + ' times ' + zc.toFixed(2) + ' + ' + S.b.toFixed(2) + ' = <b>' + pred.toFixed(2) + '</b>. The lab measured <b>' + meas.toFixed(2) + '</b>.</p>' +
-        '<div class="lbl">Average squared error</div><div class="big" style="color:' + C.red + ';font-size:30px">' + e.toFixed(3) + '</div><div class="note" style="font-size:12px">Lowest possible with one weight: ' + eb.toFixed(3) + '. Lower is better.</div><button type="button" class="btn sm ghost" data-other style="margin-top:8px">Another compound</button>';
-      qs('[data-other]', P2).addEventListener('click', function(){ S.cmp = Math.floor(Math.random() * n); draw(); }); sync();
-    }
-    function onSlide(){ api.tok++; S.w = +ws.value; S.b = +bs.value; S.step = -1; draw(); }
-    ws.addEventListener('input', onSlide); bs.addEventListener('input', onSlide);
-    sel.addEventListener('change', function(){ api.tok++; S.showBest = false; prep(true); draw(); });
-    qs('[data-reset]', P3).addEventListener('click', function(){ api.tok++; S.w = S.w0; S.b = S.b0; S.step = -1; S.showBest = false; draw(); });
-    qs('[data-best]', P3).addEventListener('click', async function(){
-      if (!S.f) return; api.tok++; var tok = api.tok, n = S.x.length; S.showBest = true; try { for (var it = 0; it <= 90; it++) { api.checkTok(tok); var gw = 0, gb = 0; for (var i = 0; i < n; i++) { var e = S.y[i] - (S.w * S.x[i] + S.b); gw += -2 * e * S.x[i]; gb += -2 * e; } S.w -= 0.12 * gw / n; S.b -= 0.12 * gb / n; S.step = it; draw(); await api.sleep(45); } } catch (e) { if (!(e instanceof Cancel)) console.error(e); }
-    });
-    function render(){ prep(false); draw(); }
-    return { render: render };
-  } });
+L3.add(lineStepDef({ short: 'What a weight is', title: 'A weight says how strongly one input pushes the prediction',
+  watch: 'Every neural network is built from weights. Start with the smallest model there is: one input, one weight and one bias. The prediction is the weight times the input, plus the bias. The red line is that prediction for every possible input, and the thin vertical lines show how far it misses each compound.',
+  change: 'Drag Weight and Bias under the plot and watch the error. Then press Find the best weights and watch the computer adjust them step by step. You can also choose another input feature.' }));
 
 /* ---------- workbench: set up a network, press Train ---------- */
 L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly'],
@@ -268,30 +228,30 @@ L3.add({ short: 'Layers and neurons', title: 'More layers and neurons mean more 
 
 /* ---------- N3: learning rate ---------- */
 L3.add({ short: 'Learning rate', title: 'The learning rate sets how big each nudge is',
-  change: 'Drag Learning rate and Epochs in the options, or drag Steps taken under the stage to watch the paths grow.',
-  watch: 'Training lowers the error by nudging weights downhill. Colour shows the error of a one-neuron model for each pair of weights, and white is lowest. The learning rate is the size of each nudge. The red path uses your setting.',
+  change: 'Drag Learning rate and Epochs in the options, or drag Steps taken under the stage to replay the nudges one at a time.',
+  watch: 'Training is a loop: measure the error, then nudge the weights a little to reduce it. The learning rate is the size of each nudge. This uses the one-weight model from the first step on real data. A nudge that is too small is slow. One that is too large overshoots, so the error jumps around or grows.',
   build: function(api){
-    var mp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Error for every pair of weights, one neuron on one feature</h4><canvas width="540" height="350"></canvas>');
-    var sp = api.el('pn', 'left:608px;top:28px;width:324px;height:408px', '<h4>Three step sizes</h4><div class="lr"></div>');
-    var tr = null, DATAX = null, DATAY = null, paths = [], heat = null, NSTEP = 45;
-    var gx = [-2.2, 2.2], gy = [-2.2, 2.2];
-    function prep(){ var f = activeFeats()[0] || D.BASE[0], idx = D.TRAIN.filter(function(_, k){ return k % 3 === 0; }), xv = idx.map(function(i){ return D.COL[f][i]; }), yv = idx.map(function(i){ return D.Y[i]; }), mx = mean(xv), my = mean(yv), sx = Math.sqrt(mean(xv.map(function(v){ return (v - mx) * (v - mx); }))) || 1, sy = Math.sqrt(mean(yv.map(function(v){ return (v - my) * (v - my); }))) || 1; DATAX = xv.map(function(v){ return (v - mx) / sx; }); DATAY = yv.map(function(v){ return (v - my) / sy; }); tr = { f: f }; heat = null; }
-    function loss(w, b){ var s = 0, n = DATAX.length; for (var i = 0; i < n; i++) { var e = DATAY[i] - (w * DATAX[i] + b); s += e * e; } return s / n; }
-    function grad(w, b){ var gw = 0, gb = 0, n = DATAX.length; for (var i = 0; i < n; i++) { var e = DATAY[i] - (w * DATAX[i] + b); gw += -2 * e * DATAX[i]; gb += -2 * e; } return [gw / n, gb / n]; }
-    function lrs(){ var mine = +$('nlr').value * 50; return [{ n: 'Small', lr: 0.02, c: C.bg }, { n: 'Yours', lr: mine, c: C.red }, { n: 'Too large', lr: 1.04, c: C.char }]; }
-    function runPaths(){ NSTEP = clamp(+$('nepochs').value, 10, 120); paths = lrs().map(function(s){ var w = -1.9, b = 1.6, pts = [[w, b, loss(w, b)]]; for (var k = 0; k < NSTEP; k++) { var g = grad(w, b); w -= s.lr * g[0]; b -= s.lr * g[1]; pts.push([w, b, loss(w, b)]); } return { s: s, pts: pts }; }); }
-    function drawHeat(){ var g = cv(qs('canvas', mp)), x = g.x, W = g.w, H = g.h, cell = 5;
-      if (!heat || heat.key !== tr.f) { var cols = Math.ceil(W / cell), rws = Math.ceil(H / cell), vals = [], lmin = 1e9, opt = [0, 0]; for (var r = 0; r < rws; r++) for (var c = 0; c < cols; c++) { var w = gx[0] + (c + 0.5) / cols * (gx[1] - gx[0]), b = gy[1] - (r + 0.5) / rws * (gy[1] - gy[0]), l = loss(w, b); vals.push(l); if (l < lmin) { lmin = l; opt = [w, b]; } } heat = { key: tr.f, vals: vals, cols: cols, rws: rws, lmin: lmin, opt: opt }; }
-      for (var r2 = 0; r2 < heat.rws; r2++) for (var c2 = 0; c2 < heat.cols; c2++) { var v = clamp((heat.vals[r2 * heat.cols + c2] - heat.lmin) / 7, 0, 1), band = Math.floor(v * 10) / 10, t = Math.pow(band, 0.9); x.fillStyle = 'rgb(' + Math.round(lerp(255, 225, t)) + ',' + Math.round(lerp(255, 36, t)) + ',' + Math.round(lerp(255, 42, t)) + ')'; x.fillRect(c2 * cell, r2 * cell, cell, cell); }
-      x.strokeStyle = 'rgba(52,55,63,.25)'; x.lineWidth = 1; x.beginPath(); x.moveTo(W / 2, 0); x.lineTo(W / 2, H); x.moveTo(0, H / 2); x.lineTo(W, H / 2); x.stroke(); x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.textAlign = 'center'; x.fillText('weight on ' + tr.f, W / 2, H - 6); x.save(); x.translate(12, H / 2); x.rotate(-Math.PI / 2); x.fillText('bias', 0, 0); x.restore(); x.textAlign = 'left'; x.fillText('white = lowest error, red = high error. Each band is a step up in error.', 8, 14); return g; }
-    function toPx(g, w, b){ return [(w - gx[0]) / (gx[1] - gx[0]) * g.w, (gy[1] - b) / (gy[1] - gy[0]) * g.h]; }
-    function setup(){ if (!tr || tr.f !== (activeFeats()[0] || D.BASE[0])) prep(); runPaths(); }
-    function draw(upto){ setup(); var g = drawHeat(), x = g.x, opt = toPx(g, heat.opt[0], heat.opt[1]); x.fillStyle = '#fff'; x.strokeStyle = C.char; x.lineWidth = 2.4; x.beginPath(); x.arc(opt[0], opt[1], 7, 0, 6.3); x.fill(); x.stroke(); x.fillStyle = C.char; x.font = '700 12px Aptos, Segoe UI, sans-serif'; x.fillText('best weights', opt[0] + 11, opt[1] + 4); var st0 = toPx(g, -1.9, 1.6); x.fillStyle = C.char; x.beginPath(); x.arc(st0[0], st0[1], 5, 0, 6.3); x.fill(); x.font = '600 11px Aptos, Segoe UI, sans-serif'; x.fillText('start', st0[0] + 8, st0[1] - 6);
-      paths.forEach(function(p){ var n = Math.min(upto, p.pts.length - 1); x.strokeStyle = p.s.c; x.lineWidth = 2.6; x.lineJoin = 'round'; x.beginPath(); for (var k = 0; k <= n; k++) { var q = toPx(g, clamp(p.pts[k][0], -4, 4), clamp(p.pts[k][1], -4, 4)); k ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1]); } x.stroke(); var e = toPx(g, clamp(p.pts[n][0], -4, 4), clamp(p.pts[n][1], -4, 4)); x.fillStyle = p.s.c; x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.arc(e[0], e[1], 6, 0, 6.3); x.fill(); x.stroke(); });
-      qs('.lr', sp).innerHTML = paths.map(function(p){ var n = Math.min(upto, p.pts.length - 1), L = p.pts[n][2]; return '<div style="margin:12px 0;border-left:4px solid ' + p.s.c + ';padding-left:10px"><b>' + p.s.n + '</b> <span class="note" style="font-size:12px;color:#6B7280">step size ' + p.s.lr.toFixed(2) + (p.s.n === 'Yours' ? ' (learning rate ' + $('nlr').value + ')' : '') + '</span><div style="font-size:12.5px">after ' + n + ' of ' + NSTEP + ' steps, error <b>' + (L > 99 ? 'exploding' : L.toFixed(2)) + '</b></div></div>'; }).join('') + '<p style="font-size:12px;color:#6B7280;margin-top:10px">A simplified picture: one neuron with two weights and plain gradient descent. Real networks have thousands of weights and use Adam, but the step-size trade-off is the same.</p>'; }
+    var cp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Error after each nudge (lower is better)</h4><canvas width="536" height="320"></canvas><div class="note" style="font-size:12px;margin-top:6px">The error is the average squared distance between the line and the compounds. Each coloured curve is a different learning rate.</div>');
+    var sp = api.el('pn', 'left:608px;top:28px;width:324px;height:408px', '<h4>The fitted line at this step</h4><canvas width="300" height="170"></canvas><div class="lr" style="margin-top:6px"></div>');
+    var DX = null, DY = null, f0 = null, paths = [], NSTEP = 40;
+    function prep(){ var f = activeFeats()[0] || D.BASE[0], idx = D.TRAIN.filter(function(_, k){ return k % 3 === 0; }), xv = idx.map(function(i){ return D.COL[f][i]; }), yv = idx.map(function(i){ return D.Y[i]; }), mx = mean(xv), my = mean(yv), sx = Math.sqrt(mean(xv.map(function(v){ return (v - mx) * (v - mx); }))) || 1, sy = Math.sqrt(mean(yv.map(function(v){ return (v - my) * (v - my); }))) || 1; DX = xv.map(function(v){ return (v - mx) / sx; }); DY = yv.map(function(v){ return (v - my) / sy; }); f0 = f; }
+    function loss(w, b){ var s = 0, n = DX.length; for (var i = 0; i < n; i++) { var e = DY[i] - (w * DX[i] + b); s += e * e; } return s / n; }
+    function grad(w, b){ var gw = 0, gb = 0, n = DX.length; for (var i = 0; i < n; i++) { var e = DY[i] - (w * DX[i] + b); gw += -2 * e * DX[i]; gb += -2 * e; } return [gw / n, gb / n]; }
+    function setup(){ var f = activeFeats()[0] || D.BASE[0]; if (f0 !== f) prep(); NSTEP = clamp(+$('nepochs').value, 10, 120);
+      var rates = [{ n: 'Too small', lr: 0.01, c: C.bg }, { n: 'Your setting', lr: +$('nlr').value * 50, c: C.red }, { n: 'Too large', lr: 1.04, c: C.char }];
+      paths = rates.map(function(s){ var w = -1.9, b = 1.6, pts = [[w, b, loss(w, b)]]; for (var k = 0; k < NSTEP; k++) { var g = grad(w, b); w -= s.lr * g[0]; b -= s.lr * g[1]; pts.push([w, b, loss(w, b)]); } return { s: s, pts: pts }; }); }
     var sc = api.addControl('Steps taken <input type="range" min="0" max="120" step="1" value="120" style="width:240px"><b class="sv"></b>'), ss = qs('input', sc), atEnd = true;
-    ss.addEventListener('input', function(){ atEnd = +ss.value >= NSTEP; draw(+ss.value); qs('.sv', sc).textContent = ss.value; });
-    function render(){ setup(); ss.max = NSTEP; if (atEnd) ss.value = NSTEP; draw(+ss.value); qs('.sv', sc).textContent = ss.value; }
+    function draw(upto){
+      setup(); upto = Math.min(upto, NSTEP); var top = Math.min(6, Math.max.apply(null, paths.map(function(p){ return p.pts[0][2]; })) * 1.05);
+      lineChart(qs('canvas', cp), paths.map(function(p){ return { pts: p.pts.slice(0, upto + 1).map(function(q, k){ return [k, Math.min(q[2], top)]; }), color: p.s.c, w: 3, label: p.s.n }; }), { xl: 'number of nudges', yl: 'error', x0: 0, x1: NSTEP, y0: 0, y1: top, xdec: 0, ydec: 1 });
+      var g = cv(qs('canvas', sp)), x = g.x, box = { l: 10, r: g.w - 8, t: 8, b: g.h - 22 }, sx = function(v){ return box.l + (v + 2.5) / 5 * (box.r - box.l); }, sy = function(v){ return box.b - (v + 2.5) / 5 * (box.b - box.t); }, step = Math.ceil(DX.length / 160);
+      x.strokeStyle = C.silver; x.beginPath(); x.moveTo(box.l, box.b); x.lineTo(box.r, box.b); x.stroke(); x.fillStyle = C.mid; x.font = '11px Aptos, Segoe UI, sans-serif'; x.textAlign = 'center'; x.fillText('input, rescaled', (box.l + box.r) / 2, g.h - 6); x.fillStyle = 'rgba(161,177,195,.6)'; for (var i = 0; i < DX.length; i += step) { x.beginPath(); x.arc(sx(clamp(DX[i], -2.5, 2.5)), sy(clamp(DY[i], -2.5, 2.5)), 2.2, 0, 6.3); x.fill(); }
+      paths.forEach(function(p){ var q = p.pts[upto], a = clamp(q[0] * -2.5 + q[1], -2.5, 2.5), z = clamp(q[0] * 2.5 + q[1], -2.5, 2.5); x.strokeStyle = p.s.c; x.lineWidth = 2.6; x.beginPath(); x.moveTo(sx(-2.5), sy(a)); x.lineTo(sx(2.5), sy(z)); x.stroke(); }); x.lineWidth = 1;
+      qs('.lr', sp).innerHTML = paths.map(function(p){ var q = p.pts[upto]; return '<div style="margin:7px 0;border-left:4px solid ' + p.s.c + ';padding-left:9px;font-size:12.5px"><b>' + p.s.n + '</b> <span class="note" style="font-size:11.5px">nudge size ' + p.s.lr.toFixed(2) + (p.s.n === 'Your setting' ? ' (learning rate ' + $('nlr').value + ')' : '') + '</span><br>after ' + upto + ' nudges the error is <b>' + (q[2] > 99 ? 'huge' : q[2].toFixed(2)) + '</b></div>'; }).join('');
+      qs('.sv', sc).textContent = upto;
+    }
+    ss.addEventListener('input', function(){ atEnd = +ss.value >= NSTEP; draw(+ss.value); });
+    function render(){ setup(); ss.max = NSTEP; if (atEnd) ss.value = NSTEP; draw(+ss.value); }
     return { render: render };
   } });
 
