@@ -28,7 +28,7 @@ L0.add(lineStepDef({ short: 'What learning means', title: 'A model is a rule fit
 /* ---------- Step 1: structure to prediction ---------- */
 L0.add({ short: 'Structure to prediction', title: 'From structure to prediction',
   change: 'Press Next compound. Untick a feature in the options panel and watch the prediction change.',
-  watch: 'A model cannot read a drawing. The molecule becomes text (SMILES), then numbers (features), then a prediction.',
+  watch: 'A model cannot read a drawing. The molecule becomes text (SMILES), then numbers (features) computed by RDKit, a chemistry toolkit, then a prediction.',
   build: function(api){
     var cur = null;
     var lib = api.el('pn fd', 'left:28px;top:28px;width:300px;height:158px', '<h4>Compound library</h4><div class="lg" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"></div>');
@@ -73,7 +73,7 @@ L0.add({ short: 'Structure to prediction', title: 'From structure to prediction'
   } });
 
 /* ---------- Step 2: descriptors come from the structure ---------- */
-L0.add({ short: 'Where features come from', title: 'Features are sums over the atoms RDKit sees',
+L0.add({ short: 'Where features come from', title: 'Features are sums over a molecule\'s atoms',
   change: 'Press Next compound.',
   watch: 'A feature is a number computed from a molecule. Each atom adds a little to logP (how oily) and to TPSA (how polar). The totals are the features.',
   build: function(api){
@@ -100,7 +100,7 @@ L0.add({ short: 'Where features come from', title: 'Features are sums over the a
 /* ---------- Step 3: the unseen set ---------- */
 L0.add({ short: 'The unseen set', title: 'Hold compounds back to test a model honestly',
   change: 'Switch between random and scaffold split below the picture.',
-  watch: 'Some compounds are held back to test the model: the unseen set. A random split leaves close relatives of them in training. A scaffold split removes whole families.',
+  watch: 'Some compounds are held back to test the model: the unseen set. A random split leaves close relatives of them in training. A scaffold is a molecule\'s ring skeleton, and a scaffold split removes whole families that share one.',
   build: function(api){
     var mode = 'rand', a = 0;
     var mapP = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Chemical space map of every compound (RDKit fingerprints, projected to 2D)</h4><canvas width="540" height="352" style="margin-top:4px"></canvas>');

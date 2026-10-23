@@ -125,13 +125,13 @@ function lossChart(canvas, hist, best, upto, xmax){
 }
 
 L3.add(lineStepDef({ short: 'What a weight is', title: 'A weight is how hard one input pushes',
-  watch: 'The smallest model: one input, one weight, one bias. Prediction = weight times input, plus bias. A bigger weight pushes harder. Thin lines show how far the red line misses each compound.',
+  watch: 'The smallest model: one input, one weight, one bias. The weight is how hard the input pushes. The bias is a fixed number added at the end. Prediction = weight times input, plus bias. Thin lines show how far the red line misses each compound.',
   change: 'Drag Weight and Bias below the plot, then press Find the best weights.' }));
 
 /* ---------- workbench: set up a network, press Train ---------- */
 L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly'],
   title: 'Train a network and watch it learn',
-  watch: 'A network is neurons in columns called layers. Each line is a weight. Training nudges every weight to shrink the error. One pass over the training data is an epoch.',
+  watch: 'A network is neurons in columns called layers. Each line is a weight. Training nudges every weight to shrink the error. One pass over the training data is an epoch. The red curve is validation error, measured on compounds held back during training.',
   change: 'Set the options in the options panel, then press Train.',
   build: function(api){
     var bb = benchBar(api);
@@ -181,7 +181,7 @@ L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filter
 /* ---------- N1: a neuron is a weighted sum ---------- */
 L3.add({ short: 'One neuron', title: 'A neuron adds up its inputs',
   change: 'Drag the sliders in the picture. Press Next compound.',
-  watch: 'Each input is multiplied by its own weight, then everything is added with a bias. ReLU turns a negative total into zero. Red lines push the total up and grey lines push it down.',
+  watch: 'A neuron is the basic unit of a network: it takes several inputs and gives one output. Each input is multiplied by its own weight and everything is added with a bias. Then ReLU, a switch that turns any negative total into zero, is applied. Red lines push the total up and grey lines push it down.',
   build: function(api){
     var cur = 0, feats = [], x = [0, 0, 0], w = [0.9, -0.6, 0.4], bias = 0.2, built = false;
     var svg = api.el('abs', 'left:0;top:0;width:960px;height:540px;pointer-events:none', '<svg viewBox="0 0 960 540" width="960" height="540"></svg>');
@@ -214,7 +214,7 @@ L3.add({ short: 'One neuron', title: 'A neuron adds up its inputs',
 /* ---------- N2: layers and units ---------- */
 L3.add({ short: 'Layers and neurons', title: 'More layers and neurons mean more weights',
   change: 'Drag Hidden layers and Neurons per layer in the options panel.',
-  watch: 'The table counts every weight and bias. Dashed circles are neurons switched off by dropout.',
+  watch: 'More layers and neurons mean more weights. The table counts every weight and bias. Dashed circles are neurons switched off by dropout, explained in a later step.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<svg viewBox="0 0 620 380" width="620" height="380"></svg>');
     var cp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>Parameters to learn</h4><div class="big pc" style="color:' + C.red + '">0</div><div class="note" style="font-size:12px;color:#6B7280;margin-bottom:8px">weights and biases</div><div class="pl" style="font-size:12px"></div>');
@@ -258,7 +258,7 @@ L3.add({ short: 'Learning rate', title: 'The learning rate is the size of each n
 /* ---------- N5: dropout and early stopping ---------- */
 L3.add({ short: 'Dropout and early stopping', title: 'Dropout and the best epoch fight overfitting',
   change: 'Set Dropout in the options panel, then press Run comparison below the plot.',
-  watch: 'Overfitting is memorising the training data. Dropout switches off random neurons while training. The curves show error on compounds held back to check progress.',
+  watch: 'Overfitting is memorising the training data. Dropout switches off random neurons while training. The curves show the error on compounds held back to check progress, called validation error.',
   auto: false,
   build: function(api){
     var np = api.el('pn', 'left:28px;top:28px;width:360px;height:408px', '<h4>Neurons switched off in each training step</h4><svg viewBox="0 0 340 330" width="340" height="330"></svg><div class="dn note" style="font-size:12px;color:#6B7280"></div>');

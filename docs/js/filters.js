@@ -171,7 +171,7 @@ function gptFilterStep(){
 /* ---------- data steps for the first lesson ---------- */
 function targetStepDef(){
   return { short: 'The target', uses: ['endpoint', 'filters'], title: 'The values we want to predict',
-    watch: 'Each bar counts compounds with a value in that range. The tall bar at the far left is compounds too stable to measure. They all share one value.',
+    watch: 'Each bar counts compounds with a value in that range. The tall bar at the far left is the assay floor: compounds too stable to measure, all set to the lowest value the test can report.',
     change: 'Switch the endpoint to logD to compare, then set a filter. Grey bars are the compounds the filter removes.',
     build: function(api){
       var plot = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>Measured values of the training compounds</h4><canvas width="576" height="350"></canvas>');
@@ -189,7 +189,7 @@ function censorStepDef(){
   var OPTS = [['Keep them all', 'One model learns from every training compound, including those at the assay floor.'], ['Drop them from training', 'The model learns only from compounds that were actually measured.'], ['Two models', 'One model guesses whether a compound is at the floor. A second model predicts the value for the rest.']];
   var sel = 0;
   return { short: 'Handling censoring', uses: ['endpoint', 'features'], title: 'Three ways to treat values stuck at the assay floor',
-    watch: 'Compounds at the assay floor have no real value. Each card trains the model a different way. The bars show the score on compounds it has not seen.',
+    watch: 'Compounds at the assay floor have no real value, only "below the limit". They are called censored. Each card trains the model a different way. The bars show the score on compounds it has not seen.',
     change: 'Click a card to see its predictions on the right.',
     build: function(api){
       var cards = api.el('abs', 'left:28px;top:28px;width:540px;height:410px', ''), sp = api.el('pn', 'left:588px;top:28px;width:344px;height:410px', '<h4 class="sh2"></h4><canvas width="320" height="270"></canvas><div class="lg" style="font-size:12px;line-height:1.5;margin-top:6px"></div>');

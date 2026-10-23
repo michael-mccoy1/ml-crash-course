@@ -2,8 +2,8 @@
 /* Lesson 5: GPT. A tiny decoder-only transformer trained on SMILES in the browser. */
 var L4 = new Lesson('gpt', 'GPT');
 L4.optsHTML = function(){
-  return optRange('glayers', 'Transformer layers', 1, 3, 1, 2, 'Attention and feed-forward blocks stacked.') +
-    optRange('gsteps', 'Training steps', 100, 1500, 50, 250, 'Mini-batches of 32 SMILES.') +
+  return optRange('glayers', 'Transformer layers', 1, 3, 1, 2, 'Blocks stacked in the model. More blocks, more capacity.') +
+    optRange('gsteps', 'Training steps', 100, 1500, 50, 250, 'Each step shows the model 32 molecules.') +
     optRange('gtemp', 'Temperature', 0.3, 1.6, 0.1, 0.8, 'Low is safe, high is varied.') +
     '<div class="og"><div class="ol">Last training</div><div class="rbox" id="gres"><div class="hint">Press Train in the workbench.</div></div><div class="hint">The GPT always reads the Biogen SMILES, whichever endpoint is selected.</div></div>' + filterGroup({ labels: false });
 };
@@ -65,7 +65,7 @@ function gStaleText(){ return G.demo ? 'Showing the demo model (' + G.steps + ' 
 async function gptLoadDemo(){
   if (G.trained || G.busy || G.demoTried) return G.trained; G.demoTried = true; if (typeof tf === 'undefined') return false;
   try {
-    var r = await fetch('data/transformer_demo.json?v=e7'); if (!r.ok) return false; var j = await r.json(); gptSetup(); gCorpus(); if (JSON.stringify(j.vocab) !== JSON.stringify(G.vocab)) return false; if (G.trained || G.busy) return G.trained;
+    var r = await fetch('data/transformer_demo.json?v=e9'); if (!r.ok) return false; var j = await r.json(); gptSetup(); gCorpus(); if (JSON.stringify(j.vocab) !== JSON.stringify(G.vocab)) return false; if (G.trained || G.busy) return G.trained;
     if (G.P) Object.keys(G.P).forEach(function(k){ G.P[k].dispose(); }); var P = {}; Object.keys(j.params).forEach(function(k){ var q = j.params[k]; P[k] = tf.variable(tf.tensor(q.data, q.shape)); });
     var P0 = gMake(j.nl); G.emb0 = P0.tok.arraySync(); Object.keys(P0).forEach(function(k){ P0[k].dispose(); });
     G.P = P; G.NL = j.nl; G.losses = j.losses; G.steps = j.steps; G.secs = j.secs; G.params = Object.keys(P).reduce(function(a, k){ return a + P[k].size; }, 0); G.trained = true; G.demo = true; G.sig = JSON.stringify([j.nl, j.steps, gptCorpusSig()]); G.readIds = null;
@@ -193,7 +193,7 @@ L4.add({ short: 'Embeddings', title: 'Each token becomes a list of numbers the m
 /* ---------- G3: the transformer stack ---------- */
 L4.add({ short: 'The stack', title: 'The model is a stack of blocks',
   change: 'Drag Transformer layers in the options panel. Press Walk through.',
-  watch: 'Read the stack from the bottom. In each block every token looks back at earlier tokens (attention), then is processed on its own.',
+  watch: 'Read the stack from the bottom. This kind of model is called a transformer. In each block every token looks back at earlier tokens (attention), then is processed on its own. Parameters are the numbers the model learns.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:904px;height:410px', '<svg viewBox="0 0 880 384" width="880" height="384"></svg>');
     function per(){ return DM * 3 * DM + 3 * DM + DM * DM + DM + DM * 4 * DM + 4 * DM + 4 * DM * DM + DM + 4 * DM; }
@@ -221,7 +221,7 @@ L4.add({ short: 'The stack', title: 'The model is a stack of blocks',
   } });
 
 L4.add({ short: 'Attention', title: 'Attention shows which earlier tokens a token looks at',
-  change: 'Click any token. Change the layer or head below the plot.',
+  change: 'Click any token. Change the layer or head below the plot. A head is one of several attention patterns in a layer.',
   watch: 'The model decides how much to look at each earlier token. The bars show that for the selected token and add up to 100%. Later tokens are greyed because it cannot see them.',
   build: function(api){
     var hp = api.el('pn', 'left:28px;top:28px;width:904px;height:330px;overflow:hidden', '<div class="ac" style="display:flex;flex-wrap:wrap;gap:6px 5px"></div>');
