@@ -219,10 +219,11 @@ L3.add({ short: 'Layers and neurons', title: 'More layers and neurons mean more 
     var dp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<svg viewBox="0 0 620 380" width="620" height="380"></svg>');
     var cp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>Parameters to learn</h4><div class="big pc" style="color:' + C.red + '">0</div><div class="note" style="font-size:12px;color:#34373F;margin-bottom:8px">weights and biases</div><div class="pl" style="font-size:12px"></div>');
     var seed = 3;
-    function draw(p){ p = p || NP(); var f = activeFeats(); if (!f.length) return; var sizes = netSizes(f.length, p.layers, p.units); drawNetSVG(qs('svg', dp), { W: 620, H: 380, sizes: sizes, feats: f, drop: p.drop, seed: seed, flow: true, maxShow: 8 });
+    function draw(p){ p = p || NP(); var f = activeFeats(); if (!f.length) return; var sizes = netSizes(f.length, p.layers, p.units); drawNetSVG(qs('svg', dp), { W: 620, H: 380, sizes: sizes, feats: f, drop: p.drop, seed: seed, flow: true, maxShow: 12 });
       var rows = '', tot = 0; for (var q = 0; q < sizes.length - 1; q++) { var wts = sizes[q] * sizes[q + 1], bs = sizes[q + 1]; tot += wts + bs; rows += '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #D1D8E0;padding:4px 0"><span>' + (q === 0 ? 'inputs' : 'hidden ' + q) + ' to ' + (q === sizes.length - 2 ? 'output' : 'hidden ' + (q + 1)) + '</span><b>' + (wts + bs).toLocaleString() + '</b></div><div style="font-size:11px;color:#34373F;margin-bottom:4px">' + sizes[q] + ' by ' + sizes[q + 1] + ' weights plus ' + bs + ' biases</div>'; }
       qs('.pl', cp).innerHTML = rows; qs('.pc', cp).textContent = tot.toLocaleString(); }
     function render(){ draw(); }
+    ['nlayers', 'nunits', 'ndrop'].forEach(function(id){ $(id).addEventListener('input', function(){ if (api.stepDef.visible && api.stepDef.armed) draw(); }); });
     return { render: render };
   } });
 
