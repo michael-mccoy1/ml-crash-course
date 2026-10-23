@@ -3,11 +3,12 @@
 var L4 = new Lesson('gpt', 'GPT');
 L4.optsHTML = function(){
   return optRange('glayers', 'Transformer layers', 1, 3, 1, 2, 'Attention and feed-forward blocks stacked.') +
-    optRange('gsteps', 'Training steps', 100, 1500, 50, 400, 'Mini-batches of 32 SMILES.') +
+    optRange('gsteps', 'Training steps', 100, 1500, 50, 250, 'Mini-batches of 32 SMILES.') +
     optRange('gtemp', 'Temperature', 0.3, 1.6, 0.1, 0.8, 'Low is safe, high is varied.') +
     '<div class="og"><button type="button" class="btn wide" id="gtrain">Train GPT</button><div class="status" id="gst"></div><div class="rbox" id="gres"></div><div class="hint">The GPT always reads the Biogen SMILES, whichever endpoint is selected.</div></div>';
 };
 var TOK = /\[[^\]]+\]|Br|Cl|%\d\d|./g, TLEN = 48, DM = 64, HEADS = 4;
+var GLIVE = [], GA = { promise: null };
 var G = { P: null, NL: 2, vocab: null, stoi: null, V: 0, seqs: null, trained: false, losses: [], secs: null, steps: 0, params: 0, busy: false, emb0: null, readIds: null, sig: null };
 function GP(){ return { nl: +$('glayers').value, steps: +$('gsteps').value, temp: +$('gtemp').value }; }
 function gptSetup(){
@@ -44,13 +45,23 @@ var CATC = { atom: C.red, ring: C.char, branch: C.bg, bond: C.dred, bracket: '#9
 async function gTrain(o){
   while (G.busy) await new Promise(function(r){ setTimeout(r, 250); }); if (G.trained && !gStale() && !(o && o.force)) return G;
   gptSetup(); var p = GP(); gInit(p.nl); var opt = tf.train.adam(0.003), vars = Object.keys(G.P).map(function(k){ return G.P[k]; }), r = rng(5), gT = 0, steps = p.steps; G.busy = true; G.losses = [];
-  try { for (var s = 0; s < steps; s++) { var batch = []; for (var b = 0; b < 32; b++) batch.push(G.seqs[Math.floor(r() * G.seqs.length)]); var tm = performance.now(), c = opt.minimize(function(){ return gLoss(batch, G.NL); }, true, vars); G.losses.push(c.dataSync()[0]); c.dispose(); gT += performance.now() - tm; if (o && o.onStep) await o.onStep(s, steps); if (s % 6 === 5) await tick(); }
+  try { for (var s = 0; s < steps; s++) { var batch = []; for (var b = 0; b < 32; b++) batch.push(G.seqs[Math.floor(r() * G.seqs.length)]); var tm = performance.now(), c = opt.minimize(function(){ return gLoss(batch, G.NL); }, true, vars); G.losses.push(c.dataSync()[0]); c.dispose(); gT += performance.now() - tm; GLIVE.forEach(function(fn){ try { fn(s, steps); } catch (e) { console.error(e); } }); if (o && o.onStep) await o.onStep(s, steps); if (s % 6 === 5) await tick(); }
     G.trained = true; G.secs = gT / 1000; G.steps = steps; G.sig = JSON.stringify([p.nl, steps]); } finally { opt.dispose(); G.busy = false; }
   gResultsBox(); return G;
 }
 function gResultsBox(){ var el = $('gres'); if (!el) return; if (!G.trained) { el.innerHTML = ''; return; } el.innerHTML = '<div class="rrow">Final loss<b>' + G.losses[G.losses.length - 1].toFixed(2) + '</b></div><div class="rrow">Parameters<b>' + G.params.toLocaleString() + '</b></div><div class="rrow">Training time<b>' + fmtT(G.secs) + '</b></div>' + (gStale() ? '<div class="hint" style="color:#E1242A">Settings changed since this model was trained.</div>' : ''); }
-function gStale(){ return G.trained && JSON.stringify([GP().nl, GP().steps]) !== G.sig; }
-async function ensureGPT(){ if (G.trained && !gStale()) return; var st = $('gst'); if (st) st.textContent = 'Training the GPT'; progress(0.2); await tick(); await gTrain({ onStep: async function(s, n){ if (st && s % 10 === 0) { st.textContent = 'Step ' + s + ' of ' + n; progress(0.2 + 0.8 * s / n); } } }); if (st) st.textContent = 'Done'; progress(1); }
+function gStale(){ return !G.trained || JSON.stringify([GP().nl, GP().steps]) !== G.sig; }
+function gRun(){
+  if (GA.promise) return GA.promise;
+  GA.promise = (async function(){
+    var st = $('gst');
+    try { await waitRelease(); await tick(); await gTrain({ onStep: async function(s, n){ if (s % 5 === 0) { var t = 'Training the GPT: step ' + (s + 1) + ' of ' + n; if (st) st.textContent = t; progress((s + 1) / n); L4.steps.forEach(function(x){ if (x.needsModel && x.visible) x.api.busy(t); }); } } }); if (st) st.textContent = 'Trained. Final loss ' + G.losses[G.losses.length - 1].toFixed(2); progress(1); }
+    finally { GA.promise = null; }
+  })();
+  return GA.promise;
+}
+async function gReady(api){ for (var k = 0; k < 3; k++) { if (!gStale()) { if (api) api.idle(); return true; } if (api) api.busy('Training the GPT'); await gRun(); } if (api) api.idle(); return !gStale(); }
+async function ensureGPT(){ await gReady(null); }
 var gTimer = null;
 L4.onOpts = function(){ var fire = function(){ clearTimeout(gTimer); gTimer = setTimeout(function(){ gResultsBox(); L4.refresh(); }, 200); }; ['glayers', 'gsteps', 'gtemp'].forEach(function(id){ $(id).addEventListener('input', fire); });
   $('gtrain').addEventListener('click', function(){ var s = L4.steps[3]; s.sec.scrollIntoView({ behavior: ANIM ? 'smooth' : 'auto', block: 'start' }); setTimeout(function(){ s.play(); }, ANIM ? 500 : 0); }); };
@@ -134,7 +145,7 @@ L4.add({ short: 'The stack', title: 'A transformer repeats attention and a small
 
 /* ---------- G4: training ---------- */
 L4.add({ short: 'Training', title: 'Training teaches the model to guess the next token',
-  change: 'Press Play, or Train GPT in the options. Change Transformer layers or Training steps first.',
+  change: 'Change Transformer layers or Training steps and the GPT retrains here, live, when you let go of the slider. Or press Play for a narrated run.',
   watch: 'Top: how sure the model is about each token of one real molecule, from pale (surprised) to dark red (sure). Bottom: loss and the molecule it writes at that moment.',
   auto: false,
   build: function(api){
@@ -145,15 +156,16 @@ L4.add({ short: 'Training', title: 'Training teaches the model to guess the next
       var ids = G.readIds, pr; tf.tidy(function(){ var pm = tf.softmax(gforward(tf.tensor2d([ids.slice(0, -1)], null, 'int32'), G.NL)).arraySync()[0]; pr = ids.slice(1).map(function(id, k){ return pm[k][id]; }); });
       qs('.rv', rp).innerHTML = ids.slice(1).map(function(id, k){ var q = pr[k]; return '<span class="tok" style="animation:none;text-align:center;background:rgba(225,36,42,' + (0.06 + 0.94 * q).toFixed(2) + ');color:' + (q > 0.5 ? '#fff' : C.char) + '"><span>' + esc(tokName(id)) + '</span><small style="font-size:9.5px;margin-top:4px;opacity:.85">' + Math.round(q * 100) + '%</small></span>'; }).join(''); qs('.rs', rp).textContent = 'Average confidence ' + Math.round(mean(pr) * 100) + '%. Guessing at random would give about ' + (100 / G.V).toFixed(1) + '%.'; }
     function lossDraw(n){ var pts = G.losses.slice(0, n === undefined ? G.losses.length : n).map(function(v, i){ return [i + 1, v]; }); if (!pts.length) { cv(qs('canvas', lp)); return; } lineChart(qs('canvas', lp), [{ pts: pts, color: C.red }], { xl: 'training step', yl: 'loss', x0: 1, x1: Math.max(2, pts.length), xdec: 0, ydec: 2 }); }
-    function attempt(txt){ var e = qs('.at', ap); e.textContent = txt; qs('.ac', ap).textContent = syntaxOk(txt) ? 'Brackets and rings balance.' : 'Brackets or rings do not balance yet.'; }
-    function showFinal(){ if (!G.P || !G.trained) { qs('.rv', rp).innerHTML = '<span class="note">Press Play to train. This box fills with the model\'s confidence.</span>'; cv(qs('canvas', lp)); return; } readViz(); lossDraw(); }
-    function render(){ showFinal(); }
+    function attempt(txt){ qs('.at', ap).textContent = txt; qs('.ac', ap).textContent = syntaxOk(txt) ? 'Brackets and rings balance.' : 'Brackets or rings do not balance yet.'; }
+    GLIVE.push(function(s, n){ var st = L4.steps[3]; if (!st || !st.visible) return; if (s === 0) { G.readIds = null; readViz(); attempt('(just started)'); } if (s % 10 === 9) lossDraw(s + 1); if (s % 20 === 19 || s === n - 1) readViz(); if (s % 100 === 99 || s === n - 1) gWrite([1], 0.8, 40).then(attempt); });
+    function showFinal(){ if (!G.P || !G.trained) { qs('.rv', rp).innerHTML = '<span class="note">The GPT is not trained yet. It trains here when you press Play or change the options.</span>'; cv(qs('canvas', lp)); return; } readViz(); lossDraw(); }
+    async function render(){ showFinal(); if (gStale() && !GA.promise && !G.busy) { var st = $('gst'); if (st) st.textContent = 'Training the GPT'; gReady(null); } }
     async function play(tok){
-      if (G.busy) return; var btn = $('gtrain'); btn.disabled = true; var st = $('gst'), p = GP(); gptSetup(); G.readIds = null; try { gInit(p.nl); readViz(); lossDraw(0); attempt(await gWrite([1], 1.0, 34)); api.cap('Before training the model knows nothing. Its confidence is close to random guessing.'); await api.sleep(2600);
-        await gTrain({ onStep: async function(s, n){ api.checkTok(tok); if (s % 10 === 9) { st.textContent = 'Step ' + (s + 1) + ' of ' + n; progress((s + 1) / n); lossDraw(s + 1); }
-          if (s % 20 === 19 || s === n - 1) readViz(); if (s % 80 === 79 || s === n - 1) attempt(await gWrite([1], 0.8, 40));
+      if (G.busy || GA.promise) return; var btn = $('gtrain'); btn.disabled = true; var st = $('gst'), p = GP(); gptSetup(); G.readIds = null;
+      try { gInit(p.nl); readViz(); lossDraw(0); attempt(await gWrite([1], 1.0, 34)); api.cap('Before training the model knows nothing. Its confidence is close to random guessing.'); await api.sleep(2600);
+        await gTrain({ force: true, onStep: async function(s, n){ api.checkTok(tok); if (s % 10 === 9) { st.textContent = 'Step ' + (s + 1) + ' of ' + n; progress((s + 1) / n); }
           if (s === 20) api.cap('Early on it learns which tokens are common: carbon, rings and branches.'); if (s === Math.floor(n * 0.4)) api.cap('Now it knows that a ring digit must be closed later and a bracket must be matched.'); if (s === Math.floor(n * 0.8)) api.cap('The boxes darken as it becomes sure of more tokens.'); } });
-        readViz(); lossDraw(); st.textContent = 'Done'; progress(1); attempt(await gWrite([1], GP().temp, 40)); api.cap('Training finished. Final loss ' + G.losses[G.losses.length - 1].toFixed(2) + '.'); await api.sleep(3000); api.key('Training never labels anything. The model learns SMILES grammar by guessing the next token millions of times.'); L4.refresh(); }
+        readViz(); lossDraw(); st.textContent = 'Done'; progress(1); attempt(await gWrite([1], GP().temp, 40)); api.cap('Training finished. Final loss ' + G.losses[G.losses.length - 1].toFixed(2) + '.'); await api.sleep(3000); api.key('Training never labels anything. The model learns SMILES grammar by guessing the next token millions of times.'); gResultsBox(); L4.refresh(); }
       catch (e) { if (!(e instanceof Cancel)) { st.textContent = 'Error: ' + e.message; console.error(e); } }
       btn.disabled = false; }
     return { render: render, play: play };
@@ -174,9 +186,9 @@ L4.add({ short: 'Attention', title: 'Attention shows which earlier tokens each t
       var last = n - 1, W = 442, cw = Math.min(30, (W - 20) / n), x0 = (W - cw * n) / 2, s2 = ''; for (var q = 0; q < n; q++) { var x = x0 + (q + 0.5) * cw; s2 += '<rect x="' + (x - cw / 2 + 1) + '" y="262" width="' + (cw - 2) + '" height="26" rx="4" fill="' + (q === last ? C.red : '#fff') + '" stroke="' + (q === last ? C.red : C.silver) + '"/><text x="' + x + '" y="279" text-anchor="middle" font-size="' + (data.labels[q].length > 2 ? 9 : 12) + '" font-family="Consolas,monospace" fill="' + (q === last ? '#fff' : C.char) + '">' + esc(data.labels[q]) + '</text>'; if (q < last) { var w = A[last][q], d = last - q, ym = 240 - Math.min(210, 20 + d * 12); s2 += '<path d="M' + (x0 + (last + 0.5) * cw) + ' 260 Q' + ((x + x0 + (last + 0.5) * cw) / 2) + ' ' + ym + ' ' + x + ' 260" fill="none" stroke="' + C.red + '" stroke-opacity="' + (0.12 + 0.88 * Math.min(1, w * 1.6)).toFixed(2) + '" stroke-width="' + (0.8 + 7 * w).toFixed(1) + '"/>'; } }
       qs('svg', ap).innerHTML = s2; var top = []; for (var j2 = 0; j2 < last; j2++) top.push([A[last][j2], j2]); top.sort(function(a, b){ return b[0] - a[0]; }); qs('.an', ap).innerHTML = last ? 'The last token <b>' + esc(data.labels[last]) + '</b> looks mostly at ' + top.slice(0, 3).map(function(t){ return '<b>' + esc(data.labels[t[1]]) + '</b> (' + Math.round(t[0] * 100) + '%)'; }).join(', ') + '.' : ''; }
     [ms, ls, hs].forEach(function(e){ e.addEventListener('change', function(){ api.tok++; compute(); draw(); }); });
-    async function ready(){ gptSetup(); if (!G.trained || gStale()) { qs('.hm', hp).innerHTML = '<span class="note">Training the GPT with your options</span>'; await tick(); await ensureGPT(); } if (!ms.options.length || +ls.options.length !== G.NL) fillSel(); compute(); }
-    async function render(){ await ready(); draw(); }
-    async function play(tok){ await ready(); var cur = ls.value; api.cap('Each row is a token being processed. Dark red cells mark the earlier tokens it pays attention to.'); draw(); await api.sleep(3600);
+    async function ready(){ gptSetup(); if (!(await gReady(api))) return false; if (!ms.options.length || +ls.options.length !== G.NL) fillSel(); compute(); return true; }
+    async function render(){ if (!(await ready())) return; draw(); }
+    async function play(tok){ if (!(await ready())) return; var cur = ls.value; api.cap('Each row is a token being processed. Dark red cells mark the earlier tokens it pays attention to.'); draw(); await api.sleep(3600);
       for (var l = 0; l < G.NL; l++) { ls.value = l; hs.value = 'avg'; compute(); draw(); api.cap('Layer ' + (l + 1) + ', average of the ' + HEADS + ' heads.'); await api.sleep(2600); }
       hs.value = '0'; ls.value = G.NL - 1; compute(); draw(); api.cap('One head on its own. Different heads learn different habits, such as looking at the previous token or at an opening bracket.'); await api.sleep(3600); hs.value = 'avg'; compute(); draw(); api.key('Attention is how the model finds relevant context, such as the digit that opened a ring it must now close.'); }
     return { render: render, play: play };
@@ -199,9 +211,9 @@ L4.add({ short: 'Next token', title: 'The model outputs odds, and temperature re
     function update(){ var r = ids(); if (r.err) { qs('.pr', ip).innerHTML = '<span class="note" style="color:' + C.red + '">Token ' + esc(r.err) + ' is not in the vocabulary.</span>'; return null; } showPrefix(r.ids); if (!G.trained) { qs('.pb', bp).innerHTML = '<span class="note">Train the GPT first (step 4 or the options).</span>'; return r; } var p = gDist(r.ids, +tr.value); bars(p); return r; }
     tr.addEventListener('input', function(){ api.tok++; qs('.tv', ctl).textContent = tr.value; $('gtemp').value = tr.value; $('o-gtemp').textContent = tr.value; update(); }); qs('.pf', ip).addEventListener('input', function(){ api.tok++; update(); });
     qs('[data-auto]', ctl).addEventListener('click', async function(){ if (writing || !G.trained) return; writing = true; var btn = this; btn.disabled = true; var r = ids(); if (r.err) { writing = false; btn.disabled = false; return; } var arr = r.ids.slice(), tok = ++api.tok; try { for (var t = arr.length; t < TLEN; t++) { api.checkTok(tok); var p = gDist(arr, +tr.value), nx = gSample(p); bars(p, nx); await api.sleep(700); if (nx === 2) { qs('.wt', wp).textContent += '  [end]'; break; } arr.push(nx); showPrefix(arr, arr.length - 1); qs('.wt', wp).textContent = arr.slice(1).map(function(i){ return G.vocab[i]; }).join(''); await api.sleep(250); } } catch (e) { if (!(e instanceof Cancel)) console.error(e); } writing = false; btn.disabled = false; });
-    async function ready(){ gptSetup(); if (!G.trained || gStale()) { await ensureGPT(); } tr.value = $('gtemp').value; qs('.tv', ctl).textContent = tr.value; }
-    async function render(){ await ready(); update(); }
-    async function play(tok){ await ready(); update(); api.cap('Given the text so far, the model outputs a probability for every token in its vocabulary.'); await api.sleep(3200); api.cap('Now sweep the temperature from low to high.'); for (var t = 0.3; t <= 1.61; t += 0.1) { tr.value = t.toFixed(1); qs('.tv', ctl).textContent = tr.value; update(); await api.sleep(450); }
+    async function ready(){ gptSetup(); if (!(await gReady(api))) return false; tr.value = $('gtemp').value; qs('.tv', ctl).textContent = tr.value; return true; }
+    async function render(){ if (!(await ready())) return; update(); }
+    async function play(tok){ if (!(await ready())) return; update(); api.cap('Given the text so far, the model outputs a probability for every token in its vocabulary.'); await api.sleep(3200); api.cap('Now sweep the temperature from low to high.'); for (var t = 0.3; t <= 1.61; t += 0.1) { tr.value = t.toFixed(1); qs('.tv', ctl).textContent = tr.value; update(); await api.sleep(450); }
       api.cap('At low temperature the model nearly always picks the favourite. At high temperature it explores, and makes more mistakes.'); await api.sleep(3600); tr.value = $('gtemp').value; qs('.tv', ctl).textContent = tr.value; update(); api.key('Temperature does not change what the model knows. It changes how adventurous the sampling is.'); }
     return { render: render, play: play };
   } });
@@ -217,7 +229,7 @@ L4.add({ short: 'Generate and check', title: 'Generate molecules and let RDKit c
     var ctl = api.addControl('<button type="button" class="btn sm" data-go>Generate</button>'); var busy = false;
     async function go(){
       if (busy) return; busy = true; var btn = qs('[data-go]', ctl); btn.disabled = true; var sq = qs('.sq', sp), temp = GP().temp;
-      try { sq.textContent = 'Preparing the GPT'; await ensureGPT(); sq.textContent = RDK ? 'Generating' : 'Loading RDKit (about 7 MB)'; progress(0.2); await loadRDKit(); progress(0.4); var out = []; for (var k = 0; k < 12; k++) { out.push(await gWrite([1], temp, 46)); qs('.gridm', gp).innerHTML = out.map(function(s, i){ return '<div class="molc" style="min-height:92px;font-size:10px;word-break:break-all;color:#6B7280">' + esc(s) + '</div>'; }).join(''); }
+      try { sq.textContent = 'Preparing the GPT'; await gReady(api); sq.textContent = RDK ? 'Generating' : 'Loading RDKit (about 7 MB)'; progress(0.2); await loadRDKit(); progress(0.4); var out = []; for (var k = 0; k < 12; k++) { out.push(await gWrite([1], temp, 46)); qs('.gridm', gp).innerHTML = out.map(function(s, i){ return '<div class="molc" style="min-height:92px;font-size:10px;word-break:break-all;color:#6B7280">' + esc(s) + '</div>'; }).join(''); }
         var valid = out.map(function(s){ return rdkValid(s); }), seen = {}; G.smiles.forEach(function(s){ seen[s] = 1; });
         qs('.gridm', gp).innerHTML = out.map(function(s, i){ var svg = valid[i] ? rdkSvg(s, 200, 130) : null; return '<div class="molc ' + (valid[i] ? 'ok' : 'bad') + '" style="animation-delay:' + (ANIM ? i * 80 : 0) + 'ms"><div class="struct" style="height:84px">' + (svg || '<div style="height:84px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#6B7280;padding:4px;word-break:break-all">' + esc(s.slice(0, 40)) + '</div>') + '</div><small>' + (valid[i] ? 'valid' : 'RDKit rejects it') + '</small></div>'; }).join('');
         var nv = valid.filter(Boolean).length, uniq = {}; out.forEach(function(s, i){ if (valid[i]) uniq[s] = 1; }); var nu = Object.keys(uniq).length, nn = Object.keys(uniq).filter(function(s){ return !seen[s]; }).length;
@@ -238,3 +250,6 @@ L4.glossary([
   ['SMILES', 'Text for a molecule, such as CC(=O)N.'], ['PCA', 'A way to squash many numbers per item onto a 2D map while keeping the main differences.'],
   ['Valid molecule', 'A SMILES string that RDKit can read as a chemically sensible structure.']
 ]);
+
+[4, 5, 6].forEach(function(i){ L4.steps[i].needsModel = true; });
+setUses(L4, [[], ['glayers', 'gsteps'], ['glayers'], ['glayers', 'gsteps'], ['glayers', 'gsteps'], ['gtemp', 'glayers', 'gsteps'], ['gtemp', 'glayers', 'gsteps']]);
