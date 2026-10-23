@@ -221,7 +221,7 @@ L4.add({ short: 'The stack', title: 'The model is a stack of blocks',
   } });
 
 L4.add({ short: 'Attention', title: 'Attention shows which earlier tokens a token looks at',
-  change: 'Click any token. Change the layer or head below the plot. A head is one of several attention patterns in a layer.',
+  change: 'Click any token. Change the layer or head below the plot.',
   watch: 'Attention is how a token decides which earlier tokens matter. For the selected token, the bars show how much attention it gives each earlier token, and they add up to 100%. Later tokens are greyed out because the model is not allowed to see them. A head is one of several attention patterns in a layer, each free to look for something different.',
   build: function(api){
     var hp = api.el('pn', 'left:28px;top:28px;width:904px;height:330px;overflow:hidden', '<div class="ac" style="display:flex;flex-wrap:wrap;gap:6px 5px"></div>');
