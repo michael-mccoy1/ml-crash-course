@@ -1,14 +1,14 @@
-# Instructor Guide (90 minutes, no machine learning background needed)
+# Instructor Guide (no machine learning background needed)
 
 ## Before the session
 
 * Open the site and hard refresh (Ctrl+F5). Click each lesson tab once so the pages are built, then return to lesson 01.
-* The GPT lesson loads a small demo model by itself. If the Pre-trained models lesson shows a gate asking for the GPT, open the GPT tab once and wait a few seconds.
+* The GPT lesson loads a small demo model by itself. If the Pre-trained models lesson shows a gate asking for the GPT, open the GPT tab once and wait for the page to finish loading.
 * Nothing needs to be installed. Notebooks are optional homework.
 
 ## How the site teaches
 
-* Each lesson opens with a card: how long it takes, what participants will be able to do, and the words they will meet. Read the three goals aloud.
+* Each lesson opens with a card: what participants will be able to do and the words they will meet. Read the three goals aloud.
 * The options panel on the left drives every stage. Tell participants to change something before reading the explanation: the picture answers first.
 * The three model lessons have a workbench: drag the options, then press Train and watch a slowed-down fit. Slow shows every step, Fast skips ahead. The reported training time is the real compute time.
 * Under every stage there is a line that says what to notice and a Pop quiz question with a hidden answer. Use the question as the discussion prompt before anyone opens the answer.
@@ -16,14 +16,14 @@
 
 ## Run of show
 
-| Minutes | Lesson | Plan |
-|---|---|---|
-| 0 to 14 | 01 Data and ML basics | Learning as fitting a line, features, the unseen set, assay floor, three ways to treat it, overfitting. |
-| 14 to 32 | 02 Tree models | One tree choosing a question, then the workbench with tree, forest and boosting. |
-| 32 to 52 | 03 Neural networks | What a weight is, one neuron, the workbench, learning rate, dropout. |
-| 52 to 68 | 04 GPT | Tokens, embeddings, the stack, the workbench, attention. |
-| 68 to 84 | 05 Pre-trained models | Why pre-train, fill in the blank, GROVER, fine-tuning a GPT and Chemprop. |
-| 84 to 90 | 06 Compare | Leaderboard and the discussion questions. |
+| Lesson | Plan |
+|---|---|
+| 01 Data and ML basics | Learning as fitting a line, features, the unseen set, assay floor, three ways to treat it, overfitting. |
+| 02 Tree models | One tree choosing a question, then the workbench with tree, forest and boosting. |
+| 03 Neural networks | What a weight is, one neuron, the workbench, learning rate, dropout. |
+| 04 GPT | Tokens, embeddings, the stack, the workbench, attention. |
+| 05 Pre-trained models | Why pre-train, fill in the blank, GROVER, fine-tuning a GPT and Chemprop. |
+| 06 Compare | Leaderboard and the discussion questions. |
 
 ## Lesson by lesson
 

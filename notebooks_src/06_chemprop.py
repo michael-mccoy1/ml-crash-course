@@ -2,7 +2,7 @@
 # # 06: Chemprop (graph neural network)
 # [Chemprop](https://github.com/chemprop/chemprop) is the standard message-passing network for molecules. Instead of fingerprints it reads the **molecular graph**: atoms are nodes, bonds are edges. For a few rounds each bond collects messages from neighbouring bonds, then all atoms are pooled into one vector and a small network predicts the endpoint.
 #
-# Same scaffold split as every other notebook, so the score is directly comparable. CPU training takes a few minutes. Use a GPU runtime in Colab for speed.
+# Same scaffold split as every other notebook, so the score is directly comparable. A GPU runtime in Colab is much faster than a CPU.
 
 # %%
 import os, sys, subprocess

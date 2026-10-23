@@ -1,6 +1,6 @@
 # Model Lab: AI/ML for ADME
 
-A 90-minute course on tree models, neural networks and GPTs, built on two public ADME endpoints:
+A course on tree models, neural networks and GPTs, built on two public ADME endpoints:
 
 * **HLM clearance**: Biogen ADME set (Fang et al., J. Chem. Inf. Model. 2023), 3,087 compounds. 31% of the values sit at the assay floor.
 * **logD**: AstraZeneca set from ChEMBL via MoleculeNet, 4,200 compounds. A logD model can feed its prediction into the HLM model.
@@ -13,14 +13,14 @@ Structures, descriptors, scaffolds and similarity statistics come from RDKit. RD
 
 Nothing to install. Each lesson opens with a card that says how long it takes, what you will be able to do, and the words you will meet. Every step has a line on what to notice and a Pop quiz question with a hidden answer. Each lesson has a fixed options panel on the left. The three model lessons open with a workbench: drag an option and the picture changes at once, press Train and the fit replays slowly with the error curve and predictions updating. Steps below the workbench respond to the same options. Filtering the training data is part of every lesson, and each lesson ends with its own glossary.
 
-| Lesson | Minutes | Content |
-|---|---|---|
-| 01 Data and ML basics | 14 | What learning means (fit a line), structure to prediction, descriptor maps, the unseen set, the target distribution, censoring, over and underfitting, scoring, logD feeding HLM, predict your own SMILES |
-| 02 Tree models | 22 | Workbench (tree, forest, boosting), split search, one compound down the tree, forest votes, boosting, feature importance, filtering the data |
-| 03 Neural networks | 26 | Workbench, one neuron, layers, learning rate, dropout, filtering the data, one compound through the network, one neuron opened, what it learned, Chemprop |
-| 04 GPT | 20 | Workbench, tokens, embeddings, the transformer stack, attention, next-token odds, generation checked by RDKit, filtering the corpus |
-| 05 Pre-trained models | 14 | Why pre-train, hiding atoms and groups (the pre-training tasks), GROVER and its scale, the GPT as a fixed feature extractor, fine-tuning (head only or everything) against a random start |
-| 06 Compare | 6 | Leaderboard, accuracy against training time, discussion questions |
+| Lesson | Content |
+|---|---|
+| 01 Data and ML basics | What learning means (fit a line), structure to prediction, descriptor maps, the unseen set, the target distribution, censoring, over and underfitting, scoring, logD feeding HLM, predict your own SMILES |
+| 02 Tree models | Workbench (tree, forest, boosting), split search, one compound down the tree, forest votes, boosting, feature importance, filtering the data |
+| 03 Neural networks | Workbench, one neuron, layers, learning rate, dropout, filtering the data, one compound through the network, one neuron opened, what it learned, Chemprop |
+| 04 GPT | Workbench, tokens, embeddings, the transformer stack, attention, next-token odds, generation checked by RDKit, filtering the corpus |
+| 05 Pre-trained models | Why pre-train, hiding atoms and groups (the pre-training tasks), GROVER and its scale, the GPT as a fixed feature extractor, fine-tuning (head only or everything) against a random start |
+| 06 Compare | Leaderboard, accuracy against training time, discussion questions |
 
 The endpoint (HLM or logD) and the feature toggles are shared by all lessons. The GPT always reads the Biogen SMILES.
 

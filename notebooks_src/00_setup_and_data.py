@@ -2,7 +2,7 @@
 # # 00: Setup & the Data (10 min)
 # **Course anchor paper:** Fang et al., *Prospective Validation of Machine Learning Algorithms for ADME Prediction: An Industrial Perspective*, J. Chem. Inf. Model. 2023. Biogen measured ADME endpoints for ~3,500 compounds and released them publicly.
 #
-# **Our question for the next 90 minutes:** *given a molecule's structure, can a model predict how fast human liver microsomes (HLM) clear it, and does the model type matter?*
+# **Our question for this course:** *given a molecule's structure, can a model predict how fast human liver microsomes (HLM) clear it, and does the model type matter?*
 #
 # | Block | Time | Model family |
 # |---|---|---|
