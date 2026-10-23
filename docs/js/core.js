@@ -3,7 +3,7 @@
    Model Lab core: utilities, datasets, metrics, tree engine, plotting,
    lesson framework. Everything runs in the browser.
    ===================================================================== */
-var C = { red: '#E1242A', dred: '#891515', char: '#34373F', bg: '#A1B1C3', silver: '#D1D8E0', light: '#EDF2F3', tint: '#F4A6A8', mid: '#6B7280', white: '#FFFFFF' };
+var C = { red: '#E1242A', dred: '#891515', char: '#34373F', bg: '#A1B1C4', silver: '#D1D8E0', light: '#EDF2F4', tint: '#F78C85', mid: '#34373F', white: '#FFFFFF' };
 var $ = function(id){ return document.getElementById(id); };
 var qs = function(s, r){ return (r || document).querySelector(s); };
 var qsa = function(s, r){ return [].slice.call((r || document).querySelectorAll(s)); };
@@ -277,7 +277,7 @@ function fmtFeat(f, v){ return (f === 'logP' || f === 'Fsp3') ? v.toFixed(2) : v
 function structOf(i){ if (!STRUCTS) return null; var a = STRUCTS[EP] || []; for (var k = 0; k < a.length; k++) if (a[k].i === i) return a[k]; return null; }
 async function typeInto(el, text, api, cps){ var tok = api.tok; el.textContent = ''; var step = Math.max(1, Math.round((cps || 60) / 30)); for (var k = 0; k <= text.length; k += step) { api.checkTok(tok); el.textContent = text.slice(0, k); await new Promise(function(r){ setTimeout(r, ANIM ? 33 : 0); }); } el.textContent = text; }
 function miniTreeSVG(w, hh){ var pts = [[0.5, 0.1], [0.27, 0.45], [0.73, 0.45], [0.14, 0.85], [0.4, 0.85], [0.6, 0.85], [0.86, 0.85]], ed = [[0, 1], [0, 2], [1, 3], [1, 4], [2, 5], [2, 6]], s = '';
-  ed.forEach(function(e){ s += '<line x1="' + pts[e[0]][0] * w + '" y1="' + pts[e[0]][1] * hh + '" x2="' + pts[e[1]][0] * w + '" y2="' + pts[e[1]][1] * hh + '" stroke="#A1B1C3" stroke-width="2"/>'; });
+  ed.forEach(function(e){ s += '<line x1="' + pts[e[0]][0] * w + '" y1="' + pts[e[0]][1] * hh + '" x2="' + pts[e[1]][0] * w + '" y2="' + pts[e[1]][1] * hh + '" stroke="#A1B1C4" stroke-width="2"/>'; });
   pts.forEach(function(p, k){ s += '<circle cx="' + p[0] * w + '" cy="' + p[1] * hh + '" r="' + (k ? 8 : 10) + '" fill="' + (k > 2 ? C.red : C.char) + '"><animate attributeName="r" values="' + (k ? 8 : 10) + ';' + (k ? 11 : 13) + ';' + (k ? 8 : 10) + '" dur="' + (1.6 + k * 0.15) + 's" repeatCount="indefinite"/></circle>'; });
   return '<svg viewBox="0 0 ' + w + ' ' + hh + '" width="' + w + '" height="' + hh + '">' + s + '</svg>'; }
 
