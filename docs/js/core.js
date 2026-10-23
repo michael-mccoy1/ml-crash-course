@@ -36,7 +36,7 @@ function prepareDS(d){
   d.BASE.forEach(function(f){ if (!(f in FSEL)) FSEL[f] = true; });
   ensureBins(d);
 }
-async function loadJSON(name){ var r = await fetch('data/' + name + '.json?v=d4'); if (!r.ok) throw new Error('Could not load data/' + name + '.json'); return r.json(); }
+async function loadJSON(name){ var r = await fetch('data/' + name + '.json?v=d5'); if (!r.ok) throw new Error('Could not load data/' + name + '.json'); return r.json(); }
 async function loadDataset(key){
   if (!DATA[key]) { var d = await loadJSON(key === 'HLM' ? 'hlm' : 'logd'); DATA[key] = d; prepareDS(d); }
   return DATA[key];
