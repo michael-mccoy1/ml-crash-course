@@ -69,7 +69,7 @@ function glyphTree(x0, y0, w, h, depth, seed, lit){
 L2.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr'],
   title: 'Build a model, press Train, and watch it fit',
   watch: 'A tree is a flowchart of yes or no questions. A forest averages many trees. Boosting builds trees one after another, each fixing the last one\'s mistakes.',
-  change: 'Pick a model type, set its options in the left panel, then press Train.',
+  change: 'Pick a model type, set its options in the options panel, then press Train.',
   build: function(api){
     var bb = benchBar(api, { leftHTML: '<div class="seg mode" data-mode>' + [['tree', 'Decision tree'], ['forest', 'Random forest'], ['boost', 'Gradient boosting']].map(function(it){ return '<button type="button" data-v="' + it[0] + '"' + (it[0] === TB.mode ? ' class="on"' : '') + '>' + it[1] + '</button>'; }).join('') + '</div>' });
     var mp = api.el('pn', 'left:28px;top:80px;width:576px;height:372px', '<h4 class="mh"></h4><svg class="static" viewBox="0 0 552 318" width="552" height="318"></svg>');
@@ -221,7 +221,7 @@ function fixFeat(f, v){ return fmtFeat(f, v); }
 
 /* ---------- T4: forest ---------- */
 L2.add({ short: 'Forest', title: 'A forest averages many trees',
-  change: 'Drag Forest: number of trees in the left panel. Press Next compound for another molecule.',
+  change: 'Drag Forest: number of trees in the options panel. Press Next compound for another molecule.',
   watch: 'Each grey dot is one tree\'s guess for the same compound. The red line is their average, the forest\'s answer.',
   build: function(api){
     var cur = null;
@@ -247,7 +247,7 @@ L2.add({ short: 'Forest', title: 'A forest averages many trees',
 
 /* ---------- T5: boosting ---------- */
 L2.add({ short: 'Boosting', title: 'Boosting fixes mistakes a little at a time',
-  change: 'Drag Round below the plot. Change Boosting learning rate in the left panel.',
+  change: 'Drag Round below the plot. Change Boosting learning rate in the options panel.',
   watch: 'Each new tree fixes what the earlier ones got wrong. The dots move toward the diagonal as trees are added.',
   build: function(api){
     var sp = api.el('pn', 'left:28px;top:28px;width:420px;height:408px', '<h4>Predicted against measured, unseen compounds</h4><canvas width="398" height="352"></canvas>');
@@ -264,7 +264,7 @@ L2.add({ short: 'Boosting', title: 'Boosting fixes mistakes a little at a time',
 
 /* ---------- T6: which features matter ---------- */
 L2.add({ short: 'Which features matter', title: 'Which features the model relies on',
-  change: 'Untick a feature in the left panel.',
+  change: 'Untick a feature in the options panel.',
   watch: 'Left: how much each feature helped the trees. Right: how much the score drops without it.',
   build: function(api){
     var lp = api.el('pn', 'left:28px;top:28px;width:440px;height:408px', '<h4>Split gain inside the boosted trees</h4><div class="ib"></div>');

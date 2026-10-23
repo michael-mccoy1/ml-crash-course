@@ -27,7 +27,7 @@ L0.add(lineStepDef({ short: 'What learning means', title: 'A model is a rule fit
 
 /* ---------- Step 1: structure to prediction ---------- */
 L0.add({ short: 'Structure to prediction', title: 'From structure to prediction',
-  change: 'Press Next compound. Untick a feature in the left panel and watch the prediction change.',
+  change: 'Press Next compound. Untick a feature in the options panel and watch the prediction change.',
   watch: 'A model cannot read a drawing. The molecule becomes text (SMILES), then numbers (features), then a prediction.',
   build: function(api){
     var cur = null;
@@ -208,7 +208,7 @@ L0.add({ short: 'Scoring a model', title: 'R2, Spearman and RMSE measure differe
 
 /* ---------- Step 6: second endpoint, logD feeds HLM ---------- */
 L0.add({ short: 'logD feeds HLM', title: 'One model can feed another',
-  change: 'Untick features in the left panel. The comparison reruns.',
+  change: 'Untick features in the options panel. The comparison reruns.',
   watch: 'logD is how oily a compound is at body pH. A model trained on another company\'s logD data predicts it for every compound. That prediction is added as a feature.',
   build: function(api){
     var ab = null;
@@ -230,7 +230,7 @@ L0.add({ short: 'logD feeds HLM', title: 'One model can feed another',
       var r = n / Math.sqrt(da * db), sl = n / da; x.strokeStyle = C.red; x.lineWidth = 3; x.beginPath(); x.moveTo(sx(lo + .3), sy(mb + sl * (lo + .3 - ma))); x.lineTo(sx(hi - .3), sy(mb + sl * (hi - .3 - ma))); x.stroke(); x.fillStyle = C.char; x.font = '700 13px Aptos, Segoe UI, sans-serif'; x.textAlign = 'left'; x.fillText('Pearson r = ' + r.toFixed(2), box.l + 8, box.t + 14); }
     var running = false, lastSig = null;
     async function run(force){
-      if (D.key !== 'HLM' || running) return; var out = qs('.ab', res), btn = qs('[data-run]', ctl); if (!LOGD.ready) { out.textContent = 'The logD model is still training in your browser.'; return; }
+      if (D.key !== 'HLM' || running) return; var out = qs('.ab', res), btn = qs('[data-run]', ctl); if (!LOGD.ready) { ensureLogdPred().then(function(){ run(true); }); out.textContent = 'The logD model is still training in your browser.'; return; }
       var base = activeFeats().filter(function(f){ return f !== 'logD_pred'; }); if (!base.length) { out.textContent = 'Switch on at least one descriptor.'; return; } var sig = base.join(',') + '|' + (D.cache.abv || 0); if (!force && sig === lastSig) return;
       running = true; btn.disabled = true; out.textContent = 'Training both models'; await tick(); var r = []; for (var p = 0; p < 2; p++) { await tick(); var m = fitBoost(p ? base.concat(['logD_pred']) : base, D.TRAIN, 100, 0.1, 3); r.push({ r2: r2(D.TEST, m.F), sp: spearman(D.TEST, m.F), tr: r2(D.TRAIN, m.F), secs: m.secs }); }
       var d = r[1].r2 - r[0].r2; out.innerHTML = '<div class="scores" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + scoreCard('Without logD_pred', r[0], 0) + scoreCard('With logD_pred', r[1], 1) + '</div><p style="margin-top:12px;font-size:13px"><b>Change in unseen R2: ' + (d >= 0 ? '+' : '') + d.toFixed(3) + '.</b></p>'; btn.disabled = false; running = false; lastSig = sig; ab = r; }

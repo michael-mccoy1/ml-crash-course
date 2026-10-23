@@ -18,7 +18,7 @@ function colorMix(t, a, b){ a = a || [209, 216, 224]; b = b || [225, 36, 42]; t 
 function esc(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 /* ---------- animation control ---------- */
-var ANIM = true, AUTOPLAY = false;
+var ANIM = true, AUTOPLAY = false, LAZY = !!(window.matchMedia && matchMedia('(max-width: 900px)').matches);
 var tick = function(){ return new Promise(function(r){ setTimeout(r, 0); }); };
 function progress(p){ var b = $('bar'); if (!b) return; b.style.width = (p * 100) + '%'; if (p >= 1) setTimeout(function(){ b.style.width = '0'; }, 400); }
 function Cancel(){ this.cancel = true; }
@@ -36,7 +36,7 @@ function prepareDS(d){
   d.BASE.forEach(function(f){ if (!(f in FSEL)) FSEL[f] = true; });
   ensureBins(d);
 }
-async function loadJSON(name){ var r = await fetch('data/' + name + '.json?v=e3'); if (!r.ok) throw new Error('Could not load data/' + name + '.json'); return r.json(); }
+async function loadJSON(name){ var r = await fetch('data/' + name + '.json?v=e5'); if (!r.ok) throw new Error('Could not load data/' + name + '.json'); return r.json(); }
 async function loadDataset(key){
   if (!DATA[key]) { var d = await loadJSON(key === 'HLM' ? 'hlm' : 'logd'); DATA[key] = d; prepareDS(d); }
   return DATA[key];
@@ -114,7 +114,7 @@ function scoreCard(name, m, i){ return '<div class="score" style="animation-dela
 function fmtT(t){ return t === null || t === undefined ? 'n/a' : (t < 10 ? t.toFixed(2) : t.toFixed(1)) + ' s'; }
 
 /* ---------- canvas helpers ---------- */
-function cv(el){ el = typeof el === 'string' ? $(el) : el; var dpr = window.devicePixelRatio || 1, w = +el.getAttribute('width'), hh = +el.getAttribute('height'); if (!el._s) { el.width = w * dpr; el.height = hh * dpr; el.style.width = w + 'px'; el.style.height = hh + 'px'; el._s = 1; } var x = el.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, hh); x.font = '12px Aptos, "Segoe UI", system-ui, sans-serif'; return { x: x, w: w, h: hh }; }
+function cv(el){ el = typeof el === 'string' ? $(el) : el; var dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 900 ? 1.5 : 2), w = +el.getAttribute('width'), hh = +el.getAttribute('height'); if (!el._s) { el.width = w * dpr; el.height = hh * dpr; el.style.width = w + 'px'; el.style.height = hh + 'px'; el._s = 1; } var x = el.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, hh); x.font = '12px Aptos, "Segoe UI", system-ui, sans-serif'; return { x: x, w: w, h: hh }; }
 function axes(g, box, xr, yr, xl, yl, ticks, o){
   o = o || {}; var x = g.x; x.strokeStyle = C.silver; x.fillStyle = C.mid; x.lineWidth = 1; x.textAlign = 'right'; ticks = ticks || 4;
   var yd = Math.abs(yr[1] - yr[0]) > 6 ? 0 : 1;
@@ -164,7 +164,7 @@ function Lesson(id, title){ this.id = id; this.title = title; this.steps = []; t
 Lesson.prototype.add = function(def){ this.steps.push(def); return this; };
 Lesson.prototype.glossary = function(items){ this.gloss = items; return this; };
 Lesson.prototype.move = function(short, to){ var i = -1; this.steps.forEach(function(s, k){ if (s.short === short) i = k; }); if (i < 0) return; var s = this.steps.splice(i, 1)[0]; this.steps.splice(to, 0, s); };
-Lesson.prototype.refresh = function(){ var L = this; L.steps.forEach(function(s){ s.dirty = true; if (s.visible && s.handlers && s.handlers.render) { s.dirty = false; s.api.tok++; s.api.clearTexts(); s.safe(function(){ return s.handlers.render(); }); } }); };
+Lesson.prototype.refresh = function(){ var L = this; L.steps.forEach(function(s){ s.dirty = true; if (s.visible && s.armed && s.handlers && s.handlers.render) { s.dirty = false; s.api.tok++; s.api.clearTexts(); s.safe(function(){ return s.handlers.render(); }); } }); };
 
 function seg(items, cur, attr){ return '<div class="seg" ' + attr + '>' + items.map(function(it){ return '<button type="button" data-v="' + it[0] + '"' + (it[0] === cur ? ' class="on"' : '') + '>' + it[1] + '</button>'; }).join('') + '</div>'; }
 function optGroup(label, html, hint){ return '<div class="og"><div class="ol">' + label + '</div>' + html + (hint ? '<div class="hint">' + hint + '</div>' : '') + '</div>'; }
@@ -180,7 +180,6 @@ document.addEventListener('click', function(e){ var b = e.target.closest ? e.tar
 async function setEndpoint(key){
   if (key === EP && D) return; EP = key; qsa('.seg[data-ep] button').forEach(function(b){ b.classList.toggle('on', b.dataset.v === key); });
   progress(0.2); await loadDataset(key); D = DATA[key]; if (!D.ylo) setRange(D); renderChips(); if (window.syncFilterControls) syncFilterControls(true); progress(1);
-  if (D.key === 'HLM' && window.ensureLogdPred) ensureLogdPred();
   LORDER.forEach(function(id){ var L = LESSONS[id]; if (L && L.built) { if (L.onData) L.onData(); L.refresh(); } });
 }
 
@@ -226,9 +225,10 @@ function buildStep(L, s, idx, total, parent){
   s.handlers = s.build(api) || {};
   var pb = qs('[data-play]', sec); if (pb) { if (!s.handlers.play) pb.style.display = 'none'; else pb.addEventListener('click', function(){ s.play(); }); }
   s.play = function(){ if (!s.handlers.play) return; api.tok++; var tok = api.tok; api.clearTexts(); return s.safe(function(){ return s.handlers.play(tok); }); };
-  s.visible = false; s.played = false; s.dirty = true;
+  s.visible = false; s.played = false; s.dirty = true; s.armed = !LAZY || idx === 0;
+  function offerLoad(){ if (s.offered) return; s.offered = true; qs('span', busy).innerHTML = 'Tap to load this step <button type="button" class="btn sm" style="margin-left:10px">Load</button>'; busy.classList.add('on', 'gate'); qs('button', busy).addEventListener('click', function(){ s.armed = true; busy.classList.remove('on', 'gate'); if (s.handlers.render) { s.dirty = false; s.safe(function(){ return s.handlers.render(); }); } }); }
   var io = new IntersectionObserver(function(es){ es.forEach(function(en){
-    var vis = en.isIntersecting; s.visible = vis; if (!vis || ACTIVE !== L.id) return;
+    var vis = en.isIntersecting; s.visible = vis; if (!vis || ACTIVE !== L.id) return; if (!s.armed) { offerLoad(); return; }
     if (s.dirty && s.handlers.render) { s.dirty = false; s.safe(function(){ return s.handlers.render(); }); }
   }); }, { threshold: [0, 0.25, 0.5, 0.75] });
   io.observe(sec);
@@ -256,7 +256,7 @@ function showLesson(id){
   ACTIVE = id; LORDER.forEach(function(k){ var el = $('lesson-' + k); if (el) el.hidden = k !== id; }); qsa('#tabs button').forEach(function(b){ b.setAttribute('aria-selected', b.dataset.tab === id ? 'true' : 'false'); });
   var L = LESSONS[id]; if (L && !L.built) buildLesson(L); window.scrollTo({ top: 0 });
   if (L && L.onShow) L.onShow();
-  if (L) setTimeout(function(){ L.steps.forEach(function(s){ if (s.sec) { var r = s.sec.getBoundingClientRect(); s.visible = r.top < innerHeight && r.bottom > 0; } if (s.visible && s.dirty && s.handlers.render) { s.dirty = false; s.safe(function(){ return s.handlers.render(); }); } }); }, 60);
+  if (L) setTimeout(function(){ L.steps.forEach(function(s){ if (s.sec) { var r = s.sec.getBoundingClientRect(); s.visible = r.top < innerHeight && r.bottom > 0; } if (s.visible && s.armed && s.dirty && s.handlers.render) { s.dirty = false; s.safe(function(){ return s.handlers.render(); }); } }); }, 60);
 }
 function boot(){
   qsa('#tabs button').forEach(function(b){ b.addEventListener('click', function(){ showLesson(b.dataset.tab); }); });

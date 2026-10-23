@@ -132,7 +132,7 @@ L3.add(lineStepDef({ short: 'What a weight is', title: 'A weight is how hard one
 L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly'],
   title: 'Train a network and watch it learn',
   watch: 'A network is neurons in columns called layers. Each line is a weight. Training nudges every weight to shrink the error. One pass over the training data is an epoch.',
-  change: 'Set the options in the left panel, then press Train.',
+  change: 'Set the options in the options panel, then press Train.',
   build: function(api){
     var bb = benchBar(api);
     var np = api.el('pn', 'left:28px;top:80px;width:456px;height:372px', '<h4>The network</h4><svg viewBox="0 0 432 318" width="432" height="318"></svg>');
@@ -213,7 +213,7 @@ L3.add({ short: 'One neuron', title: 'A neuron adds up its inputs',
 
 /* ---------- N2: layers and units ---------- */
 L3.add({ short: 'Layers and neurons', title: 'More layers and neurons mean more weights',
-  change: 'Drag Hidden layers and Neurons per layer in the left panel.',
+  change: 'Drag Hidden layers and Neurons per layer in the options panel.',
   watch: 'The table counts every weight and bias. Dashed circles are neurons switched off by dropout.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<svg viewBox="0 0 620 380" width="620" height="380"></svg>');
@@ -228,7 +228,7 @@ L3.add({ short: 'Layers and neurons', title: 'More layers and neurons mean more 
 
 /* ---------- N3: learning rate ---------- */
 L3.add({ short: 'Learning rate', title: 'The learning rate is the size of each nudge',
-  change: 'Drag Learning rate in the left panel, or Steps taken below the plot.',
+  change: 'Drag Learning rate in the options panel, or Steps taken below the plot.',
   watch: 'Training nudges the weights to cut the error. Too small is slow. Too large overshoots and the error grows.',
   build: function(api){
     var cp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Error after each nudge (lower is better)</h4><canvas width="536" height="320"></canvas><div class="note" style="font-size:12px;margin-top:6px">The error is the average squared distance between the line and the compounds. Each coloured curve is a different learning rate.</div>');
@@ -257,7 +257,7 @@ L3.add({ short: 'Learning rate', title: 'The learning rate is the size of each n
 
 /* ---------- N5: dropout and early stopping ---------- */
 L3.add({ short: 'Dropout and early stopping', title: 'Dropout and the best epoch fight overfitting',
-  change: 'Set Dropout in the left panel, then press Run comparison below the plot.',
+  change: 'Set Dropout in the options panel, then press Run comparison below the plot.',
   watch: 'Overfitting is memorising the training data. Dropout switches off random neurons while training. The curves show error on compounds held back to check progress.',
   auto: false,
   build: function(api){

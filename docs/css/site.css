@@ -225,3 +225,5 @@ details.filtgrp .fr{margin-top:6px}
 .cmap i{font-style:normal;font-weight:700;color:var(--char)}
 @media(max-width:900px){.cmap{grid-template-columns:minmax(0,1fr)}}
 .iwhat{margin:8px 0 0;font-size:.92rem;line-height:1.5;color:#3f4350}
+
+@media(max-width:900px){.stagewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.screen{min-width:720px}}

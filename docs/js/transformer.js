@@ -65,7 +65,7 @@ function gStaleText(){ return G.demo ? 'Showing the demo model (' + G.steps + ' 
 async function gptLoadDemo(){
   if (G.trained || G.busy || G.demoTried) return G.trained; G.demoTried = true; if (typeof tf === 'undefined') return false;
   try {
-    var r = await fetch('data/transformer_demo.json?v=e3'); if (!r.ok) return false; var j = await r.json(); gptSetup(); gCorpus(); if (JSON.stringify(j.vocab) !== JSON.stringify(G.vocab)) return false; if (G.trained || G.busy) return G.trained;
+    var r = await fetch('data/transformer_demo.json?v=e5'); if (!r.ok) return false; var j = await r.json(); gptSetup(); gCorpus(); if (JSON.stringify(j.vocab) !== JSON.stringify(G.vocab)) return false; if (G.trained || G.busy) return G.trained;
     if (G.P) Object.keys(G.P).forEach(function(k){ G.P[k].dispose(); }); var P = {}; Object.keys(j.params).forEach(function(k){ var q = j.params[k]; P[k] = tf.variable(tf.tensor(q.data, q.shape)); });
     var P0 = gMake(j.nl); G.emb0 = P0.tok.arraySync(); Object.keys(P0).forEach(function(k){ P0[k].dispose(); });
     G.P = P; G.NL = j.nl; G.losses = j.losses; G.steps = j.steps; G.secs = j.secs; G.params = Object.keys(P).reduce(function(a, k){ return a + P[k].size; }, 0); G.trained = true; G.demo = true; G.sig = JSON.stringify([j.nl, j.steps, gptCorpusSig()]); G.readIds = null;
@@ -88,7 +88,7 @@ function gMeanAbs(name){ return tf.tidy(function(){ return G.P[name].abs().mean(
 L4.add({ short: 'Workbench', bench: true, uses: ['filters', 'glayers', 'gsteps', 'gtemp'],
   title: 'Train the GPT and watch it learn',
   watch: 'A GPT learns one skill: guess the next token. Left: the model and the size of its weights. Top right: its error. The coloured boxes show how sure it is. The dark box shows a molecule it writes.',
-  change: 'Set the options in the left panel, then press Train.',
+  change: 'Set the options in the options panel, then press Train.',
   build: function(api){
     var bb = benchBar(api);
     var np = api.el('pn', 'left:28px;top:80px;width:456px;height:372px', '<h4 class="sh">The model</h4><svg viewBox="0 0 432 318" width="432" height="318"></svg>');
@@ -192,7 +192,7 @@ L4.add({ short: 'Embeddings', title: 'Each token becomes a list of numbers the m
 
 /* ---------- G3: the transformer stack ---------- */
 L4.add({ short: 'The stack', title: 'The model is a stack of blocks',
-  change: 'Drag Transformer layers in the left panel. Press Walk through.',
+  change: 'Drag Transformer layers in the options panel. Press Walk through.',
   watch: 'Read the stack from the bottom. In each block every token looks back at earlier tokens (attention), then is processed on its own.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:904px;height:410px', '<svg viewBox="0 0 880 384" width="880" height="384"></svg>');
