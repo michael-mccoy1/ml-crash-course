@@ -7,7 +7,7 @@ var GUIDE = {
     nn: { goals: ['Learn what a weight is.', 'See training adjust many weights.', 'See overfitting and dropout.'], words: ['weight', 'neuron', 'layer', 'epoch', 'dropout'] },
     gpt: { what: 'A GPT is a model that writes text one piece at a time by guessing the next piece.', goals: ['See a molecule become tokens and numbers.', 'See a GPT learn to guess the next token.', 'Check its output with RDKit, a chemistry toolkit.'], words: ['token', 'embedding', 'attention', 'temperature', 'SMILES'] },
     pre: { goals: ['Learn from molecules with no lab values.', 'Fine-tune with a few labels.', 'Freeze or update a model.'], words: ['pre-training', 'fine-tuning', 'frozen', 'GROVER', 'labelled'] },
-    ai: { goals: ['See how AI, machine learning and generative AI relate.', 'See what AI is asked to do and where it stops.', 'Know what to check before relying on AI.'] },
+    ai: { goals: ['Tell machine learning, which predicts, from generative AI, which produces.', 'See where each is useful and where it is not.', 'Know what to check before relying on either.'] },
     compare: { goals: ['Compare models on accuracy and time.', 'Decide what a fair comparison needs.'], words: ['test R2', 'training time'] }
   },
   steps: {
@@ -67,9 +67,10 @@ var GUIDE = {
     'pre/Using it in practice': { notice: 'The first stage is the costly one, and it is already done.', q: 'What must stay the same when comparing with a descriptor model?', a: 'The split and the test compounds.' },
 
     'ai/What AI means': { notice: 'Each box sits inside the one before it.', q: 'Is every machine learning model generative AI?', a: 'No. A tree model predicts a number and writes nothing new. Generative AI is one part of deep learning, which is one part of machine learning.' },
-    'ai/What AI is asked to do': { notice: 'The last row changes with every job.', q: 'Why does a summary need a different check from a prediction?', a: 'A prediction is scored against measurements. A summary has no measurement, so you check it against the source it came from.' },
+    'ai/Predict or generate': { notice: 'No job fits both tools equally.', q: 'Why does a summary need a different check from a prediction?', a: 'A prediction is scored against measurements. A summary has no measurement, so you check it against the source it came from.' },
     'ai/Outside the training range': { notice: 'The red line goes flat beyond the dashed line.', q: 'Why is the test R2 outside the range zero or below?', a: 'The model never saw compounds there. It repeats its last value, so it is no better than the average and often worse.' },
     'ai/Lab noise': { notice: 'At zero noise the ceiling is 1.00. It falls as the dots scatter.', q: 'Your model scores 0.45 and the ceiling at the real noise level is 0.50. Is it worth chasing 0.50?', a: 'Not much. It is already close to the most any model could show.' },
+    'ai/How generative AI goes wrong': { notice: 'Every failure has a check that needs no AI.', q: 'A generated molecule is valid and new. Is it a good candidate?', a: 'Not yet. Valid and new say nothing about activity or clearance. A prediction model and then an experiment have to answer that.' },
     'ai/Can it or cannot it': { notice: 'Each reason points back to a lesson or to how language models work.', q: 'Which statement surprised you?', a: 'Any answer works. Reread the reason for that statement.' },
     'ai/Using it in a project': { notice: 'Check 5 has no lesson. It is a decision for people.', q: 'Which check would you run first?', a: 'Usually check 1 or 2, since they decide whether the score means anything for your question.' },
     'compare/Leaderboard': { notice: 'Red bars are yours.', q: 'Why are your scores lower than the reference runs?', a: 'They use thousands of extra features and train longer.' },

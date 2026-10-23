@@ -22,7 +22,7 @@
 | 04 GPT | Tokens, attention, workbench, the design test |
 | 05 Pre-trained models | Fill in the blank, GROVER, fine-tuning a GPT and Chemprop |
 | 06 Compare | Leaderboard, discussion |
-| 07 Role of AI | AI, machine learning and generative AI, jobs given to AI, the training range, lab noise, can and cannot, five checks |
+| 07 Role of AI | Machine learning against generative AI, which fits which job, the training range, lab noise, how generative AI fails, can and cannot, five checks |
 
 ### 01 Data and ML basics
 * **Say:** a model is a rule fitted to examples.
@@ -58,8 +58,8 @@
 * Walk the leaderboard. Ask which result people trust least.
 
 ### 07 Role of AI
-* **Say:** AI is wider than machine learning. It proposes and ranks. People check and decide.
-* **Do:** click through the four layers and the four jobs. Drag the training range until the score outside it falls to zero. Raise the lab noise. Sort the ten statements.
+* **Say:** machine learning predicts a number you can score. Generative AI produces content you must check. People decide.
+* **Do:** click through the layers, then the six jobs and both tools. Open each of the five failures. Drag the training range until the score outside it falls to zero. Raise the lab noise. Sort the ten statements.
 * **Ask:** which of the five checks would have caught the weakest result you saw today?
 * **Watch for:** a score below the noise ceiling is not a failure. It may be as good as the assay allows.
 
