@@ -68,8 +68,8 @@ function glyphTree(x0, y0, w, h, depth, seed, lit){
 }
 L2.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr'],
   title: 'Build a model, press Train, and watch it fit',
-  watch: 'A decision tree is a flowchart of yes or no questions about a compound, for example "is logP at most 2.9?". The answers send the compound to a group, and the average of that group is the prediction. A forest asks many trees and averages them. Boosting builds trees one after another, each fixing what the last got wrong. Drag the options to change the shape, then press Train to watch the model grow and the score climb.',
-  change: 'Choose a model type, drag its options, then press Train. Slow shows every step and Fast jumps to the end.',
+  watch: 'A tree is a flowchart of yes or no questions. A forest averages many trees. Boosting builds trees one after another, each fixing the last one\'s mistakes.',
+  change: 'Pick a model type, set its options in the left panel, then press Train.',
   build: function(api){
     var bb = benchBar(api, { leftHTML: '<div class="seg mode" data-mode>' + [['tree', 'Decision tree'], ['forest', 'Random forest'], ['boost', 'Gradient boosting']].map(function(it){ return '<button type="button" data-v="' + it[0] + '"' + (it[0] === TB.mode ? ' class="on"' : '') + '>' + it[1] + '</button>'; }).join('') + '</div>' });
     var mp = api.el('pn', 'left:28px;top:80px;width:576px;height:372px', '<h4 class="mh"></h4><svg class="static" viewBox="0 0 552 318" width="552" height="318"></svg>');
@@ -119,9 +119,9 @@ L2.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filter
     }
     function drawScatter(pred, label){ var canvas = qs('canvas', sp); if (!pred) { scatterPV(canvas, new Float32Array(D.N), [], null); return; } scatterPV(canvas, pred, D.TEST, label, { max: 320 }); }
     function note(){
-      var p = TP(), t = TB.mode === 'tree' ? 'Depth ' + p.depth + ' means the tree may ask up to ' + p.depth + ' questions in a row. Each question splits a group in two, so there can be up to ' + Math.pow(2, p.depth).toLocaleString() + ' final groups. Each final group predicts the average of the training compounds in it.'
-        : (TB.mode === 'forest' ? 'A forest is ' + p.nt + ' trees, each allowed ' + p.fd + ' questions in a row. Every tree is trained on a different random draw of the compounds, so each learns slightly different rules. The forest answers with the average of all its trees, which is steadier than any one tree.'
-        : 'Boosting builds ' + p.rounds + ' small trees one after another. The first makes a rough guess. Each next tree is trained on what the earlier ones still got wrong, and its correction is added at a small strength: ' + Math.round(p.lr * 100) + '% of the full correction, which is the learning rate.'); qs('.mn', np).textContent = t;
+      var p = TP(), t = TB.mode === 'tree' ? 'Depth ' + p.depth + ' allows up to ' + Math.pow(2, p.depth).toLocaleString() + ' groups. Each group predicts the average of its training compounds.'
+        : (TB.mode === 'forest' ? p.nt + ' trees, each allowed ' + p.fd + ' questions. Each learns from a different random draw of the compounds. The answer is their average.'
+        : p.rounds + ' small trees, one after another. Each fixes what the last got wrong, at ' + Math.round(p.lr * 100) + '% strength (the learning rate).'); qs('.mn', np).textContent = t;
     }
     function render(){
       dimOpts(); qs('.mh', mp).textContent = TB.mode === 'tree' ? 'The tree you are building' : (TB.mode === 'forest' ? 'The forest you are building' : 'The boosted ensemble you are building'); var res = peek(), p = TP();
@@ -154,8 +154,8 @@ L2.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filter
 
 /* ---------- T1: how a tree chooses a question ---------- */
 L2.add({ short: 'Choosing a question', title: 'A tree asks one question to split compounds into two groups',
-  change: 'Drag across the plot to move the cut and watch the miss score fall or rise. Then press Find the best cut. You can also pick a different feature under the stage.',
-  watch: 'Each dot is one compound. Across is a number that describes it, called a feature (logP by default: how much the compound prefers oil to water). Up is the lab value we want to predict. A tree starts by drawing one vertical cut. Compounds left of the cut form one group and compounds right of it form another. Each group predicts the average of its own dots, shown as the short horizontal lines. A good cut makes groups whose dots sit close to their line.',
+  change: 'Drag across the plot to move the cut, then press Find the best cut.',
+  watch: 'Each dot is a compound. A tree splits them with one cut. Each side predicts its own average, the short horizontal line. A good cut leaves the dots close to their line.',
   build: function(api){
     var plot = api.el('pn', 'left:28px;top:28px;width:580px;height:408px', '<h4>Each dot is one training compound</h4><canvas width="556" height="346"></canvas>');
     var tp = api.el('pn', 'left:628px;top:28px;width:304px;height:272px', '<div class="qq" style="font-size:13px;line-height:1.45"></div>');
@@ -195,8 +195,8 @@ L2.add({ short: 'Choosing a question', title: 'A tree asks one question to split
 
 /* ---------- T3: send a compound down the tree ---------- */
 L2.add({ short: 'One compound', title: 'Follow one compound down the tree',
-  change: 'Press Next compound for a different molecule. Walk through sends it down the tree.',
-  watch: 'The compound answers one yes or no question at each box and follows the branch that fits it, until it reaches a box at the bottom called a leaf. The leaf holds the average of the training compounds that ended up there, and that average is the prediction.',
+  change: 'Press Next compound.',
+  watch: 'A compound follows yes or no answers down the tree to a box at the bottom, called a leaf. The leaf\'s average is the prediction.',
   build: function(api){
     var cur = null;
     var sp = api.el('pn', 'left:28px;top:28px;width:236px;height:196px', '<h4>Compound</h4><div class="struct" style="height:156px"></div>');
@@ -220,9 +220,9 @@ L2.add({ short: 'One compound', title: 'Follow one compound down the tree',
 function fixFeat(f, v){ return fmtFeat(f, v); }
 
 /* ---------- T4: forest ---------- */
-L2.add({ short: 'Forest', title: 'A forest asks many trees and averages their answers',
-  change: 'Drag Forest: number of trees and Forest tree depth. Press Next compound for a different molecule.',
-  watch: 'One tree can be thrown off by quirks in the compounds it learned from. A forest trains many trees, each on a different random draw of the compounds, so they disagree a little. Each grey dot is one tree\'s prediction for the same compound. The red line is their average, which is the forest\'s answer. The curve shows the score improving as trees are added.',
+L2.add({ short: 'Forest', title: 'A forest averages many trees',
+  change: 'Drag Forest: number of trees in the left panel. Press Next compound for another molecule.',
+  watch: 'Each grey dot is one tree\'s guess for the same compound. The red line is their average, the forest\'s answer.',
   build: function(api){
     var cur = null;
     var sp = api.el('pn', 'left:28px;top:28px;width:200px;height:230px', '<h4>Compound</h4><div class="struct" style="height:190px"></div>');
@@ -246,9 +246,9 @@ L2.add({ short: 'Forest', title: 'A forest asks many trees and averages their an
   } });
 
 /* ---------- T5: boosting ---------- */
-L2.add({ short: 'Boosting', title: 'Boosting builds trees one after another, each fixing the last',
-  change: 'Drag Boosting rounds and Boosting learning rate. Drag Round below the stage to see the predictions at any point.',
-  watch: 'The first tree makes a rough prediction. The next tree is trained only on the mistakes that are left, and its correction is added on top, and so on. Each correction is added at a small strength, the learning rate, so the model improves a little at a time. The dots start in a flat line, because everyone gets the same guess, and move toward the diagonal, where the prediction equals the lab value. Dashed lines show other learning rates.',
+L2.add({ short: 'Boosting', title: 'Boosting fixes mistakes a little at a time',
+  change: 'Drag Round below the plot. Change Boosting learning rate in the left panel.',
+  watch: 'Each new tree fixes what the earlier ones got wrong. The dots move toward the diagonal as trees are added.',
   build: function(api){
     var sp = api.el('pn', 'left:28px;top:28px;width:420px;height:408px', '<h4>Predicted against measured, unseen compounds</h4><canvas width="398" height="352"></canvas>');
     var cp = api.el('pn', 'left:468px;top:28px;width:464px;height:300px', '<h4>Unseen R2 against rounds</h4><canvas width="442" height="250"></canvas>');
@@ -264,8 +264,8 @@ L2.add({ short: 'Boosting', title: 'Boosting builds trees one after another, eac
 
 /* ---------- T6: which features matter ---------- */
 L2.add({ short: 'Which features matter', title: 'Which features the model relies on',
-  change: 'Untick a feature in the options.',
-  watch: 'A feature is useful if the trees keep using it to split compounds into tidier groups. Left: how much each feature contributed to the splits. Right: how much the score drops if the model is trained without that feature.',
+  change: 'Untick a feature in the left panel.',
+  watch: 'Left: how much each feature helped the trees. Right: how much the score drops without it.',
   build: function(api){
     var lp = api.el('pn', 'left:28px;top:28px;width:440px;height:408px', '<h4>Split gain inside the boosted trees</h4><div class="ib"></div>');
     var rp = api.el('pn', 'left:488px;top:28px;width:444px;height:408px', '<h4>Change in unseen R2 when a feature is removed</h4><div class="ab"></div>');
@@ -280,15 +280,54 @@ L2.add({ short: 'Which features matter', title: 'Which features the model relies
 L2.add(filterStepDef('trees'));
 
 /* ---------- results ---------- */
-L2.add({ short: 'Results', title: 'Score and training time of the three tree models',
-  change: 'Train each model type in the workbench, or press Train all three for Compare in the options.',
-  watch: 'Unseen R2 and fit time for every tree model you have trained on this endpoint.',
+L2.add({ short: 'Results', title: 'Score and fit time of each tree model',
+  change: 'Train each model type in the workbench.',
+  watch: 'Only models you have trained appear here.',
   build: function(api){
     var cards = [0, 1, 2].map(function(k){ return api.el('abs', 'left:' + (28 + k * 307) + 'px;top:28px;width:290px;height:150px', ''); });
     var tp = api.el('pn', 'left:28px;top:196px;width:904px;height:240px', '<h4>Fit time in your browser</h4><div class="tm"></div>');
     function render(){ var names = ['Decision tree', 'Random forest', 'Gradient boosting'], ms = names.map(function(n){ return D.scores[n] || null; });
       cards.forEach(function(c, k){ c.innerHTML = ms[k] ? scoreCard(names[k] + ' (' + ms[k].params + ')', ms[k], 0) : '<div class="score"><b>' + names[k] + '</b><div class="s" style="margin-top:8px">Not trained yet. Train it in the workbench.</div></div>'; c.firstChild.style.height = '150px'; });
       var mx = Math.max.apply(null, ms.map(function(m){ return m ? m.secs : 0; })) || 1; qs('.tm', tp).innerHTML = ms.map(function(m, k){ return '<div style="display:grid;grid-template-columns:130px 1fr 80px;gap:12px;align-items:center;margin:12px 0;font-size:13px"><b>' + names[k] + '</b><div class="pbar" style="margin:0;height:16px"><i style="background:' + (k === 2 ? C.red : C.char) + ';width:' + (m ? Math.max(1.5, m.secs / mx * 100) : 0) + '%;transition:none"></i></div><span style="text-align:right;font-variant-numeric:tabular-nums">' + (m ? fmtT(m.secs) : 'n/a') + '</span></div>'; }).join('') + '<p class="note" style="font-size:12px;margin-top:10px">A single tree is nearly instant. Forests and boosting fit many trees, so they take longer. Neural networks and the GPT come next.</p>'; }
+    return { render: render };
+  } });
+
+/* ---------- test it: where trees work and where they fail ---------- */
+L2.add({ short: 'Is it useful', uses: ['endpoint', 'features', 'filters'],
+  title: 'Test it: where trees fail',
+  watch: 'A tree can only repeat values it has seen, so outside the data its line goes flat. A straight line keeps going.',
+  change: 'Click anywhere on the plot, including the shaded zones.',
+  build: function(api){
+    var plot = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>Tree against straight line, one feature</h4><canvas width="576" height="350"></canvas>');
+    var side = api.el('pn', 'left:648px;top:28px;width:284px;height:408px;overflow:hidden', '<div class="vs" style="font-size:12.5px;line-height:1.45"></div>');
+    var ctl = api.addControl('Feature <select></select>'), sel = qs('select', ctl), M = null, probe = null;
+    function fill(){ var f = activeFeats(), cur = sel.value; sel.innerHTML = f.map(function(x){ return '<option>' + x + '</option>'; }).join(''); if (f.indexOf(cur) >= 0) sel.value = cur; }
+    function fit(){
+      var feat = sel.value, idx = activeTrain(), xs = idx.map(function(i){ return D.COL[feat][i]; }), ys = idx.map(function(i){ return D.Y[i]; }), mn = Infinity, mx = -Infinity; xs.forEach(function(v){ if (v < mn) mn = v; if (v > mx) mx = v; });
+      var mxm = mean(xs), mym = mean(ys), cov = 0, vr = 0; xs.forEach(function(v, i){ cov += (v - mxm) * (ys[i] - mym); vr += (v - mxm) * (v - mxm); }); var slope = cov / (vr || 1), span = mx - mn, r = rng(5), pts = [];
+      idx.forEach(function(i){ if (r() < Math.min(1, 400 / idx.length)) pts.push(i); }); var model = fitBoost([feat], idx, 80, 0.1, 3);
+      return { feat: feat, model: model, slope: slope, icpt: mym - slope * mxm, mn: mn, mx: mx, lo: mn - 0.4 * span, hi: mx + 0.4 * span, pts: pts };
+    }
+    function tree(x){ var v = {}; v[M.feat] = x; return boostPredictVals(M.model, D.B, v); }
+    function line(x){ return M.slope * x + M.icpt; }
+    function draw(){
+      if (!M) return; var g = cv(qs('canvas', plot)), x = g.x, box = { l: 48, r: g.w - 12, t: 10, b: g.h - 40 }, lo = M.lo, hi = M.hi, ylo = D.ylo, yhi = D.yhi; axes(g, box, [lo, hi], [ylo, yhi], M.feat, unitWord(), 5);
+      var sx = function(v){ return box.l + (v - lo) / (hi - lo) * (box.r - box.l); }, sy = function(v){ return box.b - (v - ylo) / (yhi - ylo) * (box.b - box.t); };
+      x.fillStyle = 'rgba(52,55,63,.07)'; x.fillRect(box.l, box.t, sx(M.mn) - box.l, box.b - box.t); x.fillRect(sx(M.mx), box.t, box.r - sx(M.mx), box.b - box.t); x.fillStyle = C.mid; x.font = '11px Aptos, Segoe UI, sans-serif'; x.textAlign = 'center'; x.fillText('beyond the data', (box.l + sx(M.mn)) / 2, box.t + 14); x.fillText('beyond the data', (sx(M.mx) + box.r) / 2, box.t + 14);
+      x.fillStyle = 'rgba(161,177,195,.7)'; M.pts.forEach(function(i){ x.beginPath(); x.arc(sx(D.COL[M.feat][i]), sy(clamp(D.Y[i], ylo, yhi)), 2.6, 0, 6.3); x.fill(); });
+      x.save(); x.beginPath(); x.rect(box.l, box.t, box.r - box.l, box.b - box.t); x.clip();
+      x.strokeStyle = C.char; x.lineWidth = 2.4; x.setLineDash([7, 5]); x.beginPath(); x.moveTo(sx(lo), sy(line(lo))); x.lineTo(sx(hi), sy(line(hi))); x.stroke(); x.setLineDash([]);
+      x.strokeStyle = C.red; x.lineWidth = 3.2; x.beginPath(); for (var k = 0; k <= 200; k++) { var xv = lo + (hi - lo) * k / 200; k ? x.lineTo(sx(xv), sy(tree(xv))) : x.moveTo(sx(xv), sy(tree(xv))); } x.stroke(); x.restore(); x.lineWidth = 1;
+      
+      var px = probe === null ? M.hi - 0.1 * (M.hi - M.mx) : probe; x.strokeStyle = C.char; x.lineWidth = 1.4; x.beginPath(); x.moveTo(sx(px), box.t); x.lineTo(sx(px), box.b); x.stroke(); [[tree(px), C.red], [line(px), C.char]].forEach(function(d){ x.fillStyle = d[1]; x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.arc(sx(px), sy(clamp(d[0], ylo, yhi)), 6, 0, 6.3); x.fill(); x.stroke(); }); x.lineWidth = 1;
+      var inside = px >= M.mn && px <= M.mx, b = tBoost(), sc = r2(D.TEST, b.F);
+      qs('.vs', side).innerHTML = '<p style="margin:0 0 8px"><b style="color:' + C.red + '">Red line</b>: a tree. <b>Dashed line</b>: a straight line.</p><div class="lbl">At ' + esc(M.feat) + ' = ' + fmtFeat(M.feat, px) + (inside ? '' : ' (beyond the data)') + '</div><div class="nums" style="margin:4px 0 8px"><div><span style="color:' + C.red + '">Tree predicts</span><b>' + tree(px).toFixed(2) + '</b></div><div><span>Line predicts</span><b>' + line(px).toFixed(2) + '</b></div></div><p style="margin:0 0 8px">' + (inside ? 'Inside the data both follow the dots. Click in a shaded zone to see them part ways.' : 'Outside the data the tree repeats the last value it saw, while the line keeps following its slope.') + '</p>' +
+        '<div class="lbl">Measured on your options</div><p style="margin:4px 0 8px">Boosted trees on all ticked features score <b>' + sc.toFixed(2) + '</b> on unseen compounds and trained in <b>' + fmtT(b.secs) + '</b>.</p>' +
+        '<div class="lbl" style="color:#2c7a57">Use trees when</div><ul style="margin:3px 0 7px;padding-left:16px"><li>You have a table of numbers and up to a few thousand compounds.</li><li>You want a fast model that needs no rescaling and shows which features matter.</li></ul><div class="lbl" style="color:' + C.red + '">Be careful when</div><ul style="margin:3px 0 0;padding-left:16px"><li>You must predict well beyond the compounds it learned from.</li><li>A deep single tree: it memorises noise.</li></ul>';
+    }
+    (function(){ var cvEl = qs('canvas', plot); cvEl.style.cursor = 'crosshair'; cvEl.addEventListener('pointerdown', function(e){ if (!M) return; var r = cvEl.getBoundingClientRect(), px = (e.clientX - r.left) / r.width * 576; probe = clamp(M.lo + (px - 48) / (576 - 12 - 48) * (M.hi - M.lo), M.lo, M.hi); draw(); }); })();
+    sel.addEventListener('change', function(){ probe = null; M = fit(); draw(); });
+    function render(){ fill(); if (!sel.value) return; M = fit(); draw(); }
     return { render: render };
   } });
 
@@ -309,4 +348,4 @@ L2.glossary([
 ]);
 
 L2.move('Workbench', 1);
-setUses(L2, [['endpoint', 'features', 'filters', 'tdepth'], null, ['endpoint', 'features', 'filters', 'tdepth'], ['endpoint', 'features', 'filters', 'tntrees', 'tfdepth'], ['endpoint', 'features', 'filters', 'trounds', 'tlr'], ['endpoint', 'features', 'filters'], null, ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr']]);
+setUses(L2, [['endpoint', 'features', 'filters', 'tdepth'], null, ['endpoint', 'features', 'filters', 'tdepth'], ['endpoint', 'features', 'filters', 'tntrees', 'tfdepth'], ['endpoint', 'features', 'filters', 'trounds', 'tlr'], ['endpoint', 'features', 'filters'], null, ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr'], null]);

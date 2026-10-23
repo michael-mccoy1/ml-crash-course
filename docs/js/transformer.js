@@ -65,7 +65,7 @@ function gStaleText(){ return G.demo ? 'Showing the demo model (' + G.steps + ' 
 async function gptLoadDemo(){
   if (G.trained || G.busy || G.demoTried) return G.trained; G.demoTried = true; if (typeof tf === 'undefined') return false;
   try {
-    var r = await fetch('data/transformer_demo.json?v=d8'); if (!r.ok) return false; var j = await r.json(); gptSetup(); gCorpus(); if (JSON.stringify(j.vocab) !== JSON.stringify(G.vocab)) return false; if (G.trained || G.busy) return G.trained;
+    var r = await fetch('data/transformer_demo.json?v=e3'); if (!r.ok) return false; var j = await r.json(); gptSetup(); gCorpus(); if (JSON.stringify(j.vocab) !== JSON.stringify(G.vocab)) return false; if (G.trained || G.busy) return G.trained;
     if (G.P) Object.keys(G.P).forEach(function(k){ G.P[k].dispose(); }); var P = {}; Object.keys(j.params).forEach(function(k){ var q = j.params[k]; P[k] = tf.variable(tf.tensor(q.data, q.shape)); });
     var P0 = gMake(j.nl); G.emb0 = P0.tok.arraySync(); Object.keys(P0).forEach(function(k){ P0[k].dispose(); });
     G.P = P; G.NL = j.nl; G.losses = j.losses; G.steps = j.steps; G.secs = j.secs; G.params = Object.keys(P).reduce(function(a, k){ return a + P[k].size; }, 0); G.trained = true; G.demo = true; G.sig = JSON.stringify([j.nl, j.steps, gptCorpusSig()]); G.readIds = null;
@@ -86,9 +86,9 @@ L4.onOpts = function(){ gResultsBox(); var fire = function(){ clearTimeout(gTime
 /* ---------- workbench: set up the GPT, press Train ---------- */
 function gMeanAbs(name){ return tf.tidy(function(){ return G.P[name].abs().mean().dataSync()[0]; }); }
 L4.add({ short: 'Workbench', bench: true, uses: ['filters', 'glayers', 'gsteps', 'gtemp'],
-  title: 'Train the GPT and watch it learn to write SMILES',
-  watch: 'A GPT learns one skill: guess the next token. During training it is shown many molecules and its weights are adjusted so its guesses improve. Left: the model, with a bar for how large its weights have grown. Top right: its error, where lower is better. The coloured boxes show how sure it is about each token of one real molecule, and the dark box shows a molecule it writes.',
-  change: 'Drag Transformer layers, Training steps or Temperature, then press Train. Slow shows every stage, Fast skips ahead.',
+  title: 'Train the GPT and watch it learn',
+  watch: 'A GPT learns one skill: guess the next token. Left: the model and the size of its weights. Top right: its error. The coloured boxes show how sure it is. The dark box shows a molecule it writes.',
+  change: 'Set the options in the left panel, then press Train.',
   build: function(api){
     var bb = benchBar(api);
     var np = api.el('pn', 'left:28px;top:80px;width:456px;height:372px', '<h4 class="sh">The model</h4><svg viewBox="0 0 432 318" width="432" height="318"></svg>');
@@ -116,7 +116,7 @@ L4.add({ short: 'Workbench', bench: true, uses: ['filters', 'glayers', 'gsteps',
       qs('.rs', rp).textContent = 'Average confidence ' + Math.round(mean(pr) * 100) + '%. Random guessing would give about ' + (100 / G.V).toFixed(1) + '%.';
     }
     function attempt(txt){ qs('.at', rp).textContent = txt || ''; qs('.ac', rp).textContent = txt ? (syntaxOk(txt) ? 'Brackets and rings balance.' : 'Brackets or rings do not balance.') : ''; }
-    function note(){ var p = GP(); qs('.mn', mn).textContent = p.nl + ' transformer layer' + (p.nl > 1 ? 's' : '') + ', each with ' + HEADS + ' attention heads. ' + p.steps + ' training steps, each on a batch of 32 SMILES, so the model sees about ' + (p.steps * 32).toLocaleString() + ' molecules. Temperature ' + p.temp + ' sets how adventurous the sampling is once it writes.'; }
+    function note(){ var p = GP(); qs('.mn', mn).textContent = p.nl + ' transformer layer' + (p.nl > 1 ? 's' : '') + ', ' + HEADS + ' attention heads. ' + p.steps + ' training steps of 32 molecules each.'; }
     function render(){
       stack(); note(); var p = GP(); if (typeof tf === 'undefined') { api.gate(NOTF); return; }
       if (!G.trained && !G.busy && !G.demoTried) { gptLoadDemo().then(function(){ L4.refresh(); }); }
@@ -146,9 +146,9 @@ L4.add({ short: 'Workbench', bench: true, uses: ['filters', 'glayers', 'gsteps',
   } });
 
 /* ---------- G1: text becomes tokens ---------- */
-L4.add({ short: 'Tokens', title: 'A GPT reads a molecule as a sequence of tokens',
-  change: 'Press Next compound for another molecule.',
-  watch: 'A GPT works with text. A molecule can be written as text called SMILES, where letters are atoms and symbols are bonds and branches. The text is cut into small pieces called tokens, and each token gets an ID number. The model only ever sees the numbers.',
+L4.add({ short: 'Tokens', title: 'A GPT reads a molecule as tokens',
+  change: 'Press Next compound.',
+  watch: 'A molecule can be written as text called SMILES. The text is cut into pieces called tokens, and each token gets an ID number. The model only sees the numbers.',
   build: function(api){
     var cur = null;
     var sp = api.el('pn fd', 'left:28px;top:28px;width:250px;height:226px', '<h4>Compound drawn by RDKit</h4><div class="struct" style="height:186px"></div>');
@@ -168,8 +168,8 @@ L4.add({ short: 'Tokens', title: 'A GPT reads a molecule as a sequence of tokens
 function sepRatio(xy){ var cats = G.vocab.map(function(t){ return tokCat(t); }), win = 0, nw = 0, bw = 0, nb = 0; for (var i = 3; i < xy.length; i++) for (var j = i + 1; j < xy.length; j++) { var d = Math.hypot(xy[i][0] - xy[j][0], xy[i][1] - xy[j][1]); if (cats[i] === cats[j]) { win += d; nw++; } else { bw += d; nb++; } } return (win / Math.max(1, nw)) / ((bw / Math.max(1, nb)) || 1); }
 /* ---------- G2: embeddings ---------- */
 L4.add({ short: 'Embeddings', title: 'Each token becomes a list of numbers the model can adjust',
-  change: 'Switch between Untrained and Trained under the stage. Train in the workbench first to see the trained map.',
-  watch: 'Each token is turned into a list of numbers called its embedding. At first the numbers are random. Training adjusts them so that tokens used in similar ways get similar numbers. The map squashes each token\'s list onto a flat picture, so tokens that sit close together are being treated alike.',
+  change: 'Switch between Untrained and Trained below the plot.',
+  watch: 'Each token becomes a list of numbers, its embedding. Training adjusts them so similar tokens get similar numbers. On the map, close tokens are treated alike.',
   build: function(api){
     var ep = api.el('pn', 'left:28px;top:28px;width:420px;height:408px', '<h4>First 14 of the 64 numbers for each token</h4><div class="em"></div>');
     var mp = api.el('pn', 'left:468px;top:28px;width:464px;height:408px', '<h4 class="mt">Map of all tokens (PCA of their 64 numbers)</h4><canvas width="440" height="326"></canvas><div class="legend ml" style="font-size:11px;margin-top:4px"></div>');
@@ -191,22 +191,28 @@ L4.add({ short: 'Embeddings', title: 'Each token becomes a list of numbers the m
   } });
 
 /* ---------- G3: the transformer stack ---------- */
-L4.add({ short: 'The stack', title: 'A transformer repeats attention and a small network',
-  change: 'Drag Transformer layers in the options. Walk through lights up each stage.',
-  watch: 'The model is a stack of identical blocks. In each block, every token looks back at the tokens before it (this is called attention) and then each token is processed on its own. Stacking blocks lets later blocks build on what earlier ones found. The parameter count is the total number of numbers the model has to learn.',
+L4.add({ short: 'The stack', title: 'The model is a stack of blocks',
+  change: 'Drag Transformer layers in the left panel. Press Walk through.',
+  watch: 'Read the stack from the bottom. In each block every token looks back at earlier tokens (attention), then is processed on its own.',
   build: function(api){
-    var dp = api.el('pn', 'left:28px;top:28px;width:904px;height:408px', '<svg viewBox="0 0 880 380" width="880" height="380"></svg>');
+    var dp = api.el('pn', 'left:28px;top:28px;width:904px;height:410px', '<svg viewBox="0 0 880 384" width="880" height="384"></svg>');
     function per(){ return DM * 3 * DM + 3 * DM + DM * DM + DM + DM * 4 * DM + 4 * DM + 4 * DM * DM + DM + 4 * DM; }
     function draw(active){
-      gptSetup(); var N = GP().nl, V = G.V, s = '<defs><marker id="gar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="' + C.red + '"/></marker></defs>', bh = 52, gap = 12, top = 20, blocks = N, total = V * DM + TLEN * DM + N * per() + 2 * DM + DM * V;
-      function box(x, y, w, h, title, sub, hot){ s += '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="6" fill="' + (hot ? '#FDECEC' : '#fff') + '" stroke="' + (hot ? C.red : C.silver) + '" stroke-width="' + (hot ? 2.5 : 1) + '"/><text x="' + (x + 12) + '" y="' + (y + 22) + '" font-size="13" font-weight="700" fill="' + C.char + '">' + title + '</text>' + (sub ? '<text x="' + (x + 12) + '" y="' + (y + 40) + '" font-size="11" fill="' + C.mid + '">' + sub + '</text>' : ''); }
-      function arrow(x1, y1, x2, y2){ s += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + C.red + '" stroke-width="2" marker-end="url(#gar)"/>'; }
-      var cx = 40, w = 360; box(cx, 316, w, 48, 'Token IDs and positions', 'the text so far, as numbers', active === 'in'); box(cx, 252, w, 48, 'Embeddings', V + ' tokens, ' + DM + ' numbers each, plus position', active === 'emb'); arrow(cx + w / 2, 314, cx + w / 2, 302); arrow(cx + w / 2, 250, cx + w / 2, 238);
-      var y = 238; for (var b = 0; b < blocks; b++) { var by = 238 - (b + 1) * (2 * 40 + 18) + 40; var yb = 238 - (b + 1) * 112 + 18; box(cx, yb + 52, w, 40, 'Block ' + (b + 1) + ': feed-forward', DM + ' to ' + 4 * DM + ' to ' + DM + ' numbers, per token', active === 'ff' + b); box(cx, yb, w, 44, 'Block ' + (b + 1) + ': attention', HEADS + ' heads, each token looks back', active === 'at' + b); arrow(cx + w / 2, yb + 50, cx + w / 2, yb + 46); arrow(cx + w / 2, yb + 98, cx + w / 2, yb + 94); }
-      var topY = 238 - blocks * 112 + 18; if (topY < 36) topY = 36; box(cx, 4, w, 28, 'Next-token odds: ' + V + ' probabilities', '', active === 'out'); arrow(cx + w / 2, 36, cx + w / 2, 33);
-      var px = 450; s += '<text x="' + px + '" y="40" font-size="12" font-weight="700" fill="' + C.char + '">This design</text>'; var facts = [['Transformer layers', N], ['Attention heads per layer', HEADS], ['Numbers per token', DM], ['Vocabulary', V], ['Parameters in total', total.toLocaleString()]]; facts.forEach(function(f, i){ s += '<text x="' + px + '" y="' + (70 + i * 28) + '" font-size="13" fill="' + C.mid + '">' + f[0] + '</text><text x="' + (px + 280) + '" y="' + (70 + i * 28) + '" font-size="14" font-weight="700" fill="' + (i === 4 ? C.red : C.char) + '" text-anchor="end">' + f[1] + '</text><line x1="' + px + '" y1="' + (76 + i * 28) + '" x2="' + (px + 280) + '" y2="' + (76 + i * 28) + '" stroke="' + C.silver + '"/>'; });
-      var tx = 450, ty = 230; s += '<text x="' + tx + '" y="' + ty + '" font-size="12" font-weight="700" fill="' + C.char + '">What each part does</text>'; [['Attention', 'Each token weighs the earlier tokens by relevance and mixes in what matters.'], ['Feed-forward', 'A small network processes each token separately.'], ['Repeat', 'Stacking blocks lets later blocks build on what earlier ones found.']].forEach(function(r, i){ s += '<text x="' + tx + '" y="' + (ty + 26 + i * 40) + '" font-size="12.5" font-weight="700" fill="' + C.red + '">' + r[0] + '</text><text x="' + tx + '" y="' + (ty + 42 + i * 40) + '" font-size="12" fill="' + C.char + '">' + r[1] + '</text>'; });
-      qs('svg', dp).innerHTML = s; }
+      gptSetup(); var N = GP().nl, V = G.V, s = '', H = 384, items = [{ k: 'in', t: 'Token IDs and positions', u: 'the text so far, as numbers' }, { k: 'emb', t: 'Embeddings', u: V + ' tokens, ' + DM + ' numbers each, plus position' }];
+      for (var b = 0; b < N; b++) { items.push({ k: 'at' + b, t: 'Block ' + (b + 1) + ': attention', u: HEADS + ' heads, each token looks back' }); items.push({ k: 'ff' + b, t: 'Block ' + (b + 1) + ': feed-forward', u: DM + ' to ' + 4 * DM + ' to ' + DM + ' numbers, per token' }); }
+      items.push({ k: 'out', t: 'Next-token odds', u: V + ' probabilities' });
+      var n = items.length, gap = 14, bh = Math.min(48, Math.floor((H - 8) / n) - gap), total = V * DM + TLEN * DM + N * per() + 2 * DM + DM * V, x = 40, w = 380;
+      items.forEach(function(it, i){
+        var y = H - 4 - (i + 1) * bh - i * gap, hot = active === it.k;
+        s += '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + bh + '" rx="6" fill="' + (hot ? '#FDECEC' : '#fff') + '" stroke="' + (hot ? C.red : C.silver) + '" stroke-width="' + (hot ? 2.5 : 1) + '"/><text x="' + (x + 12) + '" y="' + (y + 17) + '" font-size="13" font-weight="700" fill="' + C.char + '">' + it.t + '</text>' + (bh >= 34 ? '<text x="' + (x + 12) + '" y="' + (y + 32) + '" font-size="11" fill="' + C.mid + '">' + it.u + '</text>' : '');
+        if (i < n - 1) s += '<path d="M' + (x + w / 2) + ' ' + (y - 1) + 'L' + (x + w / 2) + ' ' + (y - gap + 4) + '" stroke="' + C.red + '" stroke-width="2"/><path d="M' + (x + w / 2 - 5) + ' ' + (y - 1 - 5) + 'L' + (x + w / 2) + ' ' + (y - 1) + 'L' + (x + w / 2 + 5) + ' ' + (y - 1 - 5) + '" stroke="' + C.red + '" stroke-width="2" fill="none"/>';
+      });
+      var px = 470; s += '<text x="' + px + '" y="30" font-size="12" font-weight="700" fill="' + C.char + '">This design</text>';
+      [['Transformer layers', N], ['Attention heads per layer', HEADS], ['Numbers per token', DM], ['Vocabulary', V], ['Parameters in total', total.toLocaleString()]].forEach(function(f, i){ s += '<text x="' + px + '" y="' + (62 + i * 28) + '" font-size="13" fill="' + C.mid + '">' + f[0] + '</text><text x="' + (px + 300) + '" y="' + (62 + i * 28) + '" font-size="14" font-weight="700" fill="' + (i === 4 ? C.red : C.char) + '" text-anchor="end">' + f[1] + '</text><line x1="' + px + '" y1="' + (69 + i * 28) + '" x2="' + (px + 300) + '" y2="' + (69 + i * 28) + '" stroke="' + C.silver + '"/>'; });
+      var ty = 236; s += '<text x="' + px + '" y="' + ty + '" font-size="12" font-weight="700" fill="' + C.char + '">What each part does</text>';
+      [['Attention', 'Each token weighs the earlier tokens by relevance and mixes in what matters.'], ['Feed-forward', 'A small network then processes each token separately.'], ['Repeat', 'Stacking blocks lets later blocks build on what earlier ones found.']].forEach(function(r, i){ s += '<text x="' + px + '" y="' + (ty + 28 + i * 44) + '" font-size="12.5" font-weight="700" fill="' + C.red + '">' + r[0] + '</text><text x="' + px + '" y="' + (ty + 45 + i * 44) + '" font-size="12" fill="' + C.char + '">' + r[1] + '</text>'; });
+      qs('svg', dp).innerHTML = s;
+    }
     function render(){ draw(''); }
     async function play(tok){ var N = GP().nl; draw('in'); await api.beat('The text so far enters as token IDs, each with a position.', 2600); draw('emb'); await api.beat('Embeddings turn IDs into numbers. This is where the model reads the text.', 2600);
       for (var b = 0; b < N; b++) { draw('at' + b); await api.beat('Block ' + (b + 1) + ' attention: every token looks back at earlier tokens and decides which matter.', 3000); draw('ff' + b); await api.beat('Block ' + (b + 1) + ' feed-forward: a small network processes each token.', 2600); }
@@ -214,10 +220,9 @@ L4.add({ short: 'The stack', title: 'A transformer repeats attention and a small
     return { render: render, play: play };
   } });
 
-/* ---------- G5: attention ---------- */
 L4.add({ short: 'Attention', title: 'Attention shows which earlier tokens a token looks at',
-  change: 'Click any token to see where it looks. Change the molecule, layer or head under the stage: different heads learn different habits.',
-  watch: 'When the model reads a token, it decides how much to look at each earlier token. The bars show those amounts for the token you select, and they add up to 100%. A taller bar means that earlier token matters more. Tokens after the selected one are greyed out because the model cannot see the future.',
+  change: 'Click any token. Change the layer or head below the plot.',
+  watch: 'The model decides how much to look at each earlier token. The bars show that for the selected token and add up to 100%. Later tokens are greyed because it cannot see them.',
   build: function(api){
     var hp = api.el('pn', 'left:28px;top:28px;width:904px;height:330px;overflow:hidden', '<div class="ac" style="display:flex;flex-wrap:wrap;gap:6px 5px"></div>');
     var tp = api.el('pn', 'left:28px;top:370px;width:904px;height:70px;display:flex;align-items:center;font-size:14px;line-height:1.45', '<div class="an"></div>');
@@ -240,8 +245,8 @@ L4.add({ short: 'Attention', title: 'Attention shows which earlier tokens a toke
 
 /* ---------- G6: next token and temperature ---------- */
 L4.add({ short: 'Next token', title: 'The model outputs odds, and temperature reshapes them',
-  change: 'Edit the SMILES start, drag Temperature under the stage, or press Auto-write.',
-  watch: 'After reading some text, the model gives every possible next token a probability. Temperature controls how it picks. A low temperature almost always picks the most likely token, which is safe but repetitive. A high temperature gives unlikely tokens a real chance, which is more varied but makes more mistakes.',
+  change: 'Drag Temperature below the plot, or press Auto-write.',
+  watch: 'The model gives every possible next token a probability. Low temperature picks the likeliest, which is safe and repetitive. High temperature gives unlikely tokens a chance.',
   build: function(api){
     var ip = api.el('pn', 'left:28px;top:28px;width:440px;height:170px', '<h4>SMILES so far</h4><input type="text" class="pf" spellcheck="false" style="font-family:Cascadia Mono,Consolas,monospace" value="CC(=O)Nc1ccc"><div class="pr" style="margin-top:10px"></div>');
     var wp = api.el('pn', 'left:28px;top:210px;width:440px;height:226px', '<h4>Written by sampling</h4><div class="wt smi" style="min-height:60px;background:#34373F;color:#fff;border-radius:6px;padding:10px;font-size:12.5px"></div><div class="note" style="font-size:12px;color:#6B7280;margin-top:8px">Press Auto-write to add tokens one at a time, each drawn from the odds on the right.</div>');
@@ -262,8 +267,8 @@ L4.add({ short: 'Next token', title: 'The model outputs odds, and temperature re
 
 /* ---------- G7: generate and check with RDKit ---------- */
 L4.add({ short: 'Generate and check', title: 'Generate molecules and let RDKit check them',
-  change: 'Press Generate under the stage. The first time, RDKit downloads (about 7 MB). Change Temperature and generate again.',
-  watch: 'The GPT writes molecules as text. Each card is one it wrote. RDKit, a chemistry toolkit, checks whether the text is a real, valid molecule and draws it if so. Valid molecules have a red outline.',
+  change: 'Press Generate below the plot.',
+  watch: 'Each card is a molecule the GPT wrote. RDKit checks whether it is valid and draws it. Valid ones have a red outline.',
   auto: false,
   build: function(api){
     var gp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<h4>Twelve generated molecules</h4><div class="mol3 gridm" style="margin-top:4px"></div>');
@@ -294,5 +299,41 @@ L4.glossary([
 ]);
 
 L4.add(filterStepDef('gpt'));
+
+/* ---------- test it: can a GPT design molecules you can trust? ---------- */
+var GV = { key: null, res: null, corpus: null };
+L4.add({ short: 'Is it useful', uses: ['gtemp', 'glayers', 'gsteps'],
+  title: 'Test it: can a GPT design molecules?',
+  watch: 'The GPT writes molecules at three temperatures and RDKit judges them. Valid means RDKit accepts it. New means it was not in the training molecules.',
+  change: 'Press Run test below the plot.',
+  build: function(api){
+    var cp = api.el('pn', 'left:28px;top:28px;width:420px;height:408px', '<h4>Share of what it wrote, by temperature</h4><canvas width="396" height="300"></canvas><div class="note" style="font-size:12px;margin-top:4px">Grey: accepted by RDKit. Red: accepted and new.</div>');
+    var gp = api.el('pn', 'left:468px;top:28px;width:464px;height:250px;overflow:hidden', '<h4>Some valid molecules it wrote</h4><div class="gm" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px"></div>');
+    var sp = api.el('pn', 'left:468px;top:290px;width:464px;height:146px;overflow:hidden', '<div class="vs" style="font-size:12.5px;line-height:1.4"></div>');
+    var ctl = api.addControl('<button type="button" class="btn sm" data-run>Run test</button> <span class="note" style="font-size:12px">Writes about 90 molecules. It takes a moment.</span>'), busy = false, TEMPS = [0.4, 0.8, 1.2], PER = 30;
+    function sig(){ return JSON.stringify([G.sig, G.params, G.demo ? 'demo' : G.secs]); }
+    function show(r){
+      var g = cv(qs('canvas', cp)), x = g.x, box = { l: 40, r: g.w - 8, t: 16, b: g.h - 44 }, gw = (box.r - box.l) / TEMPS.length;
+      x.strokeStyle = C.silver; x.fillStyle = C.mid; x.textAlign = 'right'; x.font = '11px Aptos, Segoe UI, sans-serif'; for (var k = 0; k <= 4; k++) { var y = box.b - k / 4 * (box.b - box.t); x.beginPath(); x.moveTo(box.l, y); x.lineTo(box.r, y); x.stroke(); x.fillText((k * 25) + '%', box.l - 5, y + 4); }
+      r.rows.forEach(function(w, i){ var bx = box.l + i * gw + gw * 0.14, bw = gw * 0.34;[[w.valid / w.n, C.bg], [w.novel / w.n, C.red]].forEach(function(b, j){ var hh = b[0] * (box.b - box.t); x.fillStyle = b[1]; x.fillRect(bx + j * (bw + 4), box.b - hh, bw, hh); x.fillStyle = C.char; x.font = '700 12px Aptos, Segoe UI, sans-serif'; x.textAlign = 'center'; x.fillText(Math.round(b[0] * 100) + '%', bx + j * (bw + 4) + bw / 2, box.b - hh - 5); }); x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.textAlign = 'center'; x.fillText('temperature ' + w.t, box.l + i * gw + gw / 2, box.b + 18); });
+      qs('.gm', gp).innerHTML = r.samples.map(function(s){ return '<div class="molc ok" style="padding:2px"><div class="struct" style="height:70px">' + s + '</div></div>'; }).join('') || '<span class="note">No valid molecule yet. Train the GPT for more steps.</span>';
+      var mid = r.rows[1];
+      qs('.vs', sp).innerHTML = '<p style="margin:0 0 6px">At temperature ' + mid.t + ', RDKit accepted <b>' + mid.valid + ' of ' + mid.n + '</b> and <b>' + mid.novel + '</b> were new. A GPT proposes candidates. Every one still needs a check for stability, for whether it can be made, and for the property you care about.</p><div class="lbl" style="color:#2c7a57">Use a GPT when</div><span>you want many new structures in a known style and can filter them afterwards.</span> <div class="lbl" style="color:' + C.red + ';margin-top:4px">Be careful when</div><span>you need every output valid, or a predicted value such as clearance.</span>';
+    }
+    async function run(){
+      if (busy) return; if (!(await gReady(api))) return; if (GV.res && GV.key === sig()) { show(GV.res); return; } busy = true; qs('[data-run]', ctl).disabled = true;
+      try {
+        api.busy('Loading RDKit'); await loadRDKit(); gptSetup(); if (!GV.corpus) { GV.corpus = {}; G.smiles.forEach(function(s){ var m = RDK.get_mol(s); if (m && m.is_valid()) GV.corpus[m.get_smiles()] = 1; if (m) m.delete(); }); }
+        var rows = [], samples = [];
+        for (var t = 0; t < TEMPS.length; t++) { var seen = {}, valid = 0, novel = 0; for (var k = 0; k < PER; k++) { api.busy('Writing molecules at temperature ' + TEMPS[t] + ': ' + (k + 1) + ' of ' + PER); var txt = await gWrite([1], TEMPS[t], 46), m = RDK.get_mol(txt); if (m && m.is_valid()) { var can = m.get_smiles(); valid++; if (!GV.corpus[can] && !seen[can]) novel++; seen[can] = 1; if (t === 1 && samples.length < 6) { var svg = rdkSvg(txt, 200, 90); if (svg) samples.push(svg); } } if (m) m.delete(); } rows.push({ t: TEMPS[t], n: PER, valid: valid, novel: novel }); }
+        GV.res = { rows: rows, samples: samples }; GV.key = sig(); api.idle(); show(GV.res);
+      } catch (e) { console.error(e); api.idle(); qs('.vs', sp).innerHTML = '<span style="color:' + C.red + '">' + esc(e.message) + '</span>'; }
+      busy = false; qs('[data-run]', ctl).disabled = false;
+    }
+    qs('[data-run]', ctl).addEventListener('click', run);
+    function render(){ if (GV.res && GV.key === sig()) show(GV.res); else { cv(qs('canvas', cp)); qs('.gm', gp).innerHTML = ''; qs('.vs', sp).innerHTML = '<span class="note">Press Run test to have the GPT write molecules and let RDKit judge them.</span>'; } }
+    return { render: render };
+  } });
+
 L4.move('Workbench', 3);
-setUses(L4, [[], ['glayers', 'gsteps'], ['glayers'], null, ['glayers', 'gsteps'], ['gtemp', 'glayers', 'gsteps'], ['gtemp', 'glayers', 'gsteps'], null]);
+setUses(L4, [[], ['glayers', 'gsteps'], ['glayers'], null, ['glayers', 'gsteps'], ['gtemp', 'glayers', 'gsteps'], ['gtemp', 'glayers', 'gsteps'], null, null]);
