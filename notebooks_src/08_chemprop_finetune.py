@@ -8,7 +8,7 @@
 # * **Frozen encoder**: start from the logD model, keep the message-passing layers fixed, and train only the small network on top (`--freeze-encoder`).
 # * **Full fine-tuning**: start from the logD model and let every weight move (`--checkpoint` alone).
 #
-# The notebook repeats each setting for several numbers of labelled HLM compounds, because pre-training matters most when labels are scarce. CPU runs take about 15 minutes in total.
+# The notebook repeats each setting for several numbers of labelled HLM compounds, because pre-training is meant to help when labels are scarce. Many small runs are needed, so use a GPU runtime in Colab if you have one.
 
 # %%
 import os, sys, subprocess, glob, json, time

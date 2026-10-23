@@ -65,7 +65,7 @@ function gStaleText(){ return G.demo ? 'Showing the demo model (' + G.steps + ' 
 async function gptLoadDemo(){
   if (G.trained || G.busy || G.demoTried) return G.trained; G.demoTried = true; if (typeof tf === 'undefined') return false;
   try {
-    var r = await fetch('data/gpt_demo.json?v=d3'); if (!r.ok) return false; var j = await r.json(); gptSetup(); gCorpus(); if (JSON.stringify(j.vocab) !== JSON.stringify(G.vocab)) return false; if (G.trained || G.busy) return G.trained;
+    var r = await fetch('data/gpt_demo.json?v=d4'); if (!r.ok) return false; var j = await r.json(); gptSetup(); gCorpus(); if (JSON.stringify(j.vocab) !== JSON.stringify(G.vocab)) return false; if (G.trained || G.busy) return G.trained;
     if (G.P) Object.keys(G.P).forEach(function(k){ G.P[k].dispose(); }); var P = {}; Object.keys(j.params).forEach(function(k){ var q = j.params[k]; P[k] = tf.variable(tf.tensor(q.data, q.shape)); });
     var P0 = gMake(j.nl); G.emb0 = P0.tok.arraySync(); Object.keys(P0).forEach(function(k){ P0[k].dispose(); });
     G.P = P; G.NL = j.nl; G.losses = j.losses; G.steps = j.steps; G.secs = j.secs; G.params = Object.keys(P).reduce(function(a, k){ return a + P[k].size; }, 0); G.trained = true; G.demo = true; G.sig = JSON.stringify([j.nl, j.steps, gptCorpusSig()]); G.readIds = null;
@@ -73,7 +73,9 @@ async function gptLoadDemo(){
     gResultsBox(); if (LESSONS.gpt && LESSONS.gpt.built) LESSONS.gpt.refresh(); if (LESSONS.pre && LESSONS.pre.built) LESSONS.pre.refresh(); return true;
   } catch (e) { console.error(e); return false; }
 }
+var NOTF = 'TensorFlow.js did not load in this browser, so the GPT cannot run here.';
 async function gReady(api){
+  if (typeof tf === 'undefined') { if (api) api.gate(NOTF); return false; }
   if (!G.trained) await gptLoadDemo();
   if (G.trained) { if (api) { api.idle(); api.stale(gStale() ? gStaleText() : ''); } return true; }
   if (api) api.gate('Train the GPT in the workbench first.'); return false;
@@ -116,7 +118,7 @@ L4.add({ short: 'Workbench', bench: true, uses: ['filters', 'glayers', 'gsteps',
     function attempt(txt){ qs('.at', rp).textContent = txt || ''; qs('.ac', rp).textContent = txt ? (syntaxOk(txt) ? 'Brackets and rings balance.' : 'Brackets or rings do not balance.') : ''; }
     function note(){ var p = GP(); qs('.mn', mn).textContent = p.nl + ' transformer layer' + (p.nl > 1 ? 's' : '') + ', each with ' + HEADS + ' attention heads. ' + p.steps + ' training steps, each on a batch of 32 SMILES, so the model sees about ' + (p.steps * 32).toLocaleString() + ' molecules. Temperature ' + p.temp + ' sets how adventurous the sampling is once it writes.'; }
     function render(){
-      stack(); note(); var p = GP();
+      stack(); note(); var p = GP(); if (typeof tf === 'undefined') { api.gate(NOTF); return; }
       if (!G.trained && !G.busy && !G.demoTried) { gptLoadDemo().then(function(){ L4.refresh(); }); }
       if (G.trained) { lossDraw(); readViz(); attempt(G.last || ''); api.stale(gStale() ? gStaleText() : ''); bb.say(G.demo ? 'Demo model: ' + G.steps + ' steps, final error ' + G.losses[G.losses.length - 1].toFixed(2) + '. Press Train to train your own.' : 'Final error ' + G.losses[G.losses.length - 1].toFixed(2) + '. Training took ' + fmtT(G.secs) + '.'); }
       else { lossDraw(0); if (!G.busy) { if (!G.P || G.NL !== p.nl) gInit(p.nl); readViz(); stack(); if (!writing) { writing = true; gWrite([1], 1.0, 30).then(function(t){ writing = false; if (!G.trained && !running) attempt(t); }); } } api.stale(''); bb.say('Ready. Press Train.'); }
@@ -184,7 +186,7 @@ L4.add({ short: 'Embeddings', title: 'Each token becomes a list of numbers the m
     function legend(){ qs('.ml', mp).innerHTML = Object.keys(CATC).filter(function(k){ return k !== 'special'; }).map(function(k){ return '<span style="margin-right:10px"><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + CATC[k] + ';margin-right:4px"></i>' + k + '</span>'; }).join(''); }
     function show(trained){ strips(trained); curXY = pca(matrix(trained)); mapDraw(curXY); legend(); qs('.mt', mp).textContent = trained && G.trained ? 'Map of all tokens after training' : 'Map of all tokens before training'; }
     sel.addEventListener('change', function(){ api.tok++; show(sel.value === '1'); });
-    function render(){ gptSetup(); if (!G.P) gInit(+$('glayers').value); show(sel.value === '1' && G.trained); }
+    function render(){ if (typeof tf === 'undefined') { api.gate(NOTF); return; } gptSetup(); if (!G.P) gInit(+$('glayers').value); show(sel.value === '1' && G.trained); }
     return { render: render };
   } });
 
@@ -273,7 +275,7 @@ L4.add({ short: 'Generate and check', title: 'Generate molecules and let RDKit c
         var valid = out.map(function(s){ return rdkValid(s); }), seen = {}; G.smiles.forEach(function(s){ seen[s] = 1; });
         qs('.gridm', gp).innerHTML = out.map(function(s, i){ var svg = valid[i] ? rdkSvg(s, 200, 130) : null; return '<div class="molc ' + (valid[i] ? 'ok' : 'bad') + '" style="animation-delay:' + (ANIM ? i * 80 : 0) + 'ms"><div class="struct" style="height:84px">' + (svg || '<div style="height:84px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#6B7280;padding:4px;word-break:break-all">' + esc(s.slice(0, 40)) + '</div>') + '</div><small>' + (valid[i] ? 'valid' : 'RDKit rejects it') + '</small></div>'; }).join('');
         var nv = valid.filter(Boolean).length, uniq = {}; out.forEach(function(s, i){ if (valid[i]) uniq[s] = 1; }); var nu = Object.keys(uniq).length, nn = Object.keys(uniq).filter(function(s){ return !seen[s]; }).length;
-        sq.innerHTML = '<div class="nums" style="font-size:13px"><div><span>Temperature</span><b>' + temp.toFixed(1) + '</b></div><div><span>Valid by RDKit</span><b style="color:' + C.red + '">' + nv + ' of 12</b></div><div><span>Passing the simple bracket check</span><b>' + out.filter(syntaxOk).length + ' of 12</b></div><div><span>Unique among valid</span><b>' + nu + '</b></div><div><span>New (not in training)</span><b>' + nn + '</b></div></div><p style="font-size:12px;margin-top:12px;color:#4a4f5a">A tiny model trained for under a minute writes text that looks like SMILES but is rarely valid. More training steps raise the share. Valences, aromatic rings and stereochemistry are checked by RDKit, never learned for certain by the GPT.</p>'; progress(1); }
+        sq.innerHTML = '<div class="nums" style="font-size:13px"><div><span>Temperature</span><b>' + temp.toFixed(1) + '</b></div><div><span>Valid by RDKit</span><b style="color:' + C.red + '">' + nv + ' of 12</b></div><div><span>Passing the simple bracket check</span><b>' + out.filter(syntaxOk).length + ' of 12</b></div><div><span>Unique among valid</span><b>' + nu + '</b></div><div><span>New (not in training)</span><b>' + nn + '</b></div></div><p style="font-size:12px;margin-top:12px;color:#4a4f5a">A tiny model trained briefly writes text that looks like SMILES but is rarely valid. More training steps raise the share. Valences, aromatic rings and stereochemistry are checked by RDKit, never learned for certain by the GPT.</p>'; progress(1); }
       catch (e) { sq.innerHTML = '<span style="color:' + C.red + '">' + esc(e.message) + '</span>'; console.error(e); }
       busy = false; btn.disabled = false; }
     qs('[data-go]', ctl).addEventListener('click', function(){ api.tok++; api.clearTexts(); go().then(function(){ api.cap('A molecule counts as valid only if RDKit can parse it. The GPT only learned patterns of text.'); }); });

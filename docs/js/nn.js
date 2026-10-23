@@ -87,7 +87,7 @@ async function nnTrain(o){
 }
 async function nnReady(api){
   if (!NN.m) {
-    if (api) api.busy('Training a starter network with the default options (a few seconds)');
+    if (api) api.busy('Training a starter network with the default options');
     if (!NN.starting) NN.starting = (async function(){ await waitRelease(); await tick(); await nnTrain({ keep: true }); NN.starter = true; })();
     try { await NN.starting; } finally { NN.starting = null; } if (api) api.idle(); if (!NN.m) return false;
   }
