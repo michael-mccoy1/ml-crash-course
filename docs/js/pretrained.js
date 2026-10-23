@@ -88,7 +88,7 @@ var MOTIFS = [['Amide', 'C(=O)N'], ['Carboxylic acid', 'C(=O)[OX2H1]'], ['Ester'
 function hlSvg(smi, atoms, bonds, w, h){ var m = RDK.get_mol(smi); if (!m || !m.is_valid()) { if (m) m.delete(); return ''; } var o = Object.assign({}, RDK_DRAW, { width: w, height: h, atoms: atoms || [], bonds: bonds || [], highlightColour: [0.88, 0.14, 0.16] }), svg = m.get_svg_with_highlights(JSON.stringify(o)); m.delete(); return svg.replace(/<\?xml[^>]*\?>/, '').replace(/width='\d+px' height='\d+px'/, "width='100%' height='100%'"); }
 function motifMatch(smi, smarts){ var m = RDK.get_mol(smi), q = RDK.get_qmol(smarts), r = null; try { var j = JSON.parse(m.get_substruct_match(q)); if (j && j.atoms && j.atoms.length) r = j; } catch (e) { r = null; } if (m) m.delete(); if (q) q.delete(); return r; }
 L6.add({ short: 'Which groups are present', uses: ['endpoint'],
-  title: 'A second blank to fill: which chemical groups does the molecule contain',
+  title: 'Which chemical groups does the molecule contain',
   watch: 'A functional group is a recognisable piece of a molecule, such as an amide. A computer finds groups from the structure alone, so no experiment is needed.',
   change: 'Click a group marked present to highlight it.',
   build: function(api){
@@ -286,10 +286,10 @@ L6.add({ short: 'Fine-tune Chemprop', uses: ['plabels'],
 /* ---------- step 6: using it in a project ---------- */
 L6.add({ short: 'Using it in practice', uses: [],
   title: 'How a pre-trained model is used on your own data',
-  watch: 'Nobody trains a model like GROVER for one project. Take the published weights and add a little of your own labelled data.',
+  watch: 'A model like GROVER is trained once by its authors. You take the published weights and add your own labelled data.',
   change: 'Read the four stages.',
   build: function(api){
-    var st = [['1  Get the pre-trained model', 'Download the weights and code that the authors published. This is the expensive part, and it is already done.'], ['2  Describe your compounds', 'Run your SMILES through the model to get one vector per compound. These vectors replace, or sit next to, descriptors such as logP.'], ['3  Learn from your labels', 'Fit a small model on the vectors, or fine-tune the network itself. Fewer labels and a gentler learning rate favour keeping the pre-trained weights nearly fixed.'], ['4  Test it fairly', 'Use the same scaffold split and the same unseen compounds as your baseline, so the comparison with descriptors and trees is honest.']];
+    var st = [['1  Get the pre-trained model', 'Download the weights and code that the authors published. This is the expensive part, and it is already done.'], ['2  Describe your compounds', 'Run your SMILES through the model to get one vector per compound. These vectors replace, or sit next to, descriptors such as logP.'], ['3  Learn from your labels', 'Fit a small model on the vectors, or fine-tune the network itself. Fewer labels and a gentler learning rate favour keeping the pre-trained weights nearly fixed.'], ['4  Test it', 'Use the same scaffold split and the same unseen compounds as your baseline.']];
     st.forEach(function(s, i){ api.el('pn', 'left:' + (28 + i * 227) + 'px;top:28px;width:214px;height:200px', '<h4 style="color:' + C.red + '">' + s[0] + '</h4><div style="font-size:13px;line-height:1.5;margin-top:4px">' + s[1] + '</div>'); });
     api.el('pn', 'left:28px;top:244px;width:904px;height:192px', '<h4>Cautions</h4><ul style="margin:6px 0 0;padding-left:18px;font-size:13px;line-height:1.55"><li>A bigger pre-trained model does not guarantee a better score on your endpoint. Compare it with a descriptor model on the same split before adopting it.</li><li>The pre-training molecules decide what the model knows. A model that never saw your chemistry may transfer poorly.</li><li>These models need Python and usually a GPU. They do not run in this page.</li><li>The reference is Rong et al., Self-Supervised Graph Transformer on Large-Scale Molecular Data, NeurIPS 2020 (arXiv 2007.02835).</li></ul>');
     return { render: function(){} };

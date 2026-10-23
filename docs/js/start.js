@@ -98,7 +98,7 @@ L0.add({ short: 'Where features come from', title: 'Features are sums over a mol
   } });
 
 /* ---------- Step 3: the unseen set ---------- */
-L0.add({ short: 'The unseen set', title: 'Hold compounds back to test a model honestly',
+L0.add({ short: 'The unseen set', title: 'Hold compounds back to test a model',
   change: 'Switch between random and scaffold split below the picture.',
   watch: 'Some compounds are held back to test the model: the unseen set. A random split leaves close relatives of them in training. A scaffold is a molecule\'s ring skeleton, and a scaffold split removes whole families that share one.',
   build: function(api){

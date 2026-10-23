@@ -214,7 +214,7 @@ L3.add({ short: 'One neuron', title: 'A neuron adds up its inputs',
 /* ---------- N2: layers and units ---------- */
 L3.add({ short: 'Layers and neurons', title: 'More layers and neurons mean more weights',
   change: 'Drag Hidden layers and Neurons per layer in the options panel.',
-  watch: 'More layers and neurons mean more weights. The table counts every weight and bias. Dashed circles are neurons switched off by dropout, explained in a later step.',
+  watch: 'The table counts every weight and bias. Dashed circles are neurons switched off by dropout, explained in a later step.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<svg viewBox="0 0 620 380" width="620" height="380"></svg>');
     var cp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>Parameters to learn</h4><div class="big pc" style="color:' + C.red + '">0</div><div class="note" style="font-size:12px;color:#6B7280;margin-bottom:8px">weights and biases</div><div class="pl" style="font-size:12px"></div>');

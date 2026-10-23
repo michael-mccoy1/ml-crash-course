@@ -8,7 +8,7 @@ function nnAct(i){
 /* ---------- N6: one compound through the trained network ---------- */
 L3.add({ short: 'One compound', title: 'Follow one compound through the trained network',
   change: 'Press Next compound.',
-  watch: 'Follow one compound through a trained network. Darker red means a neuron is more active.',
+  watch: 'Darker red means a neuron is more active.',
   build: function(api){
     var cur = null, act = null;
     var sp = api.el('pn', 'left:28px;top:28px;width:230px;height:226px', '<h4>Compound</h4><div class="struct" style="height:186px"></div>');
@@ -110,7 +110,7 @@ L3.add({ short: 'Is it useful', uses: ['endpoint', 'features', 'filters', 'nlaye
   build: function(api){
     var cp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>Score on unseen compounds, by number of labelled compounds</h4><canvas width="576" height="330"></canvas><div class="note" style="font-size:12px;margin-top:4px">Dark: boosted trees. Red: neural network.</div>');
     var sp = api.el('pn', 'left:648px;top:28px;width:284px;height:408px;overflow:auto', '<div class="vs" style="font-size:12px;line-height:1.4"></div>');
-    var ctl = api.addControl('<button type="button" class="btn sm" data-run>Run test</button> <span class="note" style="font-size:12px">Trains a few models. It takes a moment.</span>'), busy = false;
+    var ctl = api.addControl('<button type="button" class="btn sm" data-run>Run test</button> '), busy = false;
     function key(){ var p = NP(); return JSON.stringify(['nnv', EP, activeFeats(), filtKey(), p.layers, p.units, p.drop, p.lr]); }
     function show(res){
       var T = res.map(function(r){ return [r.n, r.tree]; }), N = res.map(function(r){ return [r.n, r.nn]; });
