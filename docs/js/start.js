@@ -108,14 +108,14 @@ L0.add({ short: 'Where features come from', title: 'Features are sums over a mol
     return { render: render, play: play };
   } });
 
-/* ---------- Step 3: the unseen set ---------- */
-L0.add({ short: 'The unseen set', title: 'Hold compounds back to test a model',
+/* ---------- Step 3: the test set ---------- */
+L0.add({ short: 'The test set', title: 'Hold compounds back to test a model',
   change: 'Switch between random and scaffold split below the picture.',
-  watch: 'The unseen set is a group of compounds held back from training and used only to test the model. A random split picks them at random, so close relatives of each unseen compound usually stay in training and the test is too easy. A scaffold is a molecule\'s ring skeleton. A scaffold split holds back whole families that share a skeleton, which is closer to predicting new chemistry.',
+  watch: 'The test set is a group of compounds held back from training and used only to test the model. A random split picks them at random, so close relatives of each test compound usually stay in training and the test is too easy. A scaffold is a molecule\'s ring skeleton. A scaffold split holds back whole families that share a skeleton, which is closer to predicting new chemistry.',
   build: function(api){
     var mode = 'rand', a = 0;
     var mapP = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Chemical space map of every compound (RDKit fingerprints, projected to 2D)</h4><canvas width="540" height="352" style="margin-top:4px"></canvas>');
-    var cnt = api.el('pn', 'left:608px;top:28px;width:324px;height:112px', '<h4>Unseen compounds with a seen scaffold</h4><div class="big" style="color:' + C.red + '"><span class="sv">0</span>%</div><div class="note" style="font-size:12px;color:#34373F">A scaffold is the ring skeleton of a compound.</div>');
+    var cnt = api.el('pn', 'left:608px;top:28px;width:324px;height:112px', '<h4>Test compounds with a seen scaffold</h4><div class="big" style="color:' + C.red + '"><span class="sv">0</span>%</div><div class="note" style="font-size:12px;color:#34373F">A scaffold is the ring skeleton of a compound.</div>');
     var hist = api.el('pn', 'left:608px;top:152px;width:324px;height:196px', '<h4>Similarity to the closest training compound</h4><canvas width="300" height="140"></canvas>');
     var r2p = api.el('pn', 'left:608px;top:360px;width:324px;height:76px', '<h4>Quick check, boosted trees</h4><div class="rq" style="font-size:13px">Computing</div>');
     var sel = api.addControl('<select><option value="rand">Random split</option><option value="scaf">Scaffold split</option></select>'); var selEl = qs('select', sel);
@@ -123,7 +123,7 @@ L0.add({ short: 'The unseen set', title: 'Hold compounds back to test a model',
     function drawMap(blend){
       var g = cv(qs('canvas', mapP)), x = g.x, W = g.w, H = g.h, sx = function(v){ return 14 + (v + 1) / 2 * (W - 28); }, sy = function(v){ return H - 14 - (v + 1) / 2 * (H - 28); };
       for (var i = 0; i < D.N; i++) { var ur = D.rtest[i], us = D.test[i], u = blend === null ? 0 : (mode === 'rand' ? lerp(blend < 0 ? 0 : ur, ur, 1) : lerp(ur, us, 1)); if (blend === null) u = 0; else u = mode === 'rand' ? ur : lerp(ur, us, clamp(a, 0, 1)); x.fillStyle = u > 0.5 ? 'rgba(225,36,42,.85)' : (blend === null ? 'rgba(161,177,195,.55)' : 'rgba(161,177,195,.6)'); x.beginPath(); x.arc(sx(D.mx[i]), sy(D.my[i]), u > 0.5 ? 2.8 : 2.1, 0, 6.3); x.fill(); }
-      x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.textAlign = 'left'; x.fillText('red: unseen compounds    grey blue: compounds the model studies', 14, 16); }
+      x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.textAlign = 'left'; x.fillText('red: test compounds    grey blue: compounds the model studies', 14, 16); }
     function drawHist(blend){
       var s = stats(), cur = s[mode], oth = s[mode === 'rand' ? 'scaf' : 'rand'], g = cv(qs('canvas', hist)), x = g.x, W = g.w, H = g.h, bw = (W - 20) / 20, mx = Math.max.apply(null, cur.h.concat(oth.h)) || 1;
       for (var i = 0; i < 20; i++) { var hh = cur.h[i] / mx * (H - 56) * blend; x.fillStyle = C.red; x.fillRect(10 + i * bw + 1, H - 22 - hh, bw - 2, hh); var ho = oth.h[i] / mx * (H - 56); x.strokeStyle = C.mid; x.lineWidth = 1; x.strokeRect(10 + i * bw + 1.5, H - 22 - ho, bw - 3, ho); }
@@ -136,9 +136,9 @@ L0.add({ short: 'The unseen set', title: 'Hold compounds back to test a model',
     async function play(tok){
       mode = 'rand'; selEl.value = 'rand'; a = 0; drawMap(null); drawHist(0); qs('.sv', cnt).textContent = '0';
       await api.beat('Every dot is a compound, placed by how similar its structure is to the others.', 2600);
-      drawMap(0); drawHist(1); counters(); await api.beat('A random split picks unseen compounds anywhere. Many have close relatives in the training set.', 3200);
+      drawMap(0); drawHist(1); counters(); await api.beat('A random split picks test compounds anywhere. Many have close relatives in the training set.', 3200);
       mode = 'scaf'; selEl.value = 'scaf'; await api.anim(1600, function(t){ a = t; drawMap(0); drawHist(0.4 + 0.6 * t); qs('.sv', cnt).textContent = Math.round(lerp(stats().rand.seen, stats().scaf.seen, t) * 100); });
-      api.cap('A scaffold split holds out whole ring skeletons, so no unseen compound shares one with the training set.'); await api.sleep(3400);
+      api.cap('A scaffold split holds out whole ring skeletons, so no test compound shares one with the training set.'); await api.sleep(3400);
       var s = stats(); var gap = D.key === 'HLM' ? 'In this Biogen set the compounds come from many vendors, so the two splits give similar scores.' : 'In this AstraZeneca set a random split leaks a lot, so a scaffold split is much stricter.';
       api.cap(gap); await api.sleep(3400);
     }
@@ -150,7 +150,7 @@ L0.add(censorStepDef());
 /* ---------- Step 4: underfitting to overfitting ---------- */
 L0.add({ short: 'Underfitting and overfitting', title: 'A flexible model can memorise noise',
   change: 'Choose a feature and drag Tree depth below the plot.',
-  watch: 'A decision tree is a flowchart of yes or no questions. Depth is how many questions in a row it may ask. A tree with too few questions misses the trend (underfitting). A tree with too many fits the noise in the training compounds (overfitting), so it scores well on training data and worse on unseen data. Error here is RMSE, the typical size of a miss.',
+  watch: 'A decision tree is a flowchart of yes or no questions. Depth is how many questions in a row it may ask. A tree with too few questions misses the trend (underfitting). A tree with too many fits the noise in the training compounds (overfitting), so it scores well on training data and worse on test data. Error here is RMSE, the typical size of a miss.',
   build: function(api){
     var G_ = 200, cur = null, lab = null, depthEl, featSel;
     var plot = api.el('pn', 'left:28px;top:28px;width:620px;height:408px', '<h4 class="pt">Measured value against the feature, with a decision tree fit</h4><canvas width="600" height="352" style="margin-top:2px"></canvas>');
@@ -171,10 +171,10 @@ L0.add({ short: 'Underfitting and overfitting', title: 'A flexible model can mem
       var f = lab.feat, sx = function(v){ return box.l + (clamp(v, lab.x0, lab.x1) - lab.x0) / (lab.x1 - lab.x0) * (box.r - box.l); }, sy = function(v){ return box.b - (clamp(v, yl, yh) - yl) / (yh - yl) * (box.b - box.t); };
       x.fillStyle = 'rgba(161,177,195,.7)'; lab.shT.forEach(function(i){ x.beginPath(); x.arc(sx(D.COL[f][i]), sy(D.Y[i]), 3, 0, 6.3); x.fill(); }); x.strokeStyle = C.char; x.lineWidth = 1.4; lab.shE.forEach(function(i){ x.beginPath(); x.arc(sx(D.COL[f][i]), sy(D.Y[i]), 3.3, 0, 6.3); x.stroke(); });
       x.strokeStyle = C.red; x.lineWidth = 3.4; x.lineJoin = 'round'; x.beginPath(); for (var k = 0; k < G_; k++) { var px = box.l + k / (G_ - 1) * (box.r - box.l); k ? x.lineTo(px, sy(cur[k])) : x.moveTo(px, sy(cur[k])); } x.stroke();
-      x.font = '11px Aptos, Segoe UI, sans-serif'; x.fillStyle = C.char; x.textAlign = 'left'; x.fillText('filled: studied compounds    hollow: unseen compounds', box.l + 6, box.t + 12); qs('.pt', plot).textContent = 'Measured value against ' + f + ', with a decision tree fit'; }
+      x.font = '11px Aptos, Segoe UI, sans-serif'; x.fillStyle = C.char; x.textAlign = 'left'; x.fillText('filled: studied compounds    hollow: test compounds', box.l + 6, box.t + 12); qs('.pt', plot).textContent = 'Measured value against ' + f + ', with a decision tree fit'; }
     function info(d){
-      var tag = d < lab.best - 1 ? ['Underfitting', C.mid, 'Too simple. It misses the trend and both errors are high.'] : (d <= lab.best + 1 ? ['Good fit', C.char, 'It follows the trend and not the noise. The unseen error is near its lowest.'] : ['Overfitting', C.red, 'It memorises noise. The studied error falls while the unseen error rises.']), mx = Math.max.apply(null, lab.teE.concat(lab.trE));
-      qs('.lb2', side).innerHTML = '<span style="display:inline-block;border:1px solid ' + tag[1] + ';color:' + tag[1] + ';border-radius:999px;font-size:12px;font-weight:700;padding:2px 12px">' + tag[0] + '</span><div style="margin-top:14px;font-weight:600">Studied compounds <span style="float:right">' + lab.trE[d].toFixed(2) + '</span></div><div class="pbar"><i style="background:' + C.char + ';width:' + (lab.trE[d] / mx * 100) + '%"></i></div><div style="font-weight:600">Unseen compounds <span style="float:right">' + lab.teE[d].toFixed(2) + '</span></div><div class="pbar"><i style="background:' + C.red + ';width:' + (lab.teE[d] / mx * 100) + '%"></i></div><p style="font-size:12.5px;margin-top:10px;color:#34373F">' + tag[2] + '</p><p style="font-size:12px;color:#34373F">Depth ' + d + ' means each compound can be asked up to ' + d + ' questions in a row. Best unseen error at depth ' + lab.best + '.</p>'; }
+      var tag = d < lab.best - 1 ? ['Underfitting', C.mid, 'Too simple. It misses the trend and both errors are high.'] : (d <= lab.best + 1 ? ['Good fit', C.char, 'It follows the trend and not the noise. The test error is near its lowest.'] : ['Overfitting', C.red, 'It memorises noise. The studied error falls while the test error rises.']), mx = Math.max.apply(null, lab.teE.concat(lab.trE));
+      qs('.lb2', side).innerHTML = '<span style="display:inline-block;border:1px solid ' + tag[1] + ';color:' + tag[1] + ';border-radius:999px;font-size:12px;font-weight:700;padding:2px 12px">' + tag[0] + '</span><div style="margin-top:14px;font-weight:600">Studied compounds <span style="float:right">' + lab.trE[d].toFixed(2) + '</span></div><div class="pbar"><i style="background:' + C.char + ';width:' + (lab.trE[d] / mx * 100) + '%"></i></div><div style="font-weight:600">Test compounds <span style="float:right">' + lab.teE[d].toFixed(2) + '</span></div><div class="pbar"><i style="background:' + C.red + ';width:' + (lab.teE[d] / mx * 100) + '%"></i></div><p style="font-size:12.5px;margin-top:10px;color:#34373F">' + tag[2] + '</p><p style="font-size:12px;color:#34373F">Depth ' + d + ' means each compound can be asked up to ' + d + ' questions in a row. Best test error at depth ' + lab.best + '.</p>'; }
     async function go(d){ var from = new Float32Array(cur), to = lab.curves[d]; qs('.dv', ctl).textContent = d; depthEl.value = d; info(d); await api.anim(600, function(t){ for (var k = 0; k < G_; k++) cur[k] = lerp(from[k], to[k], t); draw(); }); }
     function setDepth(d){ qs('.dv', ctl).textContent = d; depthEl.value = d; cur = new Float32Array(lab.curves[d]); info(d); draw(); }
     depthEl.addEventListener('input', function(){ api.tok++; api.clearTexts(); setDepth(+depthEl.value); });
@@ -182,7 +182,7 @@ L0.add({ short: 'Underfitting and overfitting', title: 'A flexible model can mem
     function render(){ fillSel(); prep(); setDepth(+depthEl.value); }
     async function play(tok){
       fillSel(); prep(); setDepth(0); await api.beat('Depth 0 predicts the same average for every compound.', 2400);
-      for (var d = 1; d <= 12; d++) { await go(d); if (d === 1) api.cap('One question splits the compounds in two groups with two averages.'); if (d === 3) api.cap('More questions follow the trend more closely.'); if (d === Math.min(12, lab.best + 1)) api.cap('Around here the unseen error is lowest. This is the right amount of flexibility.'); if (d === 9) api.cap('Now the line chases single dots, including noise.'); await api.sleep(d < 4 ? 900 : 650); }
+      for (var d = 1; d <= 12; d++) { await go(d); if (d === 1) api.cap('One question splits the compounds in two groups with two averages.'); if (d === 3) api.cap('More questions follow the trend more closely.'); if (d === Math.min(12, lab.best + 1)) api.cap('Around here the test error is lowest. This is the right amount of flexibility.'); if (d === 9) api.cap('Now the line chases single dots, including noise.'); await api.sleep(d < 4 ? 900 : 650); }
       await api.sleep(1200);
     }
     return { render: render, play: play };
@@ -194,7 +194,7 @@ L0.add({ short: 'Scoring a model', title: 'R2, Spearman and RMSE measure differe
   watch: 'Three numbers score a model. RMSE is the typical size of a miss, in the units of the target. R2 is the share of the spread in the lab values that the model explains: 1 is perfect and 0 is no better than the average. Spearman measures only whether the model puts compounds in the right order. Dots closer to the diagonal are better predictions.',
   build: function(api){
     var q = 100, pv = null, ys = null, idx = null, pm = 0;
-    var plot = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Predicted against measured, unseen compounds</h4><canvas width="540" height="352" style="margin-top:2px"></canvas>');
+    var plot = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Predicted against measured, test compounds</h4><canvas width="540" height="352" style="margin-top:2px"></canvas>');
     var tiles = [['R2', C.red], ['Spearman', C.char], ['RMSE', C.char]].map(function(t, k){ return api.el('pn', 'left:608px;top:' + (28 + k * 138) + 'px;width:324px;height:126px', '<h4>' + t[0] + '</h4><div class="big" style="color:' + t[1] + '">0</div><div class="note" style="font-size:12px;color:#34373F"></div>'); });
     var notes = ['Share of the spread in the answers that the model explains. 1 is perfect, 0 is no better than the average.', 'Do the predictions rank compounds in the right order? It ignores how far off each value is.', 'Typical size of an error, in the units of the endpoint. Smaller is better.'];
     var ctl = api.addControl('Model quality <input type="range" min="0" max="200" value="100" style="width:220px"><span class="qv"></span>'); var rg = qs('input', ctl);
@@ -225,10 +225,10 @@ L0.add({ short: 'logD feeds HLM', title: 'One model can feed another',
     var ab = null;
     var flow = api.el('pn', 'left:28px;top:28px;width:904px;height:130px', '<svg viewBox="0 0 880 100" width="880" height="100"></svg>');
     var sc = api.el('pn', 'left:28px;top:172px;width:430px;height:264px', '<h4>logD_pred against measured HLM</h4><canvas width="410" height="212"></canvas>');
-    var res = api.el('pn', 'left:478px;top:172px;width:454px;height:264px', '<h4>Does it help? Boosted trees, same unseen compounds</h4><div class="ab" style="font-size:13px;color:#34373F">Press Run comparison.</div>');
+    var res = api.el('pn', 'left:478px;top:172px;width:454px;height:264px', '<h4>Does it help? Boosted trees, same test compounds</h4><div class="ab" style="font-size:13px;color:#34373F">Press Run comparison.</div>');
     var ctl = api.addControl('<button type="button" class="btn sm" data-run>Run comparison</button>');
     function drawFlow(on){
-      var bw = 150, gap = 33, boxes = [['AstraZeneca logD', '4,200 measured compounds'], ['logD model', LOGD.r2 !== null ? 'boosted trees, unseen R2 ' + LOGD.r2.toFixed(2) : 'trains on load'], ['logD_pred', 'predicted for each HLM compound'], ['HLM model', 'features' + (on ? ' plus logD_pred' : '')], ['HLM prediction', 'log10 clearance']], s = '<defs><marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="' + C.red + '"/></marker></defs>';
+      var bw = 150, gap = 33, boxes = [['AstraZeneca logD', '4,200 measured compounds'], ['logD model', LOGD.r2 !== null ? 'boosted trees, test R2 ' + LOGD.r2.toFixed(2) : 'trains on load'], ['logD_pred', 'predicted for each HLM compound'], ['HLM model', 'features' + (on ? ' plus logD_pred' : '')], ['HLM prediction', 'log10 clearance']], s = '<defs><marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="' + C.red + '"/></marker></defs>';
       boxes.forEach(function(b, i){ var x = i * (bw + gap), dim = i === 2 && !on; s += '<rect x="' + x + '" y="10" width="' + bw + '" height="68" rx="6" fill="#fff" stroke="' + (i === 2 && on ? C.red : C.silver) + '" stroke-width="' + (i === 2 && on ? 2 : 1) + '" ' + (dim ? 'stroke-dasharray="4 4"' : '') + '/><text x="' + (x + 10) + '" y="32" font-size="13" font-weight="700" fill="' + (dim ? C.mid : C.char) + '">' + b[0] + '</text>';
         var words = b[1].split(' '), lines = [], cur = ''; words.forEach(function(w){ if ((cur + ' ' + w).trim().length > 24) { lines.push(cur); cur = w; } else cur = (cur + ' ' + w).trim(); }); lines.push(cur); lines.forEach(function(l, k){ s += '<text x="' + (x + 10) + '" y="' + (50 + k * 13) + '" font-size="11" fill="#34373F">' + l + '</text>'; });
         if (i < 4) { var live = !(i === 2 && !on); s += '<line x1="' + (x + bw + 3) + '" y1="44" x2="' + (x + bw + gap - 4) + '" y2="44" stroke="' + (live ? C.red : C.bg) + '" stroke-width="2" ' + (live ? '' : 'stroke-dasharray="4 4"') + ' marker-end="url(#a1)"/>'; } });
@@ -244,7 +244,7 @@ L0.add({ short: 'logD feeds HLM', title: 'One model can feed another',
       if (D.key !== 'HLM' || running) return; var out = qs('.ab', res), btn = qs('[data-run]', ctl); if (!LOGD.ready) { ensureLogdPred().then(function(){ run(true); }); out.textContent = 'The logD model is still training in your browser.'; return; }
       var base = activeFeats().filter(function(f){ return f !== 'logD_pred'; }); if (!base.length) { out.textContent = 'Switch on at least one descriptor.'; return; } var sig = base.join(',') + '|' + (D.cache.abv || 0); if (!force && sig === lastSig) return;
       running = true; btn.disabled = true; out.textContent = 'Training both models'; await tick(); var r = []; for (var p = 0; p < 2; p++) { await tick(); var m = fitBoost(p ? base.concat(['logD_pred']) : base, D.TRAIN, 100, 0.1, 3); r.push({ r2: r2(D.TEST, m.F), sp: spearman(D.TEST, m.F), tr: r2(D.TRAIN, m.F), secs: m.secs }); }
-      var d = r[1].r2 - r[0].r2; out.innerHTML = '<div class="scores" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + scoreCard('Without logD_pred', r[0], 0) + scoreCard('With logD_pred', r[1], 1) + '</div><p style="margin-top:12px;font-size:13px"><b>Change in unseen R2: ' + (d >= 0 ? '+' : '') + d.toFixed(3) + '.</b></p>'; btn.disabled = false; running = false; lastSig = sig; ab = r; }
+      var d = r[1].r2 - r[0].r2; out.innerHTML = '<div class="scores" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + scoreCard('Without logD_pred', r[0], 0) + scoreCard('With logD_pred', r[1], 1) + '</div><p style="margin-top:12px;font-size:13px"><b>Change in test R2: ' + (d >= 0 ? '+' : '') + d.toFixed(3) + '.</b></p>'; btn.disabled = false; running = false; lastSig = sig; ab = r; }
     qs('[data-run]', ctl).addEventListener('click', function(){ run(true); });
     function render(){ drawFlow(FSEL.logD_pred && D.key === 'HLM'); drawScatter(); run(false); }
     featListeners.push(function(){ if (L0.built) drawFlow(FSEL.logD_pred && D.key === 'HLM'); });
@@ -288,11 +288,11 @@ L0.glossary([
   ['Feature', 'A number describing a molecule, such as logP or molecular weight.'],
   ['Target', 'What we predict: log10 HLM clearance, or logD.'],
   ['Training compounds', 'The compounds a model is allowed to study.'],
-  ['Unseen compounds', 'Compounds held back to test whether the model learned a real pattern or memorised.'],
+  ['Test compounds', 'Compounds held back to test whether the model learned a real pattern or memorised.'],
   ['Scaffold', 'The ring skeleton of a compound, with side chains removed.'],
-  ['Scaffold split', 'Unseen compounds share no scaffold with the training set.'],
+  ['Scaffold split', 'Test compounds share no scaffold with the training set.'],
   ['Overfitting', 'Memorising training data, noise included, so new compounds are predicted worse.'],
-  ['R2', 'Share of the spread in the answers explained on unseen compounds. 1 is perfect, 0 is no better than the average.'],
+  ['R2', 'Share of the spread in the answers explained on test compounds. 1 is perfect, 0 is no better than the average.'],
   ['Spearman', 'How well the model ranks compounds, ignoring exact values.'],
   ['RMSE', 'Typical error in the units of the endpoint.'],
   ['SMILES', 'A line of text that describes a structure, such as CC(=O)N.'],

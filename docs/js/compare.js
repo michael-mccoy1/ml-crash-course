@@ -25,9 +25,9 @@ L5.add({ short: 'Leaderboard', title: 'Every model you trained, with accuracy an
   change: 'Train models in the other lessons. Their rows replace the defaults.',
   watch: 'This chart ranks every model by R2 on compounds it never saw. R2 is the share of the spread in the lab values that the model explains: 1 is perfect and 0 is no better than the average. Red bars are models you trained in this course. Until you train one, a red bar shows default settings. Blue-grey bars are reference runs made earlier with more features and longer training.',
   build: function(api){
-    var pn = api.el('pn', 'left:28px;top:20px;width:904px;height:480px;overflow:auto', '<div class="lb"></div><p class="note" style="font-size:12px;margin-top:12px">R2 is measured on unseen compounds. Time covers fitting only. The GPT predicts tokens, not a value, so it has no R2.</p>');
+    var pn = api.el('pn', 'left:28px;top:20px;width:904px;height:480px;overflow:auto', '<div class="lb"></div><p class="note" style="font-size:12px;margin-top:12px">R2 is measured on test compounds. Time covers fitting only. The GPT predicts tokens, not a value, so it has no R2.</p>');
     function draw(prog){
-      var rows = cmpRows(), g = gptRow(), mx = Math.max(0.5, Math.max.apply(null, rows.map(function(r){ return r.v; }))), html = '<div class="hd">Model</div><div class="hd">R2 on unseen compounds</div><div class="hd" style="text-align:right">R2</div><div class="hd" style="text-align:right">Training time</div>';
+      var rows = cmpRows(), g = gptRow(), mx = Math.max(0.5, Math.max.apply(null, rows.map(function(r){ return r.v; }))), html = '<div class="hd">Model</div><div class="hd">R2 on test compounds</div><div class="hd" style="text-align:right">R2</div><div class="hd" style="text-align:right">Training time</div>';
       rows.forEach(function(r, i){ var vis = clamp(prog * rows.length - i * 0.6, 0, 1); html += '<div class="nm" style="opacity:' + (vis > 0.05 ? 1 : 0.15) + '">' + esc(r.n) + '</div><div class="tr"><i class="' + (r.ref ? 'ref' : '') + '" style="width:' + (clamp(r.v, 0, mx) / mx * 100 * vis) + '%;transition:none"></i></div><div class="vv">' + r.v.toFixed(2) + '</div><div class="vv" style="font-weight:500;color:#34373F">' + (r.t === null || r.t === undefined ? 'n/a' : fmtT(r.t)) + '</div>'; });
       if (g) html += '<div class="nm">' + esc(g.n) + '</div><div class="tr"></div><div class="vv">n/a</div><div class="vv" style="font-weight:500;color:#34373F">' + fmtT(g.t) + '</div>';
       qs('.lb', pn).innerHTML = html; var n = Object.keys(D.scores).length; var st = $('cst'); if (st) st.textContent = n ? n + ' model' + (n > 1 ? 's' : '') + ' trained on ' + EP + (g ? ' and a GPT' : '') + '.' : 'Nothing trained on ' + EP + ' yet.'; }
@@ -38,9 +38,9 @@ L5.add({ short: 'Leaderboard', title: 'Every model you trained, with accuracy an
 
 L5.add({ short: 'Accuracy against time', title: 'Accuracy against training time',
   change: 'Train other settings and watch the points move.',
-  watch: 'Each point is one model. Height is its R2 on unseen compounds. Distance from the left is how long it took to fit. The time axis is logarithmic, so each gridline is ten times slower than the one before. A model high and to the left is both accurate and fast.',
+  watch: 'Each point is one model. Height is its R2 on test compounds. Distance from the left is how long it took to fit. The time axis is logarithmic, so each gridline is ten times slower than the one before. A model high and to the left is both accurate and fast.',
   build: function(api){
-    var pp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<h4>Unseen R2 against training time (log scale)</h4><canvas width="618" height="350"></canvas>');
+    var pp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<h4>Test R2 against training time (log scale)</h4><canvas width="618" height="350"></canvas>');
     var sp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>How to read it</h4><div class="rd" style="font-size:12.5px;color:#34373F"></div>');
     function pts(){ var out = []; Object.keys(D.scores).forEach(function(k){ var m = D.scores[k]; if (m.secs > 0) out.push({ n: k, t: Math.max(m.secs, 0.003), v: m.r2, ref: false }); }); ((EXTRAS && EXTRAS.refs && EXTRAS.refs[EP]) || []).forEach(function(r){ if (r[2]) out.push({ n: r[0].split(',')[0], t: r[2], v: r[1], ref: true }); }); return out; }
     function draw(prog){
@@ -48,7 +48,7 @@ L5.add({ short: 'Accuracy against time', title: 'Accuracy against training time'
       var lt = P.map(function(p){ return Math.log10(p.t); }), lo = Math.floor(Math.min.apply(null, lt)) - 0.2, hi = Math.ceil(Math.max.apply(null, lt)) + 0.2, vmx = Math.max(0.5, Math.max.apply(null, P.map(function(p){ return p.v; })) * 1.1), vmn = Math.min(0, Math.min.apply(null, P.map(function(p){ return p.v; })));
       var sx = function(l){ return box.l + (l - lo) / (hi - lo) * (box.r - box.l); }, sy = function(v){ return box.b - (v - vmn) / (vmx - vmn) * (box.b - box.t); }; x.strokeStyle = C.silver; x.fillStyle = C.mid; x.textAlign = 'right'; x.font = '12px Aptos, Segoe UI, sans-serif';
       for (var k = 0; k <= 4; k++) { var v = vmn + (vmx - vmn) * k / 4, y = sy(v); x.beginPath(); x.moveTo(box.l, y); x.lineTo(box.r, y); x.stroke(); x.fillText(v.toFixed(2), box.l - 6, y + 4); } x.textAlign = 'center'; for (var e = Math.ceil(lo); e <= hi; e++) { x.beginPath(); x.moveTo(sx(e), box.t); x.lineTo(sx(e), box.b); x.stroke(); var s = Math.pow(10, e); x.fillText(s >= 1 ? s + ' s' : s + ' s', sx(e), box.b + 16); }
-      x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.fillText('training time', (box.l + box.r) / 2, g.h - 6); x.save(); x.translate(13, (box.t + box.b) / 2); x.rotate(-Math.PI / 2); x.fillText('unseen R2', 0, 0); x.restore();
+      x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.fillText('training time', (box.l + box.r) / 2, g.h - 6); x.save(); x.translate(13, (box.t + box.b) / 2); x.rotate(-Math.PI / 2); x.fillText('test R2', 0, 0); x.restore();
       P.forEach(function(p, i){ var vis = clamp(prog * P.length - i * 0.7, 0, 1); if (vis <= 0) return; var X = sx(Math.log10(p.t)), Y = sy(p.v); x.globalAlpha = vis; x.fillStyle = p.ref ? C.bg : C.red; x.beginPath(); x.arc(X, Y, 7 * (0.5 + 0.5 * vis), 0, 6.3); x.fill(); x.fillStyle = C.char; x.font = '600 11px Aptos, Segoe UI, sans-serif'; x.textAlign = X > box.r - 130 ? 'right' : 'left'; x.fillText(p.n.length > 26 ? p.n.slice(0, 26) : p.n, X + (X > box.r - 130 ? -11 : 11), Y + 4); x.globalAlpha = 1; });
       qs('.rd', sp).innerHTML = '<p><b style="color:' + C.red + '">Red</b>: trained in this session.</p><p><b style="color:#A1B1C4">Blue grey</b>: reference runs that report a time.</p><p>Moving right costs time. Moving up buys accuracy. A point that is both slower and less accurate than another is not worth using.</p><p class="note" style="color:#34373F">The time axis is logarithmic, so each gridline is ten times slower.</p>'; }
     async function render(){ await populate(api); draw(1); }
@@ -68,10 +68,10 @@ L5.add({ short: 'Discussion', title: 'Questions to settle before trusting a resu
   } });
 
 L5.glossary([
-  ['R2', 'Share of the spread in the answers explained on unseen compounds. 1 is perfect, 0 is no better than the average.'],
+  ['R2', 'Share of the spread in the answers explained on test compounds. 1 is perfect, 0 is no better than the average.'],
   ['Spearman', 'How well the model ranks compounds, ignoring exact values.'], ['RMSE', 'Typical prediction error in the units of the endpoint.'],
   ['Training time', 'How long fitting the model took, excluding drawing and animation.'], ['Reference run', 'A published or previously measured result shown for comparison.'],
-  ['Dominated model', 'A model that another model beats on both accuracy and speed.'], ['Unseen compounds', 'Compounds held back from training, chosen by scaffold.'],
+  ['Dominated model', 'A model that another model beats on both accuracy and speed.'], ['Test compounds', 'Compounds held back from training, chosen by scaffold.'],
   ['Assay noise', 'Measurement error in the lab data. It limits the R2 any model can reach.']
 ]);
 setUses(L5, [['endpoint'], ['endpoint'], []]);

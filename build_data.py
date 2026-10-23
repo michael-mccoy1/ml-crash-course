@@ -120,6 +120,15 @@ def similarity_hist(fps, tr, te, bins=20):
     return {"hist": h.tolist(), "mean": round(float(ms.mean()), 3)}
 
 
+def nearest_similarity(fps, tr, te):
+    """Per compound: highest Tanimoto similarity to any training compound. -1 for training compounds."""
+    trf = [fps[i] for i in tr]
+    out = [-1.0] * len(fps)
+    for i in te:
+        out[i] = round(float(max(DataStructs.BulkTanimotoSimilarity(fps[i], trf))), 2)
+    return out
+
+
 def scaffold_overlap(df, tr, te):
     from rdkit.Chem.Scaffolds import MurckoScaffold
     sc = [MurckoScaffold.MurckoScaffoldSmiles(mol=m) for m in df.mol]
@@ -143,7 +152,8 @@ def build_dataset(key, df, extra_cols=None):
     d = {"key": key, "cols": list(FNS) + ["y"], "rows": rows, "test": test.tolist(), "rtest": rtest.tolist(),
          "mx": [round(float(v), 3) for v in xy[:, 0]], "my": [round(float(v), 3) for v in xy[:, 1]],
          "sim": {"scaffold": similarity_hist(fps, tr, te), "random": similarity_hist(fps, rtr, rte)},
-         "seen": {"scaffold": scaffold_overlap(df, tr, te), "random": scaffold_overlap(df, rtr, rte)}}
+         "seen": {"scaffold": scaffold_overlap(df, tr, te), "random": scaffold_overlap(df, rtr, rte)},
+         "nnsim": nearest_similarity(fps, tr, te)}
     if extra_cols:
         d.update(extra_cols)
     return d, te
