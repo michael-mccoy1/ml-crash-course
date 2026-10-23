@@ -23,7 +23,7 @@ function gptRow(){ return G && G.trained ? { n: 'GPT (' + G.NL + ' layers, ' + G
 
 L5.add({ short: 'Leaderboard', title: 'Every model you trained, with accuracy and time',
   change: 'Train models in the other lessons. Their rows replace the defaults.',
-  watch: 'Each bar is a model scored on compounds it never saw. Red bars are models trained here, with default options until you train your own. Blue-grey bars are reference runs.',
+  watch: 'This chart ranks every model by R2 on compounds it never saw. R2 is the share of the spread in the lab values that the model explains: 1 is perfect and 0 is no better than the average. Red bars are models you trained in this course. Until you train one, a red bar shows default settings. Blue-grey bars are reference runs made earlier with more features and longer training.',
   build: function(api){
     var pn = api.el('pn', 'left:28px;top:20px;width:904px;height:480px;overflow:auto', '<div class="lb"></div><p class="note" style="font-size:12px;margin-top:12px">R2 is measured on unseen compounds. Time covers fitting only. The GPT predicts tokens, not a value, so it has no R2.</p>');
     function draw(prog){
@@ -38,7 +38,7 @@ L5.add({ short: 'Leaderboard', title: 'Every model you trained, with accuracy an
 
 L5.add({ short: 'Accuracy against time', title: 'Accuracy against training time',
   change: 'Train other settings and watch the points move.',
-  watch: 'Each point is a model. Higher is more accurate. Further left is faster.',
+  watch: 'Each point is one model. Height is its R2 on unseen compounds. Distance from the left is how long it took to fit. The time axis is logarithmic, so each gridline is ten times slower than the one before. A model high and to the left is both accurate and fast.',
   build: function(api){
     var pp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<h4>Unseen R2 against training time (log scale)</h4><canvas width="618" height="350"></canvas>');
     var sp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>How to read it</h4><div class="rd" style="font-size:12.5px;color:#34373F"></div>');
@@ -58,7 +58,7 @@ L5.add({ short: 'Accuracy against time', title: 'Accuracy against training time'
 
 L5.add({ short: 'Discussion', title: 'Questions to settle before trusting a result',
   change: 'Pick one question and answer it from your scores.',
-  watch: 'Six questions about whether a score can be trusted.',
+  watch: 'Before you trust a score, ask how it was made. These six questions cover the split, the model type, the score itself, censored values, assay noise and the GPT. Pick one and answer it from your own results in the earlier lessons.',
   build: function(api){
     var qs_ = ['Would the same model win on another split of the data? What would you run to find out?', 'Why do tree ensembles often match or beat neural networks on a few thousand compounds?', 'Which score did you report, and on which compounds? Would a colleague get the same answer from the same data?', 'Does handling of censored values change which model looks best? Try the filters in each model lesson.', 'How does assay noise limit the best possible R2? How would you estimate that limit?', 'The GPT has no R2. What would you do with it in a project: predict, generate, or embed compounds?'];
     var els = qs_.map(function(q, i){ return api.el('pn fd', 'left:' + (28 + (i % 2) * 456) + 'px;top:' + (28 + Math.floor(i / 2) * 134) + 'px;width:448px;height:122px', '<h4>Question ' + (i + 1) + '</h4><div style="font-size:15px;line-height:1.45;color:#34373F">' + esc(q) + '</div>'); });

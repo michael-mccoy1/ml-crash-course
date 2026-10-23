@@ -87,7 +87,7 @@ L4.onOpts = function(){ gResultsBox(); var fire = function(){ clearTimeout(gTime
 function gMeanAbs(name){ return tf.tidy(function(){ return G.P[name].abs().mean().dataSync()[0]; }); }
 L4.add({ short: 'Workbench', bench: true, uses: ['filters', 'glayers', 'gsteps', 'gtemp'],
   title: 'Train the GPT and watch it learn',
-  watch: 'A GPT learns one skill: guess the next token. Left: the model and the size of its weights. Top right: its error. The coloured boxes show how sure it is. The dark box shows a molecule it writes.',
+  watch: 'A GPT learns one skill: guess the next token, where a token is one piece of a SMILES string. Training starts from random weights and nudges them to lower the error, which here is how surprised the model is by the correct next token. Left: the model and the size of its weights. Top right: its error. The coloured boxes show how sure it is of each correct token. The dark box shows a molecule it writes.',
   change: 'Set the options in the options panel, then press Train.',
   build: function(api){
     var bb = benchBar(api);
@@ -148,7 +148,7 @@ L4.add({ short: 'Workbench', bench: true, uses: ['filters', 'glayers', 'gsteps',
 /* ---------- G1: text becomes tokens ---------- */
 L4.add({ short: 'Tokens', title: 'A GPT reads a molecule as tokens',
   change: 'Press Next compound.',
-  watch: 'A molecule can be written as text called SMILES. The text is cut into pieces called tokens, and each token gets an ID number. The model only sees the numbers.',
+  watch: 'A SMILES string writes a molecule as text, for example CC(=O)N. The text is cut into pieces called tokens, usually one atom or symbol each, and each token gets an ID number. The set of all tokens is the vocabulary. The model only sees the ID numbers.',
   build: function(api){
     var cur = null;
     var sp = api.el('pn fd', 'left:28px;top:28px;width:250px;height:226px', '<h4>Compound drawn by RDKit</h4><div class="struct" style="height:186px"></div>');
@@ -169,7 +169,7 @@ function sepRatio(xy){ var cats = G.vocab.map(function(t){ return tokCat(t); }),
 /* ---------- G2: embeddings ---------- */
 L4.add({ short: 'Embeddings', title: 'Each token becomes a list of numbers the model can adjust',
   change: 'Switch between Untrained and Trained below the plot.',
-  watch: 'Each token becomes a list of numbers, its embedding. Training adjusts them so similar tokens get similar numbers. On the map, close tokens are treated alike.',
+  watch: 'An embedding is the list of numbers that stands for one token. Here each token has 64 numbers. At the start they are random. Training adjusts them so that tokens used in similar ways get similar numbers. The map squashes the 64 numbers down to two (using PCA, a method for doing this) so you can see which tokens ended up close together.',
   build: function(api){
     var ep = api.el('pn', 'left:28px;top:28px;width:420px;height:408px', '<h4>First 14 of the 64 numbers for each token</h4><div class="em"></div>');
     var mp = api.el('pn', 'left:468px;top:28px;width:464px;height:408px', '<h4 class="mt">Map of all tokens (PCA of their 64 numbers)</h4><canvas width="440" height="326"></canvas><div class="legend ml" style="font-size:11px;margin-top:4px"></div>');
@@ -193,7 +193,7 @@ L4.add({ short: 'Embeddings', title: 'Each token becomes a list of numbers the m
 /* ---------- G3: the transformer stack ---------- */
 L4.add({ short: 'The stack', title: 'The model is a stack of blocks',
   change: 'Drag Transformer layers in the options panel. Press Walk through.',
-  watch: 'Read the stack from the bottom. This kind of model is called a transformer. In each block every token looks back at earlier tokens (attention), then is processed on its own. Parameters are the numbers the model learns.',
+  watch: 'A GPT is a stack of identical blocks. Read it from the bottom. Tokens enter as embeddings. In each block every token first looks back at the earlier tokens, which is called attention, and is then processed by a small neural network on its own. The top produces odds for the next token. This design is called a transformer. Parameters are all the numbers the model learns, and each extra layer adds more.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:904px;height:410px', '<svg viewBox="0 0 880 384" width="880" height="384"></svg>');
     function per(){ return DM * 3 * DM + 3 * DM + DM * DM + DM + DM * 4 * DM + 4 * DM + 4 * DM * DM + DM + 4 * DM; }
@@ -222,7 +222,7 @@ L4.add({ short: 'The stack', title: 'The model is a stack of blocks',
 
 L4.add({ short: 'Attention', title: 'Attention shows which earlier tokens a token looks at',
   change: 'Click any token. Change the layer or head below the plot. A head is one of several attention patterns in a layer.',
-  watch: 'The model decides how much to look at each earlier token. The bars show that for the selected token and add up to 100%. Later tokens are greyed because it cannot see them.',
+  watch: 'Attention is how a token decides which earlier tokens matter. For the selected token, the bars show how much attention it gives each earlier token, and they add up to 100%. Later tokens are greyed out because the model is not allowed to see them. A head is one of several attention patterns in a layer, each free to look for something different.',
   build: function(api){
     var hp = api.el('pn', 'left:28px;top:28px;width:904px;height:330px;overflow:hidden', '<div class="ac" style="display:flex;flex-wrap:wrap;gap:6px 5px"></div>');
     var tp = api.el('pn', 'left:28px;top:370px;width:904px;height:70px;display:flex;align-items:center;font-size:14px;line-height:1.45', '<div class="an"></div>');
@@ -246,7 +246,7 @@ L4.add({ short: 'Attention', title: 'Attention shows which earlier tokens a toke
 /* ---------- G6: next token and temperature ---------- */
 L4.add({ short: 'Next token', title: 'The model outputs odds, and temperature reshapes them',
   change: 'Drag Temperature below the plot, or press Auto-write.',
-  watch: 'The model gives every possible next token a probability. Low temperature picks the likeliest, which is safe and repetitive. High temperature gives unlikely tokens a chance.',
+  watch: 'At each step the model gives every possible next token a probability. Temperature controls how the next token is picked from those odds. A low temperature almost always picks the likeliest token: safe but repetitive. A high temperature gives unlikely tokens a chance: more varied but more often invalid. Auto-write adds tokens one at a time, each drawn from the odds.',
   build: function(api){
     var ip = api.el('pn', 'left:28px;top:28px;width:440px;height:170px', '<h4>SMILES so far</h4><input type="text" class="pf" spellcheck="false" style="font-family:Cascadia Mono,Consolas,monospace" value="CC(=O)Nc1ccc"><div class="pr" style="margin-top:10px"></div>');
     var wp = api.el('pn', 'left:28px;top:210px;width:440px;height:226px', '<h4>Written by sampling</h4><div class="wt smi" style="min-height:60px;background:#34373F;color:#fff;border-radius:6px;padding:10px;font-size:12.5px"></div><div class="note" style="font-size:12px;color:#34373F;margin-top:8px">Press Auto-write to add tokens one at a time, each drawn from the odds on the right.</div>');
@@ -268,7 +268,7 @@ L4.add({ short: 'Next token', title: 'The model outputs odds, and temperature re
 /* ---------- G7: generate and check with RDKit ---------- */
 L4.add({ short: 'Generate and check', title: 'Generate molecules and let RDKit check them',
   change: 'Press Generate below the plot.',
-  watch: 'Each card is a molecule the GPT wrote. RDKit checks whether it is valid and draws it. Valid ones have a red outline.',
+  watch: 'Generate asks the GPT to write molecules one token at a time, at the chosen temperature. Each card is one molecule. RDKit checks whether the text is a valid molecule and draws it. A valid molecule has a red outline. The GPT learned text patterns, so some of what it writes is not chemically possible.',
   auto: false,
   build: function(api){
     var gp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<h4>Twelve generated molecules</h4><div class="mol3 gridm" style="margin-top:4px"></div>');
@@ -304,7 +304,7 @@ L4.add(filterStepDef('gpt'));
 var GV = { key: null, res: null, corpus: null };
 L4.add({ short: 'Is it useful', uses: ['gtemp', 'glayers', 'gsteps'],
   title: 'Test it: can a GPT design molecules?',
-  watch: 'The GPT writes molecules at three temperatures and RDKit judges them. Valid means RDKit accepts it. New means it was not in the training molecules.',
+  watch: 'This test writes about 90 molecules, 30 at each of three temperatures, and scores them. Valid means RDKit accepts the text as a molecule. New means the molecule was not among the training molecules, so the GPT did not just copy one. A useful design model needs both.',
   change: 'Press Run test below the plot.',
   build: function(api){
     var cp = api.el('pn', 'left:28px;top:28px;width:420px;height:408px', '<h4>Share of what it wrote, by temperature</h4><canvas width="396" height="300"></canvas><div class="note" style="font-size:12px;margin-top:4px">Grey: accepted by RDKit. Red: accepted and new.</div>');

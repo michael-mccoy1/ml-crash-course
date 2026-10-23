@@ -125,13 +125,13 @@ function lossChart(canvas, hist, best, upto, xmax){
 }
 
 L3.add(lineStepDef({ short: 'What a weight is', title: 'A weight is how hard one input pushes',
-  watch: 'The smallest model: one input, one weight, one bias. The weight is how hard the input pushes. The bias is a fixed number added at the end. Prediction = weight times input, plus bias. Thin lines show how far the red line misses each compound.',
+  watch: 'A model turns inputs into a prediction using numbers it can adjust. The smallest model has one input, one weight and one bias. The weight says how hard the input pushes the prediction: a large weight makes the line steep. The bias is a fixed number added at the end, which moves the line up or down. Prediction = weight times input, plus bias. Thin lines show how far the red line misses each compound. Training is the search for the weight and bias that make the misses small.',
   change: 'Drag Weight and Bias below the plot, then press Find the best weights.' }));
 
 /* ---------- workbench: set up a network, press Train ---------- */
 L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly'],
   title: 'Train a network and watch it learn',
-  watch: 'A network is neurons in columns called layers. Each line is a weight. Training nudges every weight to shrink the error. One pass over the training data is an epoch. The red curve is validation error, measured on compounds held back during training.',
+  watch: 'A neural network is many neurons arranged in columns called layers. Each line in the picture is a weight, so the network has thousands of weights instead of one. Training starts from random weights and nudges every one a little to shrink the error. One full pass over the training compounds is an epoch. Training error is measured on the compounds the network learns from. Validation error is measured on compounds held back during training, and shows whether the network will work on new ones.',
   change: 'Set the options in the options panel, then press Train.',
   build: function(api){
     var bb = benchBar(api);
@@ -214,7 +214,7 @@ L3.add({ short: 'One neuron', title: 'A neuron adds up its inputs',
 /* ---------- N2: layers and units ---------- */
 L3.add({ short: 'Layers and neurons', title: 'More layers and neurons mean more weights',
   change: 'Drag Hidden layers and Neurons per layer in the options panel.',
-  watch: 'The table counts every weight and bias. Dashed circles are neurons switched off by dropout, explained in a later step.',
+  watch: 'A hidden layer is a column of neurons between the inputs and the output. Every neuron connects to every neuron in the next column, and each connection is a weight. Each neuron also has a bias. So the number of weights grows fast as the network gets wider. The table counts them all. More weights can fit more complex patterns, but they need more data and make overfitting more likely. Overfitting is memorising noise. The picture draws at most 12 neurons per layer, and the label gives the true count. Dashed circles are neurons switched off by dropout, explained in a later step.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<svg viewBox="0 0 620 380" width="620" height="380"></svg>');
     var cp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>Parameters to learn</h4><div class="big pc" style="color:' + C.red + '">0</div><div class="note" style="font-size:12px;color:#34373F;margin-bottom:8px">weights and biases</div><div class="pl" style="font-size:12px"></div>');
@@ -230,7 +230,7 @@ L3.add({ short: 'Layers and neurons', title: 'More layers and neurons mean more 
 /* ---------- N3: learning rate ---------- */
 L3.add({ short: 'Learning rate', title: 'The learning rate is the size of each nudge',
   change: 'Drag Learning rate in the options panel, or Steps taken below the plot.',
-  watch: 'Training nudges the weights to cut the error. Too small is slow. Too large overshoots and the error grows.',
+  watch: 'Training changes the weights in small steps to reduce the error. The learning rate is the size of each step. Too small and training is slow. Too large and each step overshoots the best weights, so the error bounces or grows. Each coloured curve uses a different learning rate on the same line-fitting problem.',
   build: function(api){
     var cp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Error after each nudge (lower is better)</h4><canvas width="536" height="320"></canvas><div class="note" style="font-size:12px;margin-top:6px">The error is the average squared distance between the line and the compounds. Each coloured curve is a different learning rate.</div>');
     var sp = api.el('pn', 'left:608px;top:28px;width:324px;height:408px', '<h4>The fitted line at this step</h4><canvas width="300" height="170"></canvas><div class="lr" style="margin-top:6px"></div>');
@@ -259,7 +259,7 @@ L3.add({ short: 'Learning rate', title: 'The learning rate is the size of each n
 /* ---------- N5: dropout and early stopping ---------- */
 L3.add({ short: 'Dropout and early stopping', title: 'Dropout and the best epoch fight overfitting',
   change: 'Set Dropout in the options panel, then press Run comparison below the plot.',
-  watch: 'Overfitting is memorising the training data. Dropout switches off random neurons while training. The curves show the error on compounds held back to check progress, called validation error.',
+  watch: 'Overfitting is when a network memorises the training compounds, noise included, and then predicts new compounds worse. Dropout is one defence. In each training step it switches off a random share of the neurons, so the network cannot depend on any one of them. Early stopping is another. It keeps the weights from the epoch with the lowest validation error. Validation error is the error on compounds held back from training to check progress.',
   auto: false,
   build: function(api){
     var np = api.el('pn', 'left:28px;top:28px;width:360px;height:408px', '<h4>Neurons switched off in each training step</h4><svg viewBox="0 0 340 330" width="340" height="330"></svg><div class="dn note" style="font-size:12px;color:#34373F"></div>');

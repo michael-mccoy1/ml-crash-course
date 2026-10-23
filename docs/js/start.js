@@ -22,13 +22,13 @@ function updateInfo(){ var e = $('dsinfo'); if (!e || !D) return; var c = D.cens
 function unitWord(){ return D.key === 'HLM' ? 'HLM clearance (log10)' : 'logD'; }
 
 L0.add(lineStepDef({ short: 'What learning means', title: 'A model is a rule fitted to examples',
-  watch: 'Each dot is a compound. Across is logP, how oily it is. Up is its clearance, how fast the liver breaks it down. The red line is a rule that predicts clearance from logP. Weight is how steep the line is. Bias is where it sits.',
+  watch: 'Machine learning means finding a rule from examples. Each dot is a compound. Across is logP, a number for how oily the compound is. Up is its clearance, how fast the liver breaks it down. The red line is a rule that predicts clearance from logP. Weight is how steep the line is. Bias is where it sits. The error number is the average squared miss, so a smaller number means a better rule.',
   change: 'Drag Weight and Bias below the plot, then press Find the best weights.' }));
 
 /* ---------- Step 1: structure to prediction ---------- */
 L0.add({ short: 'Structure to prediction', title: 'From structure to prediction',
   change: 'Click a compound in the library or press Next compound. Untick a feature in the options panel and the model refits without it.',
-  watch: 'A model cannot read a drawing. The molecule becomes text (SMILES), then numbers (features) computed by RDKit, a chemistry toolkit, then a prediction.',
+  watch: 'A model cannot read a drawing. The molecule is first written as a line of text called SMILES. RDKit, a chemistry toolkit, turns the structure into numbers called features, such as logP (how oily) and TPSA (how polar). The model sees only those numbers and returns a prediction. The lab measured the same compound, so the two can be compared.',
   build: function(api){
     var cur = null;
     var lib = api.el('pn fd', 'left:28px;top:28px;width:300px;height:158px', '<h4>Compound library</h4><div class="lg" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"></div>');
@@ -86,7 +86,7 @@ L0.add({ short: 'Structure to prediction', title: 'From structure to prediction'
 /* ---------- Step 2: descriptors come from the structure ---------- */
 L0.add({ short: 'Where features come from', title: 'Features are sums over a molecule\'s atoms',
   change: 'Press Next compound.',
-  watch: 'A feature is a number computed from a molecule. Each atom adds a little to logP (how oily) and to TPSA (how polar). The totals are the features.',
+  watch: 'A feature is a number computed from a molecule. logP measures how much a compound prefers oil to water. TPSA, the polar surface area, measures how much of its surface is polar. Both are sums: each atom adds a small amount and the totals are the features. Darker atoms add more.',
   build: function(api){
     var cur = null, mode = 0;
     var box = api.el('pn', 'left:28px;top:28px;width:430px;height:408px', '<h4 class="t">Structure</h4><div class="ly" style="position:relative;height:356px"></div>');
@@ -111,7 +111,7 @@ L0.add({ short: 'Where features come from', title: 'Features are sums over a mol
 /* ---------- Step 3: the unseen set ---------- */
 L0.add({ short: 'The unseen set', title: 'Hold compounds back to test a model',
   change: 'Switch between random and scaffold split below the picture.',
-  watch: 'Some compounds are held back to test the model: the unseen set. A random split leaves close relatives of them in training. A scaffold is a molecule\'s ring skeleton, and a scaffold split removes whole families that share one.',
+  watch: 'The unseen set is a group of compounds held back from training and used only to test the model. A random split picks them at random, so close relatives of each unseen compound usually stay in training and the test is too easy. A scaffold is a molecule\'s ring skeleton. A scaffold split holds back whole families that share a skeleton, which is closer to predicting new chemistry.',
   build: function(api){
     var mode = 'rand', a = 0;
     var mapP = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Chemical space map of every compound (RDKit fingerprints, projected to 2D)</h4><canvas width="540" height="352" style="margin-top:4px"></canvas>');
@@ -150,7 +150,7 @@ L0.add(censorStepDef());
 /* ---------- Step 4: underfitting to overfitting ---------- */
 L0.add({ short: 'Underfitting and overfitting', title: 'A flexible model can memorise noise',
   change: 'Choose a feature and drag Tree depth below the plot.',
-  watch: 'A decision tree is a flowchart of yes or no questions. Depth is how many it may ask. Too few misses the trend. Too many fits the noise.',
+  watch: 'A decision tree is a flowchart of yes or no questions. Depth is how many questions in a row it may ask. A tree with too few questions misses the trend (underfitting). A tree with too many fits the noise in the training compounds (overfitting), so it scores well on training data and worse on unseen data. Error here is RMSE, the typical size of a miss.',
   build: function(api){
     var G_ = 200, cur = null, lab = null, depthEl, featSel;
     var plot = api.el('pn', 'left:28px;top:28px;width:620px;height:408px', '<h4 class="pt">Measured value against the feature, with a decision tree fit</h4><canvas width="600" height="352" style="margin-top:2px"></canvas>');
@@ -191,7 +191,7 @@ L0.add({ short: 'Underfitting and overfitting', title: 'A flexible model can mem
 /* ---------- Step 5: how a model is scored ---------- */
 L0.add({ short: 'Scoring a model', title: 'R2, Spearman and RMSE measure different things',
   change: 'Drag Model quality below the plot.',
-  watch: 'Dots closer to the diagonal are better predictions. R2 and RMSE measure the size of the errors. Spearman measures only the order.',
+  watch: 'Three numbers score a model. RMSE is the typical size of a miss, in the units of the target. R2 is the share of the spread in the lab values that the model explains: 1 is perfect and 0 is no better than the average. Spearman measures only whether the model puts compounds in the right order. Dots closer to the diagonal are better predictions.',
   build: function(api){
     var q = 100, pv = null, ys = null, idx = null, pm = 0;
     var plot = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Predicted against measured, unseen compounds</h4><canvas width="540" height="352" style="margin-top:2px"></canvas>');
@@ -220,7 +220,7 @@ L0.add({ short: 'Scoring a model', title: 'R2, Spearman and RMSE measure differe
 /* ---------- Step 6: second endpoint, logD feeds HLM ---------- */
 L0.add({ short: 'logD feeds HLM', title: 'One model can feed another',
   change: 'Untick features in the options panel. The comparison reruns.',
-  watch: 'logD is how oily a compound is at body pH. A model trained on another company\'s logD data predicts it for every compound. That prediction is added as a feature.',
+  watch: 'logD is how oily a compound is at body pH (7.4). It is cheap to measure, so there are thousands of values, while clearance has few. A model trained on logD data from another company predicts logD for every compound, and that prediction is added as one more feature for the clearance model. Using one model\'s output as another model\'s input is called stacking.',
   build: function(api){
     var ab = null;
     var flow = api.el('pn', 'left:28px;top:28px;width:904px;height:130px', '<svg viewBox="0 0 880 100" width="880" height="100"></svg>');
@@ -257,7 +257,7 @@ L0.add({ short: 'logD feeds HLM', title: 'One model can feed another',
 /* ---------- Step 7: predict your own compound (RDKit in the browser) ---------- */
 L0.add({ short: 'Predict a compound', title: 'Predict a compound from its structure',
   change: 'Edit the SMILES and press Predict.',
-  watch: 'Type a molecule as SMILES. The page predicts its logD, then its clearance.',
+  watch: 'Type a molecule as a SMILES line. The page draws it with RDKit, computes its features, predicts its logD with one model, then uses that logD to predict clearance with a second model.',
   auto: false,
   build: function(api){
     var inp = api.el('pn', 'left:28px;top:28px;width:904px;height:70px', '<h4>SMILES</h4><div style="display:flex;gap:10px"><input type="text" class="si" spellcheck="false" style="font-family:Cascadia Mono,Consolas,monospace"><button type="button" class="btn sm" data-go style="white-space:nowrap">Predict</button></div>');
