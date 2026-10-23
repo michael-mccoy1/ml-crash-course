@@ -223,6 +223,9 @@ def main():
     if "Chemprop (D-MPNN)" in meta:
         refs["HLM"].append(["Chemprop", round(meta["Chemprop (D-MPNN)"]["R2"], 3), round(meta["Chemprop (D-MPNN)"]["train_secs"], 1)])
     extras = {"graphs": graphs, "meta": meta, "refs": refs}
+    ft = os.path.join(c.ROOT, "results", "chemprop_finetune.json")
+    if os.path.exists(ft):
+        extras["chemprop_ft"] = json.load(open(ft))
     json.dump(extras, open(os.path.join(OUT, "extras.json"), "w"), separators=(",", ":"))
     for f in sorted(os.listdir(OUT)):
         print(f, round(os.path.getsize(os.path.join(OUT, f)) / 1024), "KB")

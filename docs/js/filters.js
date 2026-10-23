@@ -186,19 +186,68 @@ function targetStepDef(){
     } };
 }
 function censorStepDef(){
-  var names = ['Keep them all', 'Drop them from training', 'Two models'], subs = ['One model on everything', 'Train on measurable values only', 'A classifier for the floor, a regressor for the rest'];
-  return { short: 'Handling censoring', uses: ['endpoint', 'features'], title: 'Three ways to treat values at the assay floor',
-    watch: 'Hollow dots are compounds censored in the lab. Each model is scored on all unseen compounds and on the measurable ones only.',
-    change: 'Change Features in the options. Switch to HLM clearance if the endpoint is logD.',
+  var OPTS = [['Keep them all', 'One model learns from every training compound, including those at the assay floor.'], ['Drop them from training', 'The model learns only from compounds that were actually measured.'], ['Two models', 'One model guesses whether a compound is at the floor. A second model predicts the value for the rest.']];
+  var sel = 0;
+  return { short: 'Handling censoring', uses: ['endpoint', 'features'], title: 'Three ways to treat values stuck at the assay floor',
+    watch: 'Some compounds are so stable that the assay can only say "below the floor". That makes a pile of identical values (compounds at the floor), which a model should not treat as real measurements. Each card below is a different way of training on that data. The bars show how well each one predicts compounds it has never seen.',
+    change: 'Click a card to see its predictions on the right. Change Features in the options to test whether the pattern holds. Switch to HLM clearance if the endpoint is logD.',
     build: function(api){
-      var P = [], T = []; for (var k = 0; k < 3; k++) { P.push(api.el('pn', 'left:' + (28 + k * 307) + 'px;top:28px;width:290px;height:316px', '<h4>' + names[k] + '</h4><div style="font-size:11px;color:#6B7280;margin:-3px 0 2px">' + subs[k] + '</div><canvas width="266" height="250"></canvas>')); T.push(api.el('pn', 'left:' + (28 + k * 307) + 'px;top:356px;width:290px;height:82px', '<div class="tt"></div>')); }
-      function tile(el, all, unc, extra){ qs('.tt', el).innerHTML = '<div style="display:flex;gap:22px"><div><div class="lbl">R2 all unseen</div><div class="big" style="font-size:22px">' + all.toFixed(2) + '</div></div><div><div class="lbl">R2 measurable only</div><div class="big" style="font-size:22px;color:' + C.red + '">' + unc.toFixed(2) + '</div></div></div>' + (extra ? '<div class="note" style="font-size:11.5px;color:#6B7280">' + extra + '</div>' : ''); }
+      var cards = api.el('abs', 'left:28px;top:28px;width:540px;height:410px', ''), sp = api.el('pn', 'left:588px;top:28px;width:344px;height:410px', '<h4 class="sh2"></h4><canvas width="320" height="270"></canvas><div class="lg" style="font-size:12px;line-height:1.5;margin-top:6px"></div>');
+      var res = null;
       function render(){
-        if (!D.cens) { P.forEach(function(p){ cv(qs('canvas', p)); }); T.forEach(function(t){ qs('.tt', t).innerHTML = ''; }); qs('.tt', T[0]).innerHTML = '<span class="note">logD has no censored values. Switch the endpoint to HLM clearance.</span>'; return; }
-        var a = runExp(NOFILT), b = runExp({ cens: 'train', z: 0, mw: null, lp: null }), c = runHurdle(); if (!a || !b || !c) return;
-        scatterCens(qs('canvas', P[0]), a.F); scatterCens(qs('canvas', P[1]), b.F); scatterCens(qs('canvas', P[2]), c.F);
-        tile(T[0], a.r2All, a.r2Unc, 'trained on ' + a.tr + ' compounds'); tile(T[1], b.r2All, b.r2Unc, 'trained on ' + b.tr + ' compounds'); tile(T[2], c.r2All, c.r2Unc, 'floor classifier accuracy ' + Math.round(c.acc * 100) + '%');
+        if (!D.cens) { cards.innerHTML = '<div class="pn" style="position:relative;padding:20px"><b>logD has no censored values.</b><p class="note" style="margin-top:6px">Switch the endpoint to HLM clearance to see this step.</p></div>'; cv(qs('canvas', sp)); qs('.sh2', sp).textContent = ''; qs('.lg', sp).innerHTML = ''; return; }
+        var a = runExp(NOFILT), b = runExp({ cens: 'train', z: 0, mw: null, lp: null }), c = runHurdle(); if (!a || !b || !c) return; res = [{ F: a.F, all: a.r2All, unc: a.r2Unc, note: 'trained on ' + a.tr + ' compounds' }, { F: b.F, all: b.r2All, unc: b.r2Unc, note: 'trained on ' + b.tr + ' compounds' }, { F: c.F, all: c.r2All, unc: c.r2Unc, note: 'floor guess correct for ' + Math.round(c.acc * 100) + '% of compounds' }];
+        cards.innerHTML = OPTS.map(function(o, i){ var r = res[i], on = i === sel; return '<div data-c="' + i + '" class="pn" style="position:relative;margin-bottom:10px;cursor:pointer;border:' + (on ? '2px solid ' + C.red : '1px solid ' + C.silver) + ';padding:9px 14px"><div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:14px">' + (i + 1) + '. ' + o[0] + '</b><span class="note" style="font-size:11.5px">' + r.note + '</span></div><div style="font-size:12.5px;color:#4a4f5a;margin:2px 0 4px">' + o[1] + '</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 22px">' + '<div>' + '<div style="font-size:11.5px;color:#4a4f5a">All unseen compounds</div><div class="pbar" style="height:11px;margin:2px 0"><i style="background:' + C.bg + ';width:' + clamp(r.all * 100 / 0.45, 0, 100) + '%;transition:none"></i></div><b style="font-size:13px">' + r.all.toFixed(2) + '</b></div><div><div style="font-size:11.5px;color:#4a4f5a">Only compounds that were measured</div><div class="pbar" style="height:11px;margin:2px 0"><i style="background:' + C.red + ';width:' + clamp(r.unc * 100 / 0.45, 0, 100) + '%;transition:none"></i></div><b style="font-size:13px;color:' + C.red + '">' + r.unc.toFixed(2) + '</b></div></div></div>'; }).join('') + '<div class="note" style="font-size:12px;line-height:1.45;padding:2px 4px">The bars show R2: 1 means perfect predictions and 0 means no better than always guessing the average. Longer is better.</div>';
+        qsa('[data-c]', cards).forEach(function(d){ d.addEventListener('click', function(){ sel = +d.dataset.c; render(); }); });
+        qs('.sh2', sp).textContent = 'Predictions of option ' + (sel + 1); scatterCens(qs('canvas', sp), res[sel].F); qs('.lg', sp).innerHTML = '<span style="color:' + C.red + '">Red dot</span>: a measured compound. <b>Hollow dot</b>: a compound at the floor. Dashed line: perfect predictions. The closer the dots are to the dashed line, the better. The axes are the lab value (across) and the model\'s prediction (up).';
       }
       return { render: render };
     } };
+}
+
+/* ---------- one input, one weight, one bias: used in the first lesson and again in neural networks ---------- */
+function lineStepDef(c){
+  return { short: c.short, uses: ['endpoint', 'features'], title: c.title, watch: c.watch, change: c.change,
+  build: function(api){
+    var P1 = api.el('pn', 'left:28px;top:28px;width:620px;height:392px', '<h4 class="wh"></h4><canvas width="596" height="346"></canvas>');
+    var P2 = api.el('pn', 'left:668px;top:28px;width:264px;height:392px', '<div class="wr" style="font-size:13px;line-height:1.45"></div>');
+    var P3 = api.el('pn', 'left:28px;top:432px;width:904px;height:92px;display:flex;gap:26px;align-items:center', '<div style="width:190px"><div class="lbl" style="margin-bottom:4px">Input feature</div><select class="wf"></select></div><div style="width:230px"><label class="row">Weight<output class="wv"></output></label><input type="range" class="ww" step="0.01"></div><div style="width:230px"><label class="row">Bias<output class="bv"></output></label><input type="range" class="wb" step="0.01"></div><div style="display:flex;flex-direction:column;gap:6px"><button type="button" class="btn sm" data-best>Find the best weights</button><button type="button" class="btn sm ghost" data-reset>Reset</button></div>');
+    var sel = qs('.wf', P3), ws = qs('.ww', P3), bs = qs('.wb', P3), S = { key: '', f: null, x: [], y: [], raw: [], mx: 0, sx: 1, my: 0, sy: 1, w: 0, b: 0, w0: 0, b0: 0, bestW: 0, bestB: 0, cmp: 0, step: -1 };
+    function prep(force){
+      var feats = activeFeats(); if (!feats.length) { S.f = null; return; } var f = sel.value && feats.indexOf(sel.value) >= 0 ? sel.value : feats[0], key = EP + '|' + f; if (!force && S.key === key) return;
+      var idx = D.TRAIN, raw = idx.map(function(i){ return D.COL[f][i]; }), y = idx.map(function(i){ return D.Y[i]; }), mx = mean(raw), sx = Math.sqrt(mean(raw.map(function(v){ return (v - mx) * (v - mx); }))) || 1, my = mean(y), sy = Math.sqrt(mean(y.map(function(v){ return (v - my) * (v - my); }))) || 1;
+      S.x = raw.map(function(v){ return (v - mx) / sx; }); S.y = y; S.raw = raw; S.mx = mx; S.sx = sx; S.my = my; S.sy = sy; S.f = f; S.key = key; var cov = 0; for (var i2 = 0; i2 < S.x.length; i2++) cov += S.x[i2] * (y[i2] - my); S.bestW = cov / S.x.length; S.bestB = my;
+      S.w0 = 0; S.b0 = D.yhi - (D.yhi - D.ylo) * 0.3; S.w = S.w0; S.b = S.b0; S.step = -1; S.cmp = Math.floor(S.x.length * 0.37);
+      var wm = Math.max(0.5, 2 * sy); ws.min = -wm; ws.max = wm; bs.min = D.ylo; bs.max = D.yhi; sel.innerHTML = feats.map(function(q){ return '<option' + (q === f ? ' selected' : '') + '>' + q + '</option>'; }).join('');
+    }
+    function mse(w, b){ var s = 0, n = S.x.length; for (var i = 0; i < n; i++) { var e = S.y[i] - (w * S.x[i] + b); s += e * e; } return s / n; }
+    function sync(){ ws.value = S.w; bs.value = S.b; qs('.wv', P3).textContent = (S.w >= 0 ? '+' : '') + S.w.toFixed(2); qs('.bv', P3).textContent = S.b.toFixed(2); }
+    function draw(){
+      if (!S.f) { cv(qs('canvas', P1)); qs('.wr', P2).innerHTML = '<span class="note">Switch on at least one feature.</span>'; return; }
+      var g = cv(qs('canvas', P1)), x = g.x, box = { l: 46, r: g.w - 10, t: 10, b: g.h - 46 }, X0 = -2.5, X1 = 2.5, lo = D.ylo, hi = D.yhi, sx = function(v){ return box.l + (v - X0) / (X1 - X0) * (box.r - box.l); }, sy = function(v){ return box.b - (v - lo) / (hi - lo) * (box.b - box.t); }, n = S.x.length;
+      qs('.wh', P1).textContent = 'Training compounds, ' + S.f + ' against ' + unitWord() + (S.step >= 0 ? '. Step ' + S.step + ' of 90' : '');
+      x.strokeStyle = C.silver; x.fillStyle = C.mid; x.textAlign = 'right'; for (var k = 0; k <= 4; k++) { var yy = box.b - k / 4 * (box.b - box.t); x.beginPath(); x.moveTo(box.l, yy); x.lineTo(box.r, yy); x.stroke(); x.fillText((lo + (hi - lo) * k / 4).toFixed(1), box.l - 6, yy + 4); }
+      x.textAlign = 'center'; for (var z = -2; z <= 2; z++) { x.fillText(fmtFeat(S.f, S.mx + z * S.sx), sx(z), box.b + 15); if (z === 0) { x.strokeStyle = 'rgba(52,55,63,.18)'; x.beginPath(); x.moveTo(sx(0), box.t); x.lineTo(sx(0), box.b); x.stroke(); } }
+      x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.fillText(S.f + ' (real values; the middle is the average)', (box.l + box.r) / 2, box.b + 34); x.font = '12px Aptos, Segoe UI, sans-serif';
+      var step = Math.ceil(n / 420); x.fillStyle = 'rgba(161,177,195,.55)'; for (var i = 0; i < n; i += step) { var px = sx(clamp(S.x[i], X0, X1)); x.beginPath(); x.arc(px, sy(clamp(S.y[i], lo, hi)), 2.6, 0, 6.3); x.fill(); }
+      var rs = Math.ceil(n / 34); x.strokeStyle = 'rgba(52,55,63,.5)'; x.lineWidth = 1; for (var j = 0; j < n; j += rs) { var xv = clamp(S.x[j], X0, X1), pr = S.w * S.x[j] + S.b; x.beginPath(); x.moveTo(sx(xv), sy(clamp(S.y[j], lo, hi))); x.lineTo(sx(xv), sy(clamp(pr, lo, hi))); x.stroke(); }
+      if (S.showBest) { x.setLineDash([6, 5]); x.strokeStyle = C.char; x.lineWidth = 1.6; x.beginPath(); x.moveTo(sx(X0), sy(clamp(S.bestW * X0 + S.bestB, lo, hi))); x.lineTo(sx(X1), sy(clamp(S.bestW * X1 + S.bestB, lo, hi))); x.stroke(); x.setLineDash([]); }
+      x.strokeStyle = C.red; x.lineWidth = 3.4; x.lineCap = 'round'; x.beginPath(); x.moveTo(sx(X0), sy(clamp(S.w * X0 + S.b, lo - 5, hi + 5))); x.lineTo(sx(X1), sy(clamp(S.w * X1 + S.b, lo - 5, hi + 5))); x.stroke(); x.lineWidth = 1;
+      var c = S.cmp, zc = S.x[c], pred = S.w * zc + S.b, meas = S.y[c], e = mse(S.w, S.b), eb = mse(S.bestW, S.bestB), aw = Math.abs(S.w), wsent = aw < 0.02 ? 'The weight is near zero, so this input has almost no effect on the prediction.' : 'When ' + S.f + ' rises by one standard deviation (' + fmtFeat(S.f, S.sx) + '), the prediction ' + (S.w > 0 ? 'rises' : 'falls') + ' by ' + aw.toFixed(2) + '. A bigger weight means a stronger push, and a negative weight pushes the other way.';
+      x.fillStyle = C.red; x.beginPath(); x.arc(sx(clamp(zc, X0, X1)), sy(clamp(meas, lo, hi)), 5.5, 0, 6.3); x.fill(); x.strokeStyle = '#fff'; x.lineWidth = 2; x.stroke(); x.lineWidth = 1;
+      qs('.wr', P2).innerHTML = '<div class="lbl">The model</div><div style="font-size:14px;font-weight:700;margin:3px 0 8px">prediction = ' + (S.w >= 0 ? '' : '-') + aw.toFixed(2) + ' times ' + S.f + ' + ' + S.b.toFixed(2) + '</div><p style="margin:0 0 7px"><b>Weight ' + (S.w >= 0 ? '+' : '') + S.w.toFixed(2) + '.</b> ' + wsent + '</p><p style="margin:0 0 7px"><b>Bias ' + S.b.toFixed(2) + '.</b> The prediction for an average compound.</p>' +
+        '<div class="lbl" style="margin-top:8px">The red dot is one compound</div><p style="margin:3px 0 7px">' + S.f + ' ' + fmtFeat(S.f, S.raw[c]) + ' is ' + zc.toFixed(2) + ' standard deviations from average. The model predicts ' + S.w.toFixed(2) + ' times ' + zc.toFixed(2) + ' + ' + S.b.toFixed(2) + ' = <b>' + pred.toFixed(2) + '</b>. The lab measured <b>' + meas.toFixed(2) + '</b>.</p>' +
+        '<div class="lbl">Average squared error</div><div class="big" style="color:' + C.red + ';font-size:30px">' + e.toFixed(3) + '</div><div class="note" style="font-size:12px">Lowest possible with one weight: ' + eb.toFixed(3) + '. Lower is better.</div><button type="button" class="btn sm ghost" data-other style="margin-top:8px">Another compound</button>';
+      qs('[data-other]', P2).addEventListener('click', function(){ S.cmp = Math.floor(Math.random() * n); draw(); }); sync();
+    }
+    function onSlide(){ api.tok++; S.w = +ws.value; S.b = +bs.value; S.step = -1; draw(); }
+    ws.addEventListener('input', onSlide); bs.addEventListener('input', onSlide);
+    sel.addEventListener('change', function(){ api.tok++; S.showBest = false; prep(true); draw(); });
+    qs('[data-reset]', P3).addEventListener('click', function(){ api.tok++; S.w = S.w0; S.b = S.b0; S.step = -1; S.showBest = false; draw(); });
+    qs('[data-best]', P3).addEventListener('click', async function(){
+      if (!S.f) return; api.tok++; var tok = api.tok, n = S.x.length; S.showBest = true; try { for (var it = 0; it <= 90; it++) { api.checkTok(tok); var gw = 0, gb = 0; for (var i = 0; i < n; i++) { var e = S.y[i] - (S.w * S.x[i] + S.b); gw += -2 * e * S.x[i]; gb += -2 * e; } S.w -= 0.12 * gw / n; S.b -= 0.12 * gb / n; S.step = it; draw(); await api.sleep(45); } } catch (e) { if (!(e instanceof Cancel)) console.error(e); }
+    });
+    function render(){ prep(false); draw(); }
+    return { render: render };
+  } };
 }

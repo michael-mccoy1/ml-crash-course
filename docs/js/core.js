@@ -36,7 +36,7 @@ function prepareDS(d){
   d.BASE.forEach(function(f){ if (!(f in FSEL)) FSEL[f] = true; });
   ensureBins(d);
 }
-async function loadJSON(name){ var r = await fetch('data/' + name + '.json?v=c2'); if (!r.ok) throw new Error('Could not load data/' + name + '.json'); return r.json(); }
+async function loadJSON(name){ var r = await fetch('data/' + name + '.json?v=d2'); if (!r.ok) throw new Error('Could not load data/' + name + '.json'); return r.json(); }
 async function loadDataset(key){
   if (!DATA[key]) { var d = await loadJSON(key === 'HLM' ? 'hlm' : 'logd'); DATA[key] = d; prepareDS(d); }
   return DATA[key];
@@ -188,6 +188,7 @@ function buildLesson(L){
   var root = $('lesson-' + L.id), n = L.steps.length + (L.gloss ? 1 : 0);
   root.innerHTML = '<aside class="options"><div class="otitle">Options</div><div class="obody"></div><div class="aff"><div class="hint">Change any option. This box shows which steps it drives.</div></div></aside><div class="steps"><nav class="toc"></nav></div>';
   qs('.obody', root).innerHTML = typeof L.optsHTML === 'function' ? L.optsHTML() : L.optsHTML; var stepsEl = qs('.steps', root), toc = qs('.toc', root);
+  var ig = window.GUIDE && GUIDE.intro[L.id]; if (ig) { var card = h('div', 'intro', '<div class="it"><b>About ' + esc(ig.time) + '</b><span>' + esc(ig.prior) + '</span></div><div class="ig"><div><div class="ol">In this lesson you will</div><ul>' + ig.goals.map(function(g){ return '<li>' + esc(g) + '</li>'; }).join('') + '</ul></div><div><div class="ol">Words you will meet</div><div class="wd">' + ig.words.map(function(w){ return '<span>' + esc(w) + '</span>'; }).join('') + '</div><div class="hint">Each is defined in the glossary at the bottom of this lesson.</div></div></div>' + (ig.map ? '<div class="cmap"><div class="ol">The whole course, in order (about 90 minutes)</div>' + ig.map.map(function(m){ return '<div><b>' + m[0] + '</b><span><i>' + esc(m[1]) + '</i> ' + esc(m[2]) + '<br>' + esc(m[3]) + '</span></div>'; }).join('') + '</div>' : '')); stepsEl.insertBefore(card, toc); }
   L.steps.forEach(function(s, i){ s.L = L; s.idx = i; buildStep(L, s, i, n, stepsEl); toc.appendChild(tocChip(L.id + '-s' + (i + 1), (i + 1) + '  ' + s.short)); });
   if (L.gloss) { var g = h('section', 'step gloss'); g.id = L.id + '-gl'; g.innerHTML = '<div class="shead"><i class="tick"></i><div><div class="eyebrow">GLOSSARY</div><h2>Terms in this lesson</h2></div></div><dl class="gl">' + L.gloss.map(function(t){ return '<div><dt>' + t[0] + '</dt><dd>' + t[1] + '</dd></div>'; }).join('') + '</dl>'; stepsEl.appendChild(g); toc.appendChild(tocChip(L.id + '-gl', 'Glossary')); }
   L.built = true; if (L.onOpts) L.onOpts(root); renderChips(); if (window.syncFilterControls) syncFilterControls();
@@ -199,6 +200,7 @@ function buildStep(L, s, idx, total, parent){
   sec.innerHTML = '<div class="shead"><i class="tick"></i><div><div class="eyebrow">' + (s.bench ? 'WORKBENCH' : 'STEP ' + (idx + 1)) + '</div><h2>' + s.title + '</h2></div></div>' +
     '<p class="lead">' + s.watch + '</p><p class="try"><b>Try</b> ' + s.change + '</p>' + usesHTML(s) +
     '<div class="stagewrap"><div class="screen"><div class="inner"></div></div>' + (s.bench ? '' : '<div class="sbar"><button type="button" class="btn sm ghost" data-play>Walk through</button><span class="sx"></span></div>') + '</div>';
+  var gd = window.GUIDE && GUIDE.steps[L.id + '/' + s.short]; if (gd) sec.insertAdjacentHTML('beforeend', '<div class="guide"><p class="gn"><b>Notice</b>' + esc(gd.notice) + '</p><details class="gq"><summary>Check yourself: ' + esc(gd.q) + '</summary><p>' + esc(gd.a) + '</p></details></div>');
   parent.appendChild(sec);
   var screen = qs('.screen', sec), inner = qs('.inner', sec), sbar = qs('.sbar', sec) || h('div', 'sbar'), sx = qs('.sx', sec) || h('span', 'sx');
   var cap = h('div', 'cap'), busy = h('div', 'busy', '<div class="bs"><i></i><span></span></div>'), stale = h('div', 'stalebadge'); inner.appendChild(cap); inner.appendChild(stale); inner.appendChild(busy);

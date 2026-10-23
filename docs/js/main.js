@@ -8,6 +8,7 @@
     await loadStructs(); progress(0.7);
     showLesson('start'); progress(1);
     loadExtras().catch(function(){});
+    setTimeout(function(){ if (window.gptLoadDemo) gptLoadDemo(); }, 2500);
     setTimeout(function(){ ensureLogdPred().catch(function(e){ console.error(e); }); }, 800);
   } catch (e) {
     $('lesson-start').innerHTML = '<div class="loading">Could not load the data: ' + esc(e.message) + '. Serve this folder over http (for example python -m http.server in docs).</div>';
