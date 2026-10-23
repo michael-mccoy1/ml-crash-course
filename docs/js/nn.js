@@ -40,8 +40,8 @@ function mlpForward(m, X, off, A, masks, drop, r){
 }
 function mlpMSE(m, X, y, n, A){ var F = m.sizes[0], s = 0; for (var k = 0; k < n; k++) { var e = mlpForward(m, X, k * F, A, null, 0, null) - y[k]; s += e * e; } return s / n; }
 function mlpCopy(m){ return { sizes: m.sizes, W: m.W.map(function(w){ return new Float32Array(w); }), b: m.b.map(function(b){ return new Float32Array(b); }) }; }
-function nnPrep(f){
-  var feats = activeFeats(), idx = activeTrain(f), key = JSON.stringify([EP, feats, idx.length, filtKey(f)]); if (NN.prepKey === key && NN.pc) return NN.pc;
+function nnPrep(f, sub){
+  var feats = activeFeats(), idx = sub || activeTrain(f), key = JSON.stringify([EP, feats, idx.length, filtKey(f), sub ? sub[0] + ':' + sub[sub.length - 1] : 0]); if (NN.prepKey === key && NN.pc) return NN.pc;
   var mu = {}, sd = {}; feats.forEach(function(f){ var v = idx.map(function(i){ return D.COL[f][i]; }); mu[f] = mean(v); sd[f] = Math.sqrt(mean(v.map(function(x){ return (x - mu[f]) * (x - mu[f]); }))) || 1; });
   var ymu = mean(idx.map(function(i){ return D.Y[i]; })), F = feats.length, rowOf = function(i){ return feats.map(function(f){ return clamp((D.COL[f][i] - mu[f]) / sd[f], -5, 5); }); };
   var sh = idx.slice(), r = rng(11); for (var a = sh.length - 1; a > 0; a--) { var j = Math.floor(r() * (a + 1)), t = sh[a]; sh[a] = sh[j]; sh[j] = t; }
@@ -52,7 +52,7 @@ function nnPrep(f){
 }
 function mlpPredictAll(m, P){ var A = mlpBuf(m.sizes), out = new Float64Array(D.N); for (var i = 0; i < D.N; i++) out[i] = mlpForward(m, P.all, i * P.F, A, null, 0, null) + P.ymu; return out; }
 async function nnTrain(o){
-  var P = nnPrep(o.filt), p = Object.assign(NP(), o.params || {}), sizes = netSizes(P.F, p.layers, p.units), m = mlpInit(sizes, 7 + p.layers * 13 + p.units), S = sizes, L = S.length - 1, r = rng(5 + p.units), tN = performance.now(), over = 0, sig = nnSig();
+  var P = nnPrep(o.filt, o.sub), p = Object.assign(NP(), o.params || {}), sizes = netSizes(P.F, p.layers, p.units), m = mlpInit(sizes, 7 + p.layers * 13 + p.units), S = sizes, L = S.length - 1, r = rng(5 + p.units), tN = performance.now(), over = 0, sig = nnSig();
   if (o.keep) NN.busy = true;
   try {
     var A = mlpBuf(S), masks = S.slice(1, -1).map(function(n){ return new Float32Array(n); }), gW = m.W.map(function(w){ return new Float32Array(w.length); }), gB = m.b.map(function(b){ return new Float32Array(b.length); });
@@ -124,15 +124,15 @@ function lossChart(canvas, hist, best, upto, xmax){
   var g = lineChart(canvas, [{ pts: pts1, color: C.char }, { pts: pts2, color: C.red }], { xl: 'epoch', yl: 'loss', y0: 0, x0: 1, x1: Math.max(2, xmax || n), xdec: 0, ydec: 2 }); if (best && g.sx && n >= best) { var x = g.x, X = g.sx(best); x.strokeStyle = C.dred; x.setLineDash([4, 4]); x.beginPath(); x.moveTo(X, g.box.t); x.lineTo(X, g.box.b); x.stroke(); x.setLineDash([]); x.fillStyle = C.dred; x.font = '600 11px Aptos, Segoe UI, sans-serif'; x.textAlign = X > g.w / 2 ? 'right' : 'left'; x.fillText('best epoch ' + best, X + (X > g.w / 2 ? -6 : 6), g.box.t + 12); } return g;
 }
 
-L3.add(lineStepDef({ short: 'What a weight is', title: 'A weight says how strongly one input pushes the prediction',
-  watch: 'A neural network is built from weights, so start with the smallest model there is. It has one input (a feature), one weight and one bias. The prediction is the weight times the input, plus the bias. A bigger weight means the input pushes the prediction harder. The red line is the prediction for every possible input, and the thin vertical lines show how far it misses each compound.',
-  change: 'Drag Weight and Bias under the plot and watch the error. Then press Find the best weights and watch the computer adjust them step by step. You can also choose another input feature.' }));
+L3.add(lineStepDef({ short: 'What a weight is', title: 'A weight is how hard one input pushes',
+  watch: 'The smallest model: one input, one weight, one bias. Prediction = weight times input, plus bias. A bigger weight pushes harder. Thin lines show how far the red line misses each compound.',
+  change: 'Drag Weight and Bias below the plot, then press Find the best weights.' }));
 
 /* ---------- workbench: set up a network, press Train ---------- */
 L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly'],
-  title: 'Train a network: it starts with random weights and adjusts them',
-  watch: 'A neural network is many neurons arranged in columns called layers, and every line between two neurons is a weight. At the start the weights are random, so the predictions are poor. Training repeats a loop: predict, measure how far off the prediction is from the lab value (the error), and nudge every weight a little to shrink the error. One full pass over the training compounds is called an epoch. Press Train to watch the weights, the error and the predictions change.',
-  change: 'Drag the options and the diagram changes. Then press Train. Slow shows every epoch, Fast skips ahead.',
+  title: 'Train a network and watch it learn',
+  watch: 'A network is neurons in columns called layers. Each line is a weight. Training nudges every weight to shrink the error. One pass over the training data is an epoch.',
+  change: 'Set the options in the left panel, then press Train.',
   build: function(api){
     var bb = benchBar(api);
     var np = api.el('pn', 'left:28px;top:80px;width:456px;height:372px', '<h4>The network</h4><svg viewBox="0 0 432 318" width="432" height="318"></svg>');
@@ -151,7 +151,7 @@ L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filter
     function legend(){ svg.insertAdjacentHTML('beforeend', '<text x="0" y="312" font-size="11" fill="' + C.mid + '">Circle: neuron. Line: weight (hover for its value). Red pushes the prediction up, grey pushes it down, thicker is stronger.</text>'); }
     function note(){
       var f = activeFeats(), p = NP(), sizes = netSizes(Math.max(1, f.length), p.layers, p.units), tot = 0; for (var q = 0; q < sizes.length - 1; q++) tot += sizes[q] * sizes[q + 1] + sizes[q + 1];
-      qs('.mn', mn).textContent = p.layers + ' hidden layer' + (p.layers > 1 ? 's' : '') + ' of ' + p.units + ' neurons, ' + tot.toLocaleString() + ' numbers to learn. Each epoch is one pass over the training compounds, nudging every weight by about ' + p.lr + ' per step. Dropout ' + p.drop + ' switches off that share of neurons at each step. ' + (p.early ? 'The best epoch on held-out training compounds is kept.' : 'The last epoch is kept.');
+      qs('.mn', mn).textContent = p.layers + ' hidden layer' + (p.layers > 1 ? 's' : '') + ' of ' + p.units + ' neurons: ' + tot.toLocaleString() + ' numbers to learn. Dropout ' + p.drop + ' switches off that share of neurons at each step.';
     }
     function render(){
       var p = NP(); picture(); legend(); note();
@@ -179,9 +179,9 @@ L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filter
   } });
 
 /* ---------- N1: a neuron is a weighted sum ---------- */
-L3.add({ short: 'One neuron', title: 'A neuron adds up its weighted inputs',
-  change: 'Drag the weight and bias sliders inside the picture. Untick features in the options to change the inputs. Next compound picks another molecule.',
-  watch: 'A neuron is the same idea with several inputs. Each input is multiplied by its own weight, the results are added together with a bias, and then a switch called ReLU turns any negative total into zero. Red lines push the total up and grey lines push it down.',
+L3.add({ short: 'One neuron', title: 'A neuron adds up its inputs',
+  change: 'Drag the sliders in the picture. Press Next compound.',
+  watch: 'Each input is multiplied by its own weight, then everything is added with a bias. ReLU turns a negative total into zero. Red lines push the total up and grey lines push it down.',
   build: function(api){
     var cur = 0, feats = [], x = [0, 0, 0], w = [0.9, -0.6, 0.4], bias = 0.2, built = false;
     var svg = api.el('abs', 'left:0;top:0;width:960px;height:540px;pointer-events:none', '<svg viewBox="0 0 960 540" width="960" height="540"></svg>');
@@ -212,9 +212,9 @@ L3.add({ short: 'One neuron', title: 'A neuron adds up its weighted inputs',
   } });
 
 /* ---------- N2: layers and units ---------- */
-L3.add({ short: 'Layers and neurons', title: 'More layers and neurons mean more weights to learn',
-  change: 'Drag Hidden layers, Neurons per layer and Dropout in the options.',
-  watch: 'More layers and more neurons mean more weights for the network to learn. The table on the right counts them. Dashed circles are neurons that dropout switches off during training, which a later step explains.',
+L3.add({ short: 'Layers and neurons', title: 'More layers and neurons mean more weights',
+  change: 'Drag Hidden layers and Neurons per layer in the left panel.',
+  watch: 'The table counts every weight and bias. Dashed circles are neurons switched off by dropout.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<svg viewBox="0 0 620 380" width="620" height="380"></svg>');
     var cp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>Parameters to learn</h4><div class="big pc" style="color:' + C.red + '">0</div><div class="note" style="font-size:12px;color:#6B7280;margin-bottom:8px">weights and biases</div><div class="pl" style="font-size:12px"></div>');
@@ -227,9 +227,9 @@ L3.add({ short: 'Layers and neurons', title: 'More layers and neurons mean more 
   } });
 
 /* ---------- N3: learning rate ---------- */
-L3.add({ short: 'Learning rate', title: 'The learning rate sets how big each nudge is',
-  change: 'Drag Learning rate and Epochs in the options, or drag Steps taken under the stage to replay the nudges one at a time.',
-  watch: 'Training is a loop: measure the error, then nudge the weights a little to reduce it. The learning rate is the size of each nudge. This uses the one-weight model from the first step on real data. A nudge that is too small is slow. One that is too large overshoots, so the error jumps around or grows.',
+L3.add({ short: 'Learning rate', title: 'The learning rate is the size of each nudge',
+  change: 'Drag Learning rate in the left panel, or Steps taken below the plot.',
+  watch: 'Training nudges the weights to cut the error. Too small is slow. Too large overshoots and the error grows.',
   build: function(api){
     var cp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Error after each nudge (lower is better)</h4><canvas width="536" height="320"></canvas><div class="note" style="font-size:12px;margin-top:6px">The error is the average squared distance between the line and the compounds. Each coloured curve is a different learning rate.</div>');
     var sp = api.el('pn', 'left:608px;top:28px;width:324px;height:408px', '<h4>The fitted line at this step</h4><canvas width="300" height="170"></canvas><div class="lr" style="margin-top:6px"></div>');
@@ -256,9 +256,9 @@ L3.add({ short: 'Learning rate', title: 'The learning rate sets how big each nud
   } });
 
 /* ---------- N5: dropout and early stopping ---------- */
-L3.add({ short: 'Dropout and early stopping', title: 'Dropout and the best epoch guard against overfitting',
-  change: 'Set Dropout and the other options, then press Run comparison under the stage.',
-  watch: 'A network can memorise the compounds it trains on instead of learning a general pattern. This is called overfitting: scores look good on the training compounds and poor on new ones. Dropout fights it by switching off random neurons during training, so the network cannot rely on any single neuron. Two networks train side by side, one without dropout and one with yours. The curves show the error on a small set of compounds held back to check progress (validation error), and the dashed lines mark each network\'s best epoch.',
+L3.add({ short: 'Dropout and early stopping', title: 'Dropout and the best epoch fight overfitting',
+  change: 'Set Dropout in the left panel, then press Run comparison below the plot.',
+  watch: 'Overfitting is memorising the training data. Dropout switches off random neurons while training. The curves show error on compounds held back to check progress.',
   auto: false,
   build: function(api){
     var np = api.el('pn', 'left:28px;top:28px;width:360px;height:408px', '<h4>Neurons switched off in each training step</h4><svg viewBox="0 0 340 330" width="340" height="330"></svg><div class="dn note" style="font-size:12px;color:#6B7280"></div>');

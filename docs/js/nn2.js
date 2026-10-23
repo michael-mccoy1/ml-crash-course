@@ -7,8 +7,8 @@ function nnAct(i){
 
 /* ---------- N6: one compound through the trained network ---------- */
 L3.add({ short: 'One compound', title: 'Follow one compound through the trained network',
-  change: 'Train the network in the workbench first. Press Next compound for another molecule, or Walk through to step layer by layer.',
-  watch: 'Follow one compound through a trained network. Its feature values go into the circles on the left. Each column of neurons turns the numbers it receives into new numbers, and the last circle gives the prediction. Darker red means a neuron is more active for this compound.',
+  change: 'Press Next compound.',
+  watch: 'Follow one compound through a trained network. Darker red means a neuron is more active.',
   build: function(api){
     var cur = null, act = null;
     var sp = api.el('pn', 'left:28px;top:28px;width:230px;height:226px', '<h4>Compound</h4><div class="struct" style="height:186px"></div>');
@@ -31,8 +31,8 @@ L3.add({ short: 'One compound', title: 'Follow one compound through the trained 
 
 /* ---------- N7: inside one neuron ---------- */
 L3.add({ short: 'Inside a neuron', title: 'Open one neuron and read its arithmetic',
-  change: 'Click any circle in hidden layer 1.',
-  watch: 'Open one neuron from the first column. For each input, the table shows the weight the network learned, how much that input adds for this compound, and the running total.',
+  change: 'Click a circle in the first hidden layer.',
+  watch: 'For each input the table shows its learned weight, what it adds, and the running total.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:360px;height:408px', '<h4>Click a neuron in hidden layer 1</h4><svg viewBox="0 0 340 360" width="340" height="360"></svg>');
     var tp = api.el('pn', 'left:408px;top:28px;width:524px;height:408px', '<div class="nt"></div>');
@@ -51,8 +51,8 @@ L3.add({ short: 'Inside a neuron', title: 'Open one neuron and read its arithmet
 
 /* ---------- N8: what the network learned ---------- */
 L3.add({ short: 'What it learned', title: 'What the network learned about one feature',
-  change: 'Choose a feature under the stage.',
-  watch: 'Take 15 compounds the network has not seen. For each one, change just one feature and ask the network for a new prediction. Each grey line is one compound and the red line is their average. It shows how the network thinks that feature affects the lab value.',
+  change: 'Choose a feature below the plot.',
+  watch: 'Each grey line is one unseen compound with one feature changed. The red line is the average.',
   build: function(api){
     var pp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<h4>Prediction as one feature changes</h4><canvas width="618" height="350"></canvas>');
     var sp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>How to read it</h4><div class="rd" style="font-size:12.5px;color:#4a4f5a"></div>');
@@ -70,9 +70,9 @@ L3.add({ short: 'What it learned', title: 'What the network learned about one fe
   } });
 
 /* ---------- N9: Chemprop and message passing ---------- */
-L3.add({ short: 'Chemprop', title: 'Chemprop reads a molecule as atoms and bonds',
-  change: 'Click an atom to start from it, and drag Rounds under the stage. Walk through plays the rounds.',
-  watch: 'Chemprop is a neural network that reads a molecule as a graph: atoms are the dots and bonds are the lines between them. In each round, every atom passes a message to the atoms bonded to it. The red zone shows how far the chosen atom\'s information has spread: one bond further each round.',
+L3.add({ short: 'Chemprop', title: 'Chemprop reads atoms and bonds',
+  change: 'Click an atom. Drag Rounds below the picture.',
+  watch: 'Chemprop is a network that reads a molecule as atoms and bonds. Each round, atoms pass messages to their neighbours. The red zone grows one bond per round.',
   build: function(api){
     var G = [], cur = { g: 0, c: 0, k: 0 }, playing = false, EL = { N: C.red, O: C.dred, S: '#9a7400', F: '#2c7a57', Cl: '#2c7a57', Br: '#2c7a57' };
     var gp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<svg viewBox="0 0 540 372" width="540" height="372"></svg>');
@@ -87,7 +87,7 @@ L3.add({ short: 'Chemprop', title: 'Chemprop reads a molecule as atoms and bonds
       var reach = 0; g.atoms.forEach(function(a, i){ var on = d[i] <= k; if (on) reach++; var fo = on ? Math.max(0.3, 1 - 0.16 * d[i]) : 1, isC = i === cur.c; s += '<circle data-a="' + i + '" cx="' + pos[i][0] + '" cy="' + pos[i][1] + '" r="' + (isC ? 14 : 11) + '" fill="' + (isC ? C.dred : (on ? C.red : '#fff')) + '" fill-opacity="' + (isC ? 1 : (on ? fo : 1)) + '" stroke="' + (on ? C.dred : C.char) + '" stroke-width="' + (isC ? 3 : 1.6) + '" style="cursor:pointer"/>'; if (a[0] !== 'C') s += '<text x="' + pos[i][0] + '" y="' + (pos[i][1] + 4) + '" text-anchor="middle" font-size="11" font-weight="700" fill="' + (on || isC ? '#fff' : (EL[a[0]] || C.char)) + '" pointer-events="none">' + a[0] + '</text>'; });
       qs('svg', gp).innerHTML = s + '<g class="dots"></g>'; qsa('circle[data-a]', gp).forEach(function(c){ c.addEventListener('click', function(){ if (playing) return; api.tok++; cur.c = +c.dataset.a; draw(); }); });
       var cp = EXTRAS && EXTRAS.meta && EXTRAS.meta['Chemprop (D-MPNN)'];
-      qs('.cx', sp).innerHTML = '<h4>Round ' + k + '</h4><p style="font-size:13px">Atom ' + (cur.c + 1) + ' (' + g.atoms[cur.c][0] + ') holds information from <b>' + reach + ' of ' + g.atoms.length + '</b> atoms.</p><ol style="font-size:12px;color:#4a4f5a;padding-left:16px;line-height:1.5;margin:8px 0"><li>Each atom starts with a vector describing itself: element, charge, ring membership.</li><li>Each round, every atom sends a message to its bonded neighbours and updates itself with what it receives.</li><li>After k rounds an atom knows its k-bond neighbourhood.</li><li>All atom vectors are pooled into one vector for the molecule.</li><li>A small network turns that vector into the prediction.</li></ol>' + (cp ? '<div class="score"><b>Chemprop on HLM, notebook 06</b><div class="v">' + cp.R2.toFixed(2) + '</div><div class="s">unseen R2, same scaffold split<br>' + Math.round(cp.train_secs) + ' s on a laptop CPU, in Python</div></div>' : '<p class="note">Run notebook 06 to add the Chemprop score.</p>'); qs('.kv', ctl).textContent = k; rr.value = k; }
+      qs('.cx', sp).innerHTML = '<h4>Round ' + k + '</h4><p style="font-size:13px">Atom ' + (cur.c + 1) + ' (' + g.atoms[cur.c][0] + ') holds information from <b>' + reach + ' of ' + g.atoms.length + '</b> atoms.</p><ol style="font-size:12px;color:#4a4f5a;padding-left:16px;line-height:1.5;margin:8px 0"><li>Each atom starts with a vector describing itself: element, charge, ring membership.</li><li>Each round, every atom sends a message to its bonded neighbours and updates itself with what it receives.</li><li>After k rounds an atom knows its k-bond neighbourhood.</li><li>All atom vectors are pooled into one vector for the molecule.</li><li>A small network turns that vector into the prediction.</li></ol>' + (cp ? '<div class="score"><b>Chemprop on HLM</b><div class="v">' + cp.R2.toFixed(2) + '</div><div class="s">unseen R2, same scaffold split<br>' + Math.round(cp.train_secs) + ' s on a laptop CPU, in Python</div></div>' : ''); qs('.kv', ctl).textContent = k; rr.value = k; }
     async function pulse(step){ var g = G[cur.g], pos = layout(g), d = dist(g, cur.c), edges = g.bonds.filter(function(b){ return (d[b[0]] === step - 1 && d[b[1]] === step) || (d[b[1]] === step - 1 && d[b[0]] === step); }); if (!ANIM || !edges.length) return;
       var layer = qs('.dots', gp), dots = edges.map(function(b){ var a = d[b[0]] === step - 1 ? b[0] : b[1], z = d[b[0]] === step - 1 ? b[1] : b[0], c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('r', 5); c.setAttribute('fill', C.dred); layer.appendChild(c); return { c: c, a: pos[a], z: pos[z] }; });
       await api.anim(650, function(t){ dots.forEach(function(o){ o.c.setAttribute('cx', lerp(o.a[0], o.z[0], t)); o.c.setAttribute('cy', lerp(o.a[1], o.z[1], t)); }); }); }
@@ -100,6 +100,38 @@ L3.add({ short: 'Chemprop', title: 'Chemprop reads a molecule as atoms and bonds
       for (var k = 1; k <= 4; k++) { await setK(k, true); api.cap(k === 1 ? 'Round 1: the chosen atom has heard from its bonded neighbours.' : 'Round ' + k + ': information has travelled ' + k + ' bonds from the chosen atom.'); await api.sleep(2000); }
       api.cap('After a few rounds every atom carries a summary of the chemistry around it. These are pooled and passed to a small network.'); await api.sleep(3400); } finally { playing = false; } }
     return { render: render, play: play };
+  } });
+
+/* ---------- test it: does a network beat a tree when labelled data are scarce? ---------- */
+L3.add({ short: 'Is it useful', uses: ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'ndrop', 'nlr'],
+  title: 'Test it: network or tree?',
+  watch: 'A boosted tree model and a network train on the same compounds, then are scored on unseen ones. Each size runs once, so small gaps are noise.',
+  change: 'Press Run test below the plot.',
+  build: function(api){
+    var cp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>Score on unseen compounds, by number of labelled compounds</h4><canvas width="576" height="330"></canvas><div class="note" style="font-size:12px;margin-top:4px">Dark: boosted trees. Red: neural network.</div>');
+    var sp = api.el('pn', 'left:648px;top:28px;width:284px;height:408px;overflow:hidden', '<div class="vs" style="font-size:12.5px;line-height:1.45"></div>');
+    var ctl = api.addControl('<button type="button" class="btn sm" data-run>Run test</button> <span class="note" style="font-size:12px">Trains a few models. It takes a moment.</span>'), busy = false;
+    function key(){ var p = NP(); return JSON.stringify(['nnv', EP, activeFeats(), filtKey(), p.layers, p.units, p.drop, p.lr]); }
+    function show(res){
+      var T = res.map(function(r){ return [r.n, r.tree]; }), N = res.map(function(r){ return [r.n, r.nn]; });
+      curveChart(qs('canvas', cp), [{ pts: T, color: C.char }, { pts: N, color: C.red }], null); var a = res[0], z = res[res.length - 1];
+      qs('.vs', sp).innerHTML = '<div class="lbl">With ' + a.n + ' labelled compounds</div><div class="nums" style="margin:4px 0 8px"><div><span>Trees</span><b>' + a.tree.toFixed(2) + '</b></div><div><span style="color:' + C.red + '">Network</span><b>' + a.nn.toFixed(2) + '</b></div></div><div class="lbl">With all ' + z.n + '</div><div class="nums" style="margin:4px 0 8px"><div><span>Trees</span><b>' + z.tree.toFixed(2) + '</b></div><div><span style="color:' + C.red + '">Network</span><b>' + z.nn.toFixed(2) + '</b></div></div>' +
+        '<p style="margin:0 0 8px">' + (z.nn > z.tree + 0.02 ? 'With all the data the network came out ahead here.' : (z.nn < z.tree - 0.02 ? 'Even with all the data the trees came out ahead here.' : 'With all the data the two are about equal here.')) + '</p>' +
+        '<div class="lbl" style="color:#2c7a57">Use a network when</div><ul style="margin:3px 0 7px;padding-left:16px"><li>You have a lot of labelled data, or inputs such as molecular graphs.</li><li>You can afford to tune and check it.</li></ul><div class="lbl" style="color:' + C.red + '">Be careful when</div><ul style="margin:3px 0 0;padding-left:16px"><li>You have a few hundred compounds: it is easy to overfit.</li><li>You need to explain why it predicted a value.</li></ul>';
+    }
+    async function run(){
+      if (busy) return; if (!activeFeats().length) { qs('.vs', sp).innerHTML = '<span class="note">Switch on at least one feature.</span>'; return; } D.cache.nnv = D.cache.nnv || {}; var k = key(); if (D.cache.nnv[k]) { show(D.cache.nnv[k]); return; }
+      busy = true; qs('[data-run]', ctl).disabled = true; try {
+        var all = activeTrain().slice(), r = rng(5); for (var a = all.length - 1; a > 0; a--) { var j = Math.floor(r() * (a + 1)), t = all[a]; all[a] = all[j]; all[j] = t; }
+        var sizes = [50, 100, 200, 500, 1000, all.length].filter(function(n, i, arr){ return n <= all.length && arr.indexOf(n) === i; }), res = [], feats = activeFeats();
+        for (var s = 0; s < sizes.length; s++) { var n = sizes[s], sub = all.slice(0, n); api.busy('Training both models on ' + n + ' compounds'); await tick(); await tick(); var m = fitBoost(feats, sub, 80, 0.1, 3), nnr = await nnTrain({ params: { epochs: 30 }, sub: sub }); res.push({ n: n, tree: r2(D.TEST, m.F), nn: nnr.r2 }); }
+        D.cache.nnv[k] = res; api.idle(); show(res);
+      } catch (e) { console.error(e); api.idle(); qs('.vs', sp).innerHTML = '<span style="color:' + C.red + '">' + esc(e.message) + '</span>'; }
+      busy = false; qs('[data-run]', ctl).disabled = false;
+    }
+    qs('[data-run]', ctl).addEventListener('click', run);
+    function render(){ var c = D.cache.nnv && D.cache.nnv[key()]; if (c) show(c); else { cv(qs('canvas', cp)); qs('.vs', sp).innerHTML = '<span class="note">Press Run test to train both models on growing amounts of data.</span>'; } }
+    return { render: render };
   } });
 
 L3.glossary([
@@ -119,4 +151,4 @@ L3.glossary([
 ]);
 
 L3.move('Workbench', 2);
-setUses(L3, [null, ['features', 'endpoint'], null, ['nlayers', 'nunits', 'ndrop', 'features'], ['nlr', 'nepochs', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'features', 'endpoint'], null, ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], []]);
+setUses(L3, [null, ['features', 'endpoint'], null, ['nlayers', 'nunits', 'ndrop', 'features'], ['nlr', 'nepochs', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'features', 'endpoint'], null, ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], [], null]);

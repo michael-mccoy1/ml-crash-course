@@ -16,11 +16,13 @@ featListeners.push(function(){ if (L6.built) L6.refresh(); });
 function logX(n, lo, hi, a, b){ return a + (Math.log(n) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)) * (b - a); }
 function curveChart(canvas, series, marker, o){
   var g = cv(canvas), x = g.x, box = { l: 46, r: g.w - 14, t: 14, b: g.h - 46 }, all = []; series.forEach(function(s){ s.pts.forEach(function(p){ all.push(p[1]); }); });
-  var lo = 25, hi = Math.max.apply(null, series.map(function(s){ return s.pts.length ? s.pts[s.pts.length - 1][0] : 25; }).concat([100])), y1 = Math.max(0.3, Math.max.apply(null, all.concat([0])) * 1.15), y0 = Math.min(0, Math.min.apply(null, all.concat([0])));
+  var lo = 20, hi = Math.max.apply(null, series.map(function(s){ return s.pts.length ? s.pts[s.pts.length - 1][0] : 25; }).concat([100])), y1 = Math.max(0.3, Math.max.apply(null, all.concat([0])) * 1.15), y0 = Math.min(0, Math.min.apply(null, all.concat([0])));
   x.strokeStyle = C.silver; x.fillStyle = C.mid; x.textAlign = 'right'; for (var k = 0; k <= 4; k++) { var y = box.b - k / 4 * (box.b - box.t); x.beginPath(); x.moveTo(box.l, y); x.lineTo(box.r, y); x.stroke(); x.fillText((y0 + (y1 - y0) * k / 4).toFixed(2), box.l - 6, y + 4); }
   var sx = function(n){ return logX(n, lo, hi, box.l, box.r); }, sy = function(v){ return box.b - (v - y0) / (y1 - y0) * (box.b - box.t); };
-  x.textAlign = 'center'; [25, 50, 100, 200, 400, 800, 1600].filter(function(n){ return n <= hi; }).forEach(function(n){ x.fillText(n, sx(n), box.b + 15); x.strokeStyle = 'rgba(52,55,63,.08)'; x.beginPath(); x.moveTo(sx(n), box.t); x.lineTo(sx(n), box.b); x.stroke(); });
-  x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.fillText('labelled compounds used for learning (log scale)', (box.l + box.r) / 2, g.h - 6); x.save(); x.translate(12, (box.t + box.b) / 2); x.rotate(-Math.PI / 2); x.fillText('R2 on unseen compounds', 0, 0); x.restore(); x.font = '12px Aptos, Segoe UI, sans-serif';
+  var sx = function(n){ return logX(n, lo, hi, box.l, box.r); }, sy = function(v){ return box.b - (v - y0) / (y1 - y0) * (box.b - box.t); };
+  for (var base = 10; base <= hi; base *= 10) for (var m = 1; m <= 9; m++) { var tn = m * base; if (tn < lo || tn > hi * 1.001) continue; var major = m === 1; x.strokeStyle = major ? 'rgba(52,55,63,.28)' : 'rgba(52,55,63,.09)'; x.lineWidth = major ? 1.3 : 1; x.beginPath(); x.moveTo(sx(tn), box.t); x.lineTo(sx(tn), box.b + (major ? 6 : 3)); x.stroke(); if (major) { x.fillStyle = C.char; x.font = '700 12px Aptos, Segoe UI, sans-serif'; x.textAlign = 'center'; x.fillText(tn.toLocaleString(), sx(tn), box.b + 20); } else if (m === 2 || m === 5) { x.fillStyle = C.mid; x.font = '11px Aptos, Segoe UI, sans-serif'; x.textAlign = 'center'; x.fillText(tn.toLocaleString(), sx(tn), box.b + 17); } }
+  x.lineWidth = 1; x.font = '12px Aptos, Segoe UI, sans-serif';
+  x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.fillText('labelled compounds used for learning (log scale: each bold line is 10 times the one before)', (box.l + box.r) / 2, g.h - 6); x.save(); x.translate(12, (box.t + box.b) / 2); x.rotate(-Math.PI / 2); x.fillText('R2 on unseen compounds', 0, 0); x.restore(); x.font = '12px Aptos, Segoe UI, sans-serif';
   if (marker) { var mx = sx(clamp(marker, lo, hi)); x.strokeStyle = C.mid; x.setLineDash([4, 4]); x.beginPath(); x.moveTo(mx, box.t); x.lineTo(mx, box.b); x.stroke(); x.setLineDash([]); }
   series.forEach(function(s){ if (!s.pts.length) return; x.strokeStyle = s.color; x.lineWidth = s.w || 2.8; x.setLineDash(s.dash || []); x.beginPath(); s.pts.forEach(function(p, i){ i ? x.lineTo(sx(p[0]), sy(p[1])) : x.moveTo(sx(p[0]), sy(p[1])); }); x.stroke(); x.setLineDash([]); x.fillStyle = s.color; s.pts.forEach(function(p){ x.beginPath(); x.arc(sx(p[0]), sy(p[1]), 3.4, 0, 6.3); x.fill(); }); });
   g.sx = sx; g.sy = sy; g.box = box; return g;
@@ -35,9 +37,9 @@ function pScratch(){
 }
 L6.add({ short: 'Why pre-train', uses: ['endpoint', 'features', 'plabels'],
   title: 'Labelled data is scarce, unlabelled molecules are plentiful',
-  watch: 'Compounds with lab values are expensive to make and test, but structures with no lab values are cheap and plentiful. The curve shows how well a model predicts when it only has a few labelled compounds (compounds with a lab value) to learn from: poorly. Pre-training teaches a model general chemistry first, from molecules with no lab values, so it starts ahead.',
-  change: 'Drag Labelled compounds in the options to move the dashed line along the curve. Switch the endpoint to compare HLM and logD.',
-  build: function(api){
+  watch: 'Compounds with lab values are costly. Structures without lab values are cheap. With few labelled compounds a model scores poorly. Pre-training teaches chemistry first, from unlabelled molecules.',
+  change: 'Drag Labelled compounds below the plot. The dashed line moves along the curve.',
+  build: function(api){ mirrorSlider(api, 'plabels', 'Labelled compounds');
     var cp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>Learning from scratch: score against labelled compounds</h4><canvas width="576" height="350"></canvas>');
     var sp = api.el('pn', 'left:648px;top:28px;width:284px;height:408px', '<div class="ps" style="font-size:13px;line-height:1.45"></div>');
     function bar(label, n, mx, col){ var w = Math.max(1.5, Math.log10(n) / Math.log10(mx) * 100); return '<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>' + label + '</span><b>' + n.toLocaleString() + '</b></div><div class="pbar" style="margin:3px 0 0;height:12px"><i style="background:' + col + ';width:' + w + '%;transition:none"></i></div></div>'; }
@@ -55,8 +57,8 @@ var ELNAMES = { C: 'carbon', N: 'nitrogen', O: 'oxygen', S: 'sulfur', F: 'fluori
 function bondWord(o){ return o === 1 ? 'single' : (o === 2 ? 'double' : (o === 3 ? 'triple' : 'aromatic')); }
 L6.add({ short: 'Learning without labels', uses: [],
   title: 'Pre-training starts by hiding part of a molecule and guessing it',
-  watch: 'Pre-training needs no lab measurements, because the molecule supplies the answer. One atom is hidden below. The clue is what surrounds it: which atoms it bonds to and how many bonds it makes. Guess the element.',
-  change: 'Pick the element you think is hidden. Press Hide another atom to play again, or choose another molecule under the stage.',
+  watch: 'No lab values are needed. The molecule supplies the answer. One atom is hidden. Use its neighbours and bonds as clues.',
+  change: 'Pick an element. Press Hide another atom to play again.',
   build: function(api){
     var gp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<svg viewBox="0 0 580 372" width="580" height="372"></svg>');
     var sp = api.el('pn', 'left:648px;top:28px;width:284px;height:408px', '<div class="mk" style="font-size:13px;line-height:1.45"></div>');
@@ -85,8 +87,8 @@ function hlSvg(smi, atoms, bonds, w, h){ var m = RDK.get_mol(smi); if (!m || !m.
 function motifMatch(smi, smarts){ var m = RDK.get_mol(smi), q = RDK.get_qmol(smarts), r = null; try { var j = JSON.parse(m.get_substruct_match(q)); if (j && j.atoms && j.atoms.length) r = j; } catch (e) { r = null; } if (m) m.delete(); if (q) q.delete(); return r; }
 L6.add({ short: 'Which groups are present', uses: ['endpoint'],
   title: 'A second blank to fill: which chemical groups does the molecule contain',
-  watch: 'A functional group is a small recognisable piece of a molecule, such as an amide or a carboxylic acid. A computer can find these straight from the structure, so no experiment is needed. Pre-training can ask a model to name the groups it sees. RDKit finds each group below by pattern matching.',
-  change: 'Choose a molecule under the stage. Click a group that is present to highlight its atoms.',
+  watch: 'A functional group is a recognisable piece of a molecule, such as an amide. A computer finds groups from the structure alone, so no experiment is needed.',
+  change: 'Click a group marked present to highlight it.',
   build: function(api){
     var sp = api.el('pn', 'left:28px;top:28px;width:440px;height:408px', '<h4>Structure</h4><div class="struct" style="height:350px"></div>');
     var lp = api.el('pn', 'left:488px;top:28px;width:444px;height:408px', '<h4>Groups the pre-training task asks about</h4><div class="ml"></div>');
@@ -105,8 +107,8 @@ L6.add({ short: 'Which groups are present', uses: ['endpoint'],
 
 /* ---------- step 4: architecture and scale ---------- */
 L6.add({ short: 'The model and its size', uses: [],
-  title: 'GROVER reads a molecule as a graph of atoms and bonds',
-  watch: 'The GPT earlier reads a molecule as a line of text. GROVER, a published model, reads it as a graph instead: atoms are dots and bonds are lines. It passes information between neighbouring atoms through many layers and ends with one list of numbers that describes the molecule. A small final layer, the head, turns that list into a prediction such as clearance.',
+  title: 'GROVER reads atoms and bonds',
+  watch: 'GROVER is a published model. It reads a molecule as a graph and ends with one list of numbers describing it. A small final layer, the head, predicts a value such as clearance.',
   change: 'Nothing to drag here. The bars compare GROVER with the small GPT you can train in this course.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<svg viewBox="0 0 580 372" width="580" height="372"></svg>');
@@ -161,10 +163,10 @@ function preCurve(){
   PRE.curve = res; PRE.ckey = key; return res;
 }
 L6.add({ short: 'Fixed features', uses: ['endpoint', 'features', 'filters', 'plabels'],
-  title: 'Use the pre-trained GPT as a fixed feature extractor',
-  watch: 'The simplest way to use a pre-trained model is to leave it alone and use what it outputs. The GPT turns each molecule into 64 numbers, and a simple line-fitting model learns the lab values from those numbers. Red uses the trained GPT, grey uses the same GPT with random weights, and dark uses ordinary features such as logP. This GPT is tiny, so it is not expected to win. The gap between red and grey shows what its pre-training added.',
-  change: 'Train the GPT in its workbench first. Drag Labelled compounds. Train it for more steps and press Recompute to see whether the red line moves.',
-  build: function(api){
+  title: 'Use the pre-trained GPT as it is',
+  watch: 'The GPT turns each molecule into 64 numbers, and a simple line fit learns the lab values from them. Red: trained GPT. Grey: same GPT, random weights. Dark: ordinary features. The gap between red and grey is what pre-training added.',
+  change: 'Drag Labelled compounds below the plot. Press Recompute after retraining the GPT.',
+  build: function(api){ mirrorSlider(api, 'plabels', 'Labelled compounds');
     var cp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>Score against labelled compounds, unseen compounds</h4><canvas width="576" height="350"></canvas>');
     var sp = api.el('pn', 'left:648px;top:28px;width:284px;height:408px', '<div class="pm" style="font-size:13px;line-height:1.45"></div>');
     var ctl = api.addControl('<button type="button" class="btn sm" data-re>Recompute</button> <span class="note" style="font-size:12px">Uses the GPT as it is trained now.</span>'), busy = false;
@@ -172,7 +174,7 @@ L6.add({ short: 'Fixed features', uses: ['endpoint', 'features', 'filters', 'pla
       if (busy) return; if (!(await gReady(api))) { cv(qs('canvas', cp)); qs('.pm', sp).innerHTML = ''; return; } busy = true;
       try { if (force) PRE.key = null; api.busy('Turning molecules into numbers with the GPT'); await tick(); await preEmbeddings(); api.busy('Fitting models on growing subsets'); await tick(); var cur = preCurve(); api.idle(); var n = +$('plabels').value, a = interp(cur.pre, n), b = interp(cur.rnd, n), c = interp(cur.scr, n);
         curveChart(qs('canvas', cp), [{ pts: cur.scr, color: C.char, w: 2.4 }, { pts: cur.rnd, color: C.bg, dash: [6, 5] }, { pts: cur.pre, color: C.red }], n);
-        qs('.pm', sp).innerHTML = '<div class="lbl">At ' + n + ' labelled compounds</div><div class="nums" style="font-size:13px;margin-top:4px"><div><span style="color:' + C.red + '">Trained GPT</span><b>' + a.toFixed(2) + '</b></div><div><span>Random-weight GPT</span><b>' + b.toFixed(2) + '</b></div><div><span>Descriptors only</span><b>' + c.toFixed(2) + '</b></div></div><p style="margin-top:12px">' + (a > b + 0.01 ? 'Pre-training helped: the trained GPT scores ' + (a - b).toFixed(2) + ' higher than the same network with random weights, with the same labelled compounds.' : 'Pre-training has not helped yet at this size. Train the GPT for more steps in its workbench and press Recompute.') + '</p><p class="note" style="font-size:12px">' + cur.nTrain + ' labelled compounds and ' + cur.nTest + ' unseen compounds had SMILES the GPT could read. Each point is the mean of three random draws.</p>'; }
+        qs('.pm', sp).innerHTML = '<div class="lbl">At ' + n + ' labelled compounds</div><div class="nums" style="font-size:13px;margin-top:4px"><div><span style="color:' + C.red + '">Trained GPT</span><b>' + a.toFixed(2) + '</b></div><div><span>Random-weight GPT</span><b>' + b.toFixed(2) + '</b></div><div><span>Descriptors only</span><b>' + c.toFixed(2) + '</b></div></div><p style="margin-top:12px">' + (a > b + 0.01 ? 'Pre-training helped: ' + (a - b).toFixed(2) + ' higher than random weights.' : 'No gain yet. Train the GPT for more steps, then press Recompute.') + '</p><p class="note" style="font-size:12px">' + cur.nTrain + ' labelled and ' + cur.nTest + ' unseen compounds. Mean of three draws.</p>'; }
       catch (e) { console.error(e); qs('.pm', sp).innerHTML = '<span style="color:' + C.red + '">' + esc(e.message) + '</span>'; }
       api.idle(); busy = false;
     }
@@ -213,8 +215,8 @@ async function ftRun(o){
 }
 L6.add({ short: 'Fine-tune', bench: true, uses: ['endpoint', 'filters', 'plabels', 'ftmode', 'ftlr', 'ftsteps'],
   title: 'Fine-tune the pre-trained GPT on labelled compounds',
-  watch: 'Fine-tuning starts from the pre-trained model and teaches it your lab values. A small new piece called the head (65 numbers) is added on top to give the prediction. Head only freezes the GPT, so only the head learns. Everything lets the GPT\'s own weights change too. The grey curve starts from a GPT with random weights instead, so the gap between red and grey is what pre-training bought. A demo GPT is loaded for you, or train your own in the GPT lesson.',
-  change: 'Choose what to update, then drag the learning rate, the steps and Labelled compounds, and press Train. Try both endpoints: the GPT read only Biogen molecules. Narrow the chemistry under Filter training data to see a model fine-tuned on one series fail on the rest.',
+  watch: 'Fine-tuning starts from the pre-trained GPT and teaches it lab values. A new head of 65 numbers makes the prediction. Head only freezes the GPT. Everything lets its weights change too. Grey starts from random weights.',
+  change: 'Choose Head only or Everything in the left panel, set the learning rate and steps, then press Train.',
   build: function(api){
     var bb = benchBar(api);
     var mp = api.el('pn', 'left:28px;top:80px;width:440px;height:372px', '<h4>What is being trained</h4><svg viewBox="0 0 416 330" width="416" height="330"></svg>');
@@ -233,9 +235,8 @@ L6.add({ short: 'Fine-tune', bench: true, uses: ['endpoint', 'filters', 'plabels
     function charts(){ var p = params(), x1 = p.steps, all = []; [scr, pre].forEach(function(r){ if (r) r.curve.forEach(function(q){ all.push(q.r2); }); }); var y0 = Math.min(0, Math.min.apply(null, all.concat([0]))), y1 = Math.max(0.3, Math.max.apply(null, all.concat([0])) * 1.1), o = { xl: 'fine-tuning step', yl: 'R2', x0: 0, x1: x1, y0: y0, y1: y1, xdec: 0, ydec: 2 };
       var s1 = [], s2 = []; if (scr) { s1.push({ pts: scr.curve.map(function(q){ return [q.s, q.r2]; }), color: C.bg, nodot: true, w: 2.4 }); s2.push({ pts: scr.curve.filter(function(q){ return q.loss !== null; }).map(function(q){ return [q.s, q.loss]; }), color: C.bg, nodot: true, w: 2.4 }); } if (pre) { s1.push({ pts: pre.curve.map(function(q){ return [q.s, q.r2]; }), color: C.red }); s2.push({ pts: pre.curve.filter(function(q){ return q.loss !== null; }).map(function(q){ return [q.s, q.loss]; }), color: C.red }); }
       if (!s1.length) s1.push({ pts: [[0, y0], [x1, y1]], color: 'rgba(0,0,0,0)', nodot: true }); lineChart(qs('canvas', cp), s1, o); var lo2 = { xl: 'fine-tuning step', yl: 'error', x0: 0, x1: x1, y0: 0, xdec: 0, ydec: 2 }; if (!s2.some(function(s){ return s.pts.length; })) s2 = [{ pts: [[0, 0], [x1, 1]], color: 'rgba(0,0,0,0)', nodot: true }]; lineChart(qs('canvas', ep), s2.filter(function(s){ return s.pts.length; }), lo2); }
-    function explain(){ var p = params(); if (!pre || !scr) { qs('.mn', mn).textContent = 'Head only is the safe choice: the GPT cannot be damaged. Everything can fit the labels better but can also forget what pre-training taught it, especially with few compounds or a large learning rate. Press Train to see which happens here.'; return; }
-      var d = pre.r2 - scr.r2, fin = pre.curve[pre.curve.length - 1], t = 'Fine-tuning ' + (p.mode === 'head' ? 'the head only' : 'everything') + ' reached an unseen R2 of ' + pre.r2.toFixed(2) + ', against ' + scr.r2.toFixed(2) + ' when starting from random weights. ';
-      t += d > 0.02 ? 'Starting from the pre-trained GPT helped by ' + d.toFixed(2) + '. ' : (d < -0.02 ? 'Here the pre-trained start did worse than starting fresh. ' : 'The two are about equal here. '); if (p.mode === 'all') t += 'The GPT\'s weights moved ' + (fin.moved * 100).toFixed(1) + '% from where pre-training left them.'; qs('.mn', mn).textContent = t; }
+    function explain(){ var p = params(); if (!pre || !scr) { qs('.mn', mn).textContent = 'Head only cannot damage the GPT. Everything can fit better but may forget what pre-training taught. Press Train to compare.'; return; }
+      var d = pre.r2 - scr.r2, fin = pre.curve[pre.curve.length - 1], t = 'R2 ' + pre.r2.toFixed(2) + ', against ' + scr.r2.toFixed(2) + ' from random weights. ' + (d > 0.02 ? 'Pre-training helped by ' + d.toFixed(2) + '.' : (d < -0.02 ? 'Pre-training did worse here.' : 'About equal.')); if (p.mode === 'all') t += ' The GPT\'s weights moved ' + (fin.moved * 100).toFixed(1) + '%.'; qs('.mn', mn).textContent = t; }
     function render(){
       if (running) return; schematic(); charts(); explain(); if (!G.trained) { api.gate('Train the GPT in its workbench first.'); return; } api.idle();
       var s = setup(); cur = s; schematic(); var p = params(); if (!s.tr.length) { bb.say('No labelled compounds left. Loosen the filters.'); return; } bb.say(FT.last && FT.last.key === keyOf() ? 'Unseen R2 ' + fix(FT.last.pre.r2, 2) + ' after ' + p.steps + ' steps.' : 'Ready. Press Train.'); api.stale(FT.last && FT.last.key !== keyOf() ? 'Options changed. Press Train.' : '');
@@ -258,12 +259,12 @@ L6.add({ short: 'Fine-tune', bench: true, uses: ['endpoint', 'filters', 'plabels
     return { render: function(){ if (!running) { pre = FT.last && FT.last.key === keyOf() ? FT.last.pre : null; scr = pre ? FT.last.scr : null; } render(); } };
   } });
 
-/* ---------- fine-tuning a graph network: Chemprop, results from notebook 08 ---------- */
+/* ---------- fine-tuning Chemprop: results measured in Python ---------- */
 L6.add({ short: 'Fine-tune Chemprop', uses: ['plabels'],
-  title: 'Fine-tuning Chemprop: learn logD first, then adapt to HLM',
-  watch: 'Chemprop is a neural network that reads a molecule as a graph of atoms and bonds. It was first trained on 4,200 logD values from another company, then adapted to HLM clearance using only a few HLM compounds. Three starts are compared. From scratch: random weights. Frozen: the part that reads the molecule is kept as it was, and only the small final part learns. Full fine-tuning: every weight can change. These runs were done in notebook 08 because Chemprop needs Python.',
-  change: 'Drag Labelled compounds in the options to read the scores at that size. Tick or untick a start to show or hide its line.',
-  build: function(api){
+  title: 'Fine-tuning Chemprop',
+  watch: 'Chemprop was trained on 4,200 logD values, then adapted to HLM using a few HLM compounds. From scratch: random weights. Frozen: only the final part learns. Full: every weight can change.',
+  change: 'Drag Labelled compounds below the plot. Use the boxes to show or hide a line.',
+  build: function(api){ mirrorSlider(api, 'plabels', 'Labelled compounds');
     var cp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>HLM score on unseen scaffolds, by number of labelled HLM compounds</h4><canvas width="576" height="350"></canvas>');
     var sp = api.el('pn', 'left:648px;top:28px;width:284px;height:408px', '<div class="cf" style="font-size:13px;line-height:1.45"></div>');
     var ctl = api.addControl('<label><input type="checkbox" data-m="scratch" checked> From scratch</label> <label><input type="checkbox" data-m="frozen" checked> Frozen encoder</label> <label><input type="checkbox" data-m="full" checked> Full fine-tuning</label>'), show = { scratch: true, frozen: true, full: true };
@@ -271,7 +272,7 @@ L6.add({ short: 'Fine-tune Chemprop', uses: ['plabels'],
     function agg(runs){ var out = {}; ['scratch', 'frozen', 'full'].forEach(function(m){ var by = {}; runs.filter(function(r){ return r.mode === m; }).forEach(function(r){ (by[r.n] = by[r.n] || []).push(r); }); out[m] = Object.keys(by).map(Number).sort(function(a, b){ return a - b; }).map(function(n){ return { n: n, r2: mean(by[n].map(function(r){ return r.r2; })), secs: mean(by[n].map(function(r){ return r.secs; })), k: by[n].length }; }); }); return out; }
     qsa('input[data-m]', ctl).forEach(function(b){ b.addEventListener('change', function(){ show[b.dataset.m] = b.checked; render(); }); });
     async function render(){
-      var ex = await loadExtras(), ft = ex.chemprop_ft; if (!ft || !ft.runs || !ft.runs.length) { cv(qs('canvas', cp)); qs('.cf', sp).innerHTML = '<span class="note">The Chemprop results are not on this page yet. Run notebook 08 and rebuild the data.</span>'; return; }
+      var ex = await loadExtras(), ft = ex.chemprop_ft; if (!ft || !ft.runs || !ft.runs.length) { cv(qs('canvas', cp)); qs('.cf', sp).innerHTML = '<span class="note">No Chemprop results are available.</span>'; return; }
       var A = agg(ft.runs), n = +$('plabels').value, series = ['scratch', 'frozen', 'full'].filter(function(m){ return show[m]; }).map(function(m){ return { pts: A[m].map(function(p){ return [p.n, p.r2]; }), color: COL[m], dash: m === 'scratch' ? [6, 5] : null }; });
       curveChart(qs('canvas', cp), series.length ? series : [{ pts: [], color: C.bg }], n);
       var rows = ['scratch', 'frozen', 'full'].map(function(m){ var v = interp(A[m].map(function(p){ return [p.n, p.r2]; }), clamp(n, A[m][0].n, A[m][A[m].length - 1].n)); return '<div><span style="color:' + (m === 'scratch' ? C.mid : COL[m]) + '">' + NAME[m] + '</span><b>' + v.toFixed(2) + '</b></div>'; }).join(''), last = A.scratch[A.scratch.length - 1];
@@ -283,8 +284,8 @@ L6.add({ short: 'Fine-tune Chemprop', uses: ['plabels'],
 /* ---------- step 6: using it in a project ---------- */
 L6.add({ short: 'Using it in practice', uses: [],
   title: 'How a pre-trained model is used on your own data',
-  watch: 'Nobody trains a model like GROVER from scratch for one project. The usual route is to take the published weights and add a small amount of your own labelled data on top.',
-  change: 'Read the four stages and the cautions. This course does not run GROVER.',
+  watch: 'Nobody trains a model like GROVER for one project. Take the published weights and add a little of your own labelled data.',
+  change: 'Read the four stages.',
   build: function(api){
     var st = [['1  Get the pre-trained model', 'Download the weights and code that the authors published. This is the expensive part, and it is already done.'], ['2  Describe your compounds', 'Run your SMILES through the model to get one vector per compound. These vectors replace, or sit next to, descriptors such as logP.'], ['3  Learn from your labels', 'Fit a small model on the vectors, or fine-tune the network itself. Fewer labels and a gentler learning rate favour keeping the pre-trained weights nearly fixed.'], ['4  Test it fairly', 'Use the same scaffold split and the same unseen compounds as your baseline, so the comparison with descriptors and trees is honest.']];
     st.forEach(function(s, i){ api.el('pn', 'left:' + (28 + i * 227) + 'px;top:28px;width:214px;height:200px', '<h4 style="color:' + C.red + '">' + s[0] + '</h4><div style="font-size:13px;line-height:1.5;margin-top:4px">' + s[1] + '</div>'); });
