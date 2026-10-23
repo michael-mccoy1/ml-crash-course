@@ -68,8 +68,8 @@ function glyphTree(x0, y0, w, h, depth, seed, lit){
 }
 L2.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr'],
   title: 'Build a model, press Train, and watch it fit',
-  watch: 'A decision tree asks yes or no questions about a compound, for example whether logP is at most 2.9, and ends in a group. The average of the group is the prediction. A random forest averages many different trees. Gradient boosting adds small trees one after another, each fixing what the earlier ones got wrong. Drag the options to change the shape, then press Train to watch the model grow and the score climb.',
-  change: 'Choose a model type, drag its options, then press Train. Slow shows every step, Fast jumps to the end.',
+  watch: 'A decision tree is a flowchart of yes or no questions about a compound, for example "is logP at most 2.9?". The answers send the compound to a group, and the average of that group is the prediction. A forest asks many trees and averages them. Boosting builds trees one after another, each fixing what the last got wrong. Drag the options to change the shape, then press Train to watch the model grow and the score climb.',
+  change: 'Choose a model type, drag its options, then press Train. Slow shows every step and Fast jumps to the end.',
   build: function(api){
     var bb = benchBar(api, { leftHTML: '<div class="seg mode" data-mode>' + [['tree', 'Decision tree'], ['forest', 'Random forest'], ['boost', 'Gradient boosting']].map(function(it){ return '<button type="button" data-v="' + it[0] + '"' + (it[0] === TB.mode ? ' class="on"' : '') + '>' + it[1] + '</button>'; }).join('') + '</div>' });
     var mp = api.el('pn', 'left:28px;top:80px;width:576px;height:372px', '<h4 class="mh"></h4><svg class="static" viewBox="0 0 552 318" width="552" height="318"></svg>');
@@ -119,9 +119,9 @@ L2.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filter
     }
     function drawScatter(pred, label){ var canvas = qs('canvas', sp); if (!pred) { scatterPV(canvas, new Float32Array(D.N), [], null); return; } scatterPV(canvas, pred, D.TEST, label, { max: 320 }); }
     function note(){
-      var p = TP(), t = TB.mode === 'tree' ? 'Depth ' + p.depth + ': the tree asks up to ' + p.depth + ' questions in a row, so it can sort compounds into up to ' + Math.pow(2, p.depth).toLocaleString() + ' groups. Each group predicts the mean of the compounds in it.'
-        : (TB.mode === 'forest' ? p.nt + ' trees, each up to depth ' + p.fd + '. Each tree is fit on a random resample of the compounds and looks at a random subset of features at every question. The forest predicts the average of its trees.'
-        : p.rounds + ' small trees of depth 3, added one after another. Each tree fits the errors the earlier ones left, and only ' + Math.round(p.lr * 100) + '% of its correction is applied.'); qs('.mn', np).textContent = t;
+      var p = TP(), t = TB.mode === 'tree' ? 'Depth ' + p.depth + ' means the tree may ask up to ' + p.depth + ' questions in a row. Each question splits a group in two, so there can be up to ' + Math.pow(2, p.depth).toLocaleString() + ' final groups. Each final group predicts the average of the training compounds in it.'
+        : (TB.mode === 'forest' ? 'A forest is ' + p.nt + ' trees, each allowed ' + p.fd + ' questions in a row. Every tree is trained on a different random draw of the compounds, so each learns slightly different rules. The forest answers with the average of all its trees, which is steadier than any one tree.'
+        : 'Boosting builds ' + p.rounds + ' small trees one after another. The first makes a rough guess. Each next tree is trained on what the earlier ones still got wrong, and its correction is added at a small strength: ' + Math.round(p.lr * 100) + '% of the full correction, which is the learning rate.'); qs('.mn', np).textContent = t;
     }
     function render(){
       dimOpts(); qs('.mh', mp).textContent = TB.mode === 'tree' ? 'The tree you are building' : (TB.mode === 'forest' ? 'The forest you are building' : 'The boosted ensemble you are building'); var res = peek(), p = TP();
@@ -153,45 +153,50 @@ L2.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filter
   } });
 
 /* ---------- T1: how a tree chooses a question ---------- */
-L2.add({ short: 'Choosing a question', title: 'How a tree picks its first question',
-  change: 'Choose a feature under the plot, or drag Single tree depth to refine the red staircase. Walk through plays the scan.',
-  watch: 'Every position along the feature is scored by how well it separates low values from high values. The best position becomes the question at the top of the tree.',
+L2.add({ short: 'Choosing a question', title: 'A tree asks one question to split compounds into two groups',
+  change: 'Drag across the plot to move the cut and watch the miss score fall or rise. Then press Find the best cut. You can also pick a different feature under the stage.',
+  watch: 'Each dot is one compound. Across is a number that describes it, called a feature (logP by default: how much the compound prefers oil to water). Up is the lab value we want to predict. A tree starts by drawing one vertical cut. Compounds left of the cut form one group and compounds right of it form another. Each group predicts the average of its own dots, shown as the short horizontal lines. A good cut makes groups whose dots sit close to their line.',
   build: function(api){
-    var plot = api.el('pn', 'left:28px;top:28px;width:580px;height:408px', '<h4 class="t">Training compounds</h4><canvas width="560" height="352"></canvas>');
-    var gp = api.el('pn', 'left:628px;top:28px;width:304px;height:196px', '<h4>How good is each cut</h4><canvas width="284" height="146"></canvas>');
-    var res = api.el('pn', 'left:628px;top:236px;width:304px;height:200px', '<div class="rs" style="font-size:13px;color:#4a4f5a">Choose a feature, then press Walk through.</div>');
-    var ctl = api.addControl('Feature <select></select>'); var sel = qs('select', ctl), S = null, pts = [];
+    var plot = api.el('pn', 'left:28px;top:28px;width:580px;height:408px', '<h4>Each dot is one training compound</h4><canvas width="556" height="346"></canvas>');
+    var tp = api.el('pn', 'left:628px;top:28px;width:304px;height:272px', '<div class="qq" style="font-size:13px;line-height:1.45"></div>');
+    var gp = api.el('pn', 'left:628px;top:310px;width:304px;height:126px', '<h4>Miss score at every possible cut</h4><canvas width="284" height="86"></canvas>');
+    var ctl = api.addControl('Feature <select></select> <button type="button" class="btn sm" data-best>Find the best cut</button>'); var sel = qs('select', ctl), S = null, pts = [], running = false;
     function fillSel(){ var f = activeFeats(), cur = sel.value; sel.innerHTML = f.map(function(x){ return '<option>' + x + '</option>'; }).join(''); if (f.indexOf(cur) >= 0) sel.value = cur; }
-    function compute(){ var feat = sel.value, idx = activeTrain().slice().sort(function(a, b){ return D.COL[feat][a] - D.COL[feat][b]; }), n = idx.length, ys = idx.map(function(i){ return D.Y[i]; }), pre = new Float64Array(n + 1); for (var i = 0; i < n; i++) pre[i + 1] = pre[i] + ys[i];
-      var S_ = pre[n], base = S_ * S_ / n, cands = []; for (var q = 0; q < 60; q++) { var k = Math.round(n * (0.04 + 0.92 * q / 59)); if (k < 5 || n - k < 5) continue; var sl = pre[k], sr = S_ - sl, thr = D.COL[feat][idx[k]]; cands.push({ k: k, t: thr, gain: sl * sl / k + sr * sr / (n - k) - base, mL: sl / k, mR: sr / (n - k), nL: k, nR: n - k }); }
-      var best = cands.reduce(function(a, b){ return b.gain > a.gain ? b : a; }, cands[0]); var sst = ys.reduce(function(a, v){ return a + (v - S_ / n) * (v - S_ / n); }, 0), r = rng(5); pts = idx.filter(function(){ return r() < Math.min(1, 500 / n); });
-      var xs = D.COL[feat], lo = xs[idx[Math.floor(n * 0.01)]], hi = xs[idx[Math.floor(n * 0.99)]]; return { feat: feat, cands: cands, best: best, sst: sst, lo: lo, hi: hi, n: n }; }
-    function stair(feat, lo, hi){ var d = TP().depth, key = feat + '|' + d + '|' + activeTrain().length; D.cache.t1 = D.cache.t1 || {}; if (D.cache.t1[key]) return D.cache.t1[key]; var B = fineBins(feat, 150), tree = buildTree(B, [feat], D.Y, Int32Array.from(activeTrain()), d, 5, 1, rng(1)), curve = [], vals = {}; for (var k = 0; k < 160; k++) { vals[feat] = lerp(lo, hi, k / 159); curve.push(predictVals(tree, B, vals)); } var leaves = 0; (function cnt(n){ if (n.f === undefined) leaves++; else { cnt(n.l); cnt(n.r); } })(tree); return (D.cache.t1[key] = { curve: curve, leaves: leaves, depth: d }); }
-    function draw(upto, final){
-      var g = cv(qs('canvas', plot)), x = g.x, box = { l: 48, r: g.w - 12, t: 10, b: g.h - 40 }, f = S.feat, lo = S.lo, hi = S.hi; axes(g, box, [lo, hi], [D.ylo, D.yhi], f, unitWord(), 5);
+    function compute(){
+      var feat = sel.value, idx = activeTrain().slice().sort(function(a, b){ return D.COL[feat][a] - D.COL[feat][b]; }), n = idx.length, ys = idx.map(function(i){ return D.Y[i]; }), pre = new Float64Array(n + 1); for (var i = 0; i < n; i++) pre[i + 1] = pre[i] + ys[i];
+      var T = pre[n], sst = ys.reduce(function(a, v){ return a + (v - T / n) * (v - T / n); }, 0), cands = [];
+      for (var q = 0; q < 60; q++) { var k = Math.round(n * (0.04 + 0.92 * q / 59)); if (k < 5 || n - k < 5) continue; var sl = pre[k], sr = T - sl, gain = sl * sl / k + sr * sr / (n - k) - T * T / n; cands.push({ t: D.COL[feat][idx[k]], mL: sl / k, mR: sr / (n - k), nL: k, nR: n - k, miss: (sst - gain) / n }); }
+      var best = cands.reduce(function(a, b){ return b.miss < a.miss ? b : a; }, cands[0]), r = rng(5), xs = D.COL[feat]; pts = idx.filter(function(){ return r() < Math.min(1, 500 / n); });
+      var keep = S && S.feat === feat && S.cur ? cands.reduce(function(a, b){ return Math.abs(b.t - S.cur.t) < Math.abs(a.t - S.cur.t) ? b : a; }, cands[0]) : cands[Math.floor(cands.length * 0.2)];
+      return { feat: feat, cands: cands, best: best, cur: keep, base: sst / n, lo: xs[idx[Math.floor(n * 0.01)]], hi: xs[idx[Math.floor(n * 0.99)]], n: n };
+    }
+    function draw(){
+      if (!S) return; var c = S.cur, g = cv(qs('canvas', plot)), x = g.x, box = { l: 48, r: g.w - 12, t: 10, b: g.h - 40 }, f = S.feat, lo = S.lo, hi = S.hi; axes(g, box, [lo, hi], [D.ylo, D.yhi], f, unitWord(), 5);
       var sx = function(v){ return box.l + (clamp(v, lo, hi) - lo) / (hi - lo) * (box.r - box.l); }, sy = function(v){ return box.b - (clamp(v, D.ylo, D.yhi) - D.ylo) / (D.yhi - D.ylo) * (box.b - box.t); };
-      var c = upto >= 0 ? S.cands[Math.min(upto, S.cands.length - 1)] : null; if (final) c = S.manual || S.best;
-      pts.forEach(function(i){ var left = c && D.COL[f][i] <= c.t; x.fillStyle = c ? (left ? 'rgba(161,177,195,.85)' : 'rgba(225,36,42,.6)') : 'rgba(161,177,195,.7)'; x.beginPath(); x.arc(sx(D.COL[f][i]), sy(D.Y[i]), 3, 0, 6.3); x.fill(); });
-      if (c) { var tx = sx(c.t); x.strokeStyle = final ? C.red : C.char; x.lineWidth = final ? 3 : 1.6; x.beginPath(); x.moveTo(tx, box.t); x.lineTo(tx, box.b); x.stroke(); x.strokeStyle = C.char; x.lineWidth = 3; x.beginPath(); x.moveTo(box.l, sy(c.mL)); x.lineTo(tx, sy(c.mL)); x.stroke(); x.beginPath(); x.moveTo(tx, sy(c.mR)); x.lineTo(box.r, sy(c.mR)); x.stroke(); x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.textAlign = 'left'; x.fillText('left average ' + c.mL.toFixed(2), box.l + 6, sy(c.mL) - 6); x.textAlign = 'right'; x.fillText('right average ' + c.mR.toFixed(2), box.r - 6, sy(c.mR) - 6); }
-      if (final) { var st = stair(f, lo, hi); x.strokeStyle = C.red; x.lineWidth = 3.2; x.lineJoin = 'round'; x.beginPath(); st.curve.forEach(function(v, k){ var X = box.l + k / 159 * (box.r - box.l); k ? x.lineTo(X, sy(v)) : x.moveTo(X, sy(v)); }); x.stroke(); x.fillStyle = C.red; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.textAlign = 'left'; x.fillText('red: tree of depth ' + st.depth + ' on this feature, ' + st.leaves + ' groups', box.l + 6, box.t + 12); }
-      var g2 = cv(qs('canvas', gp)), x2 = g2.x, b2 = { l: 38, r: g2.w - 8, t: 8, b: g2.h - 26 }, mx = Math.max.apply(null, S.cands.map(function(k){ return k.gain; })), mn = Math.min.apply(null, S.cands.map(function(k){ return k.gain; }));
-      x2.strokeStyle = C.silver; x2.beginPath(); x2.moveTo(b2.l, b2.b); x2.lineTo(b2.r, b2.b); x2.stroke(); x2.fillStyle = C.mid; x2.font = '11px Aptos, Segoe UI, sans-serif'; x2.textAlign = 'center'; x2.fillText('cut position along ' + f, (b2.l + b2.r) / 2, g2.h - 6); x2.save(); x2.translate(11, (b2.t + b2.b) / 2); x2.rotate(-Math.PI / 2); x2.fillText('score', 0, 0); x2.restore();
-      var gx = function(k){ return b2.l + (S.cands[k].t - lo) / (hi - lo) * (b2.r - b2.l); }, gy = function(v){ return b2.b - (v - mn) / (mx - mn || 1) * (b2.b - b2.t); }; var upc = final ? S.cands.length - 1 : upto; x2.strokeStyle = C.red; x2.lineWidth = 2.4; x2.beginPath(); for (var k = 0; k <= Math.min(upc, S.cands.length - 1); k++) { var X = clamp(gx(k), b2.l, b2.r), Y = gy(S.cands[k].gain); k ? x2.lineTo(X, Y) : x2.moveTo(X, Y); } x2.stroke(); if (final) { x2.fillStyle = C.red; x2.beginPath(); x2.arc(clamp(gx(S.cands.indexOf(S.best)), b2.l, b2.r), gy(S.best.gain), 5, 0, 6.3); x2.fill(); } }
-    function show(){ var b = S.manual || S.best; qs('.rs', res).innerHTML = '<div class="lbl">' + (S.manual ? 'Your cut' : 'First question') + '</div><div class="big" style="font-size:22px;color:' + C.red + '">' + esc(S.feat) + ' &lt;= ' + (+b.t.toFixed(2)) + '?</div><div class="nums" style="font-size:12.5px;margin-top:8px"><div><span>Yes group</span><b>' + b.nL + ' compounds, mean ' + b.mL.toFixed(2) + '</b></div><div><span>No group</span><b>' + b.nR + ' compounds, mean ' + b.mR.toFixed(2) + '</b></div><div><span>Spread explained</span><b>' + Math.round(b.gain / S.sst * 100) + '%</b></div><div><span>Depth in options</span><b>' + TP().depth + '</b></div>' + (S.manual ? '<div><span>Best cut explains</span><b style="color:' + C.red + '">' + Math.round(S.best.gain / S.sst * 100) + '%</b></div>' : '') + '</div><p style="font-size:12px;color:#6B7280;margin-top:8px">Drag across the plot to try your own cut. The first cut makes two groups. Repeating the search inside each group, down to the depth in the options, gives the red staircase.</p>'; }
-    sel.addEventListener('change', function(){ api.tok++; api.clearTexts(); S = compute(); draw(0, true); show(); });
-    (function(){ var cvEl = qs('canvas', plot), down = false; function pick(e){ if (!S) return; var r = cvEl.getBoundingClientRect(), px = (e.clientX - r.left) / r.width * 560, v = S.lo + (px - 48) / (560 - 12 - 48) * (S.hi - S.lo), best = S.cands[0]; S.cands.forEach(function(k){ if (Math.abs(k.t - v) < Math.abs(best.t - v)) best = k; }); S.manual = best; api.tok++; api.clearTexts(); draw(0, true); show(); }
-      cvEl.style.cursor = 'ew-resize'; cvEl.addEventListener('pointerdown', function(e){ down = true; cvEl.setPointerCapture(e.pointerId); pick(e); }); cvEl.addEventListener('pointermove', function(e){ if (down) pick(e); }); cvEl.addEventListener('pointerup', function(){ down = false; }); })();
-    function render(){ fillSel(); if (!sel.value) return; var man = S && S.manual && S.feat === sel.value; S = compute(); draw(0, true); show(); }
-    async function play(tok){ fillSel(); if (!sel.value) return; S = compute(); qs('.rs', res).innerHTML = '<div class="note">Sweeping</div>'; draw(-1, false); await api.beat('Every dot is a training compound. The question is a cut along one feature: is it at most this value?', 3200);
-      api.cap('A cut makes two groups. Each group is predicted by its own average, the dark lines.'); var n = S.cands.length; await api.anim(ANIM ? 4800 : 1, function(t){ draw(Math.floor(t * (n - 1)), false); });
-      draw(n - 1, true); show(); api.cap('The cut with the best score wins. This becomes the first question of the tree.'); await api.sleep(3400); }
-    return { render: render, play: play };
+      pts.forEach(function(i){ var left = D.COL[f][i] <= c.t; x.fillStyle = left ? 'rgba(161,177,195,.9)' : 'rgba(225,36,42,.6)'; x.beginPath(); x.arc(sx(D.COL[f][i]), sy(D.Y[i]), 3, 0, 6.3); x.fill(); });
+      var tx = sx(c.t); x.strokeStyle = C.char; x.lineWidth = 2; x.setLineDash([6, 4]); x.beginPath(); x.moveTo(tx, box.t); x.lineTo(tx, box.b); x.stroke(); x.setLineDash([]);
+      x.strokeStyle = C.char; x.lineWidth = 3.4; x.beginPath(); x.moveTo(box.l, sy(c.mL)); x.lineTo(tx, sy(c.mL)); x.stroke(); x.beginPath(); x.moveTo(tx, sy(c.mR)); x.lineTo(box.r, sy(c.mR)); x.stroke(); x.lineWidth = 1;
+      x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.fillStyle = C.char; x.textAlign = 'left'; x.fillText('left group average ' + c.mL.toFixed(2), box.l + 6, sy(c.mL) - 7); x.textAlign = 'right'; x.fillText('right group average ' + c.mR.toFixed(2), box.r - 6, sy(c.mR) - 7);
+      x.textAlign = 'center'; x.fillStyle = C.mid; x.fillText('cut: drag across the plot to move it', tx, box.t + 12);
+      var g2 = cv(qs('canvas', gp)), x2 = g2.x, b2 = { l: 34, r: g2.w - 8, t: 8, b: g2.h - 24 }, mx = Math.max.apply(null, S.cands.map(function(k){ return k.miss; })), mn = Math.min.apply(null, S.cands.map(function(k){ return k.miss; })), gx = function(t){ return b2.l + (clamp(t, lo, hi) - lo) / (hi - lo) * (b2.r - b2.l); }, gy = function(v){ return b2.b - (v - mn) / (mx - mn || 1) * (b2.b - b2.t); };
+      x2.strokeStyle = C.silver; x2.beginPath(); x2.moveTo(b2.l, b2.b); x2.lineTo(b2.r, b2.b); x2.stroke(); x2.fillStyle = C.mid; x2.font = '11px Aptos, Segoe UI, sans-serif'; x2.textAlign = 'center'; x2.fillText('where the cut is, along ' + f, (b2.l + b2.r) / 2, g2.h - 6); x2.textAlign = 'right'; x2.fillText('high', b2.l - 4, b2.t + 8); x2.fillText('low', b2.l - 4, b2.b);
+      x2.strokeStyle = C.bg; x2.lineWidth = 2.4; x2.beginPath(); S.cands.forEach(function(k, i){ i ? x2.lineTo(gx(k.t), gy(k.miss)) : x2.moveTo(gx(k.t), gy(k.miss)); }); x2.stroke();
+      x2.fillStyle = C.red; x2.beginPath(); x2.arc(gx(S.best.t), gy(S.best.miss), 5, 0, 6.3); x2.fill(); x2.fillStyle = C.char; x2.beginPath(); x2.arc(gx(c.t), gy(c.miss), 5.5, 0, 6.3); x2.fill(); x2.strokeStyle = '#fff'; x2.lineWidth = 1.5; x2.stroke();
+      var cut = Math.round((S.base - c.miss) / S.base * 100), isBest = c === S.best;
+      qs('.qq', tp).innerHTML = '<div class="lbl">The question this cut asks</div><div class="big" style="font-size:19px;color:' + C.red + ';margin:3px 0 7px">Is ' + esc(f) + ' at most ' + (+c.t.toFixed(2)) + '?</div><div class="nums" style="font-size:12.5px"><div><span>Yes, left group</span><b>' + c.nL + ' compounds, average ' + c.mL.toFixed(2) + '</b></div><div><span>No, right group</span><b>' + c.nR + ' compounds, average ' + c.mR.toFixed(2) + '</b></div></div><div class="lbl" style="margin-top:10px">Miss score (lower is better)</div><div class="big" style="font-size:26px">' + c.miss.toFixed(3) + '</div><div class="note" style="font-size:12px;line-height:1.4">How far the dots sit from their group\'s line, on average. Big misses count extra. With no cut, one line for everyone, it would be ' + S.base.toFixed(3) + '. This cut removes ' + cut + '% of that. ' + (isBest ? '<b style="color:' + C.red + '">This is the best cut the tree can find.</b>' : 'The red dot below is the best cut.') + '</div>';
+    }
+    function pick(px){ if (!S) return; var cvEl = qs('canvas', plot), r = cvEl.getBoundingClientRect(), v = S.lo + ((px - r.left) / r.width * 556 - 48) / (556 - 12 - 48) * (S.hi - S.lo); S.cur = S.cands.reduce(function(a, b){ return Math.abs(b.t - v) < Math.abs(a.t - v) ? b : a; }, S.cands[0]); draw(); }
+    (function(){ var cvEl = qs('canvas', plot), down = false; cvEl.style.cursor = 'ew-resize'; cvEl.addEventListener('pointerdown', function(e){ down = true; api.tok++; cvEl.setPointerCapture(e.pointerId); pick(e.clientX); }); cvEl.addEventListener('pointermove', function(e){ if (down) pick(e.clientX); }); cvEl.addEventListener('pointerup', function(){ down = false; }); })();
+    sel.addEventListener('change', function(){ api.tok++; S = compute(); draw(); });
+    qs('[data-best]', ctl).addEventListener('click', async function(){ if (!S || running) return; running = true; api.tok++; var tok = api.tok; try { for (var k = 0; k < S.cands.length; k++) { api.checkTok(tok); S.cur = S.cands[k]; draw(); await api.sleep(45); } S.cur = S.best; draw(); } catch (e) { if (!(e instanceof Cancel)) console.error(e); } running = false; });
+    function render(){ fillSel(); if (!sel.value) return; S = compute(); draw(); }
+    return { render: render };
   } });
 
 /* ---------- T3: send a compound down the tree ---------- */
 L2.add({ short: 'One compound', title: 'Follow one compound down the tree',
   change: 'Press Next compound for a different molecule. Walk through sends it down the tree.',
-  watch: 'At each box the compound answers yes or no using its own feature value and ends in a leaf. The leaf\'s average is the prediction.',
+  watch: 'The compound answers one yes or no question at each box and follows the branch that fits it, until it reaches a box at the bottom called a leaf. The leaf holds the average of the training compounds that ended up there, and that average is the prediction.',
   build: function(api){
     var cur = null;
     var sp = api.el('pn', 'left:28px;top:28px;width:236px;height:196px', '<h4>Compound</h4><div class="struct" style="height:156px"></div>');
@@ -215,9 +220,9 @@ L2.add({ short: 'One compound', title: 'Follow one compound down the tree',
 function fixFeat(f, v){ return fmtFeat(f, v); }
 
 /* ---------- T4: forest ---------- */
-L2.add({ short: 'Forest', title: 'A forest averages many different trees',
+L2.add({ short: 'Forest', title: 'A forest asks many trees and averages their answers',
   change: 'Drag Forest: number of trees and Forest tree depth. Press Next compound for a different molecule.',
-  watch: 'Each dot is one tree\'s prediction for the same compound. The red line is their average. The curve shows unseen R2 as trees are added.',
+  watch: 'One tree can be thrown off by quirks in the compounds it learned from. A forest trains many trees, each on a different random draw of the compounds, so they disagree a little. Each grey dot is one tree\'s prediction for the same compound. The red line is their average, which is the forest\'s answer. The curve shows the score improving as trees are added.',
   build: function(api){
     var cur = null;
     var sp = api.el('pn', 'left:28px;top:28px;width:200px;height:230px', '<h4>Compound</h4><div class="struct" style="height:190px"></div>');
@@ -229,7 +234,7 @@ L2.add({ short: 'Forest', title: 'A forest averages many different trees',
     function drawCurve(upto){ var fr = tForest(), pts = fr.curve.filter(function(c){ return c.k <= upto; }); lineChart(qs('canvas', cp), [{ pts: fr.curve.map(function(c){ return [c.k, c.te]; }).filter(function(p_){ return p_[0] <= upto; }), color: C.red }, { pts: fr.curve.map(function(c){ return [c.k, c.tr]; }).filter(function(p_){ return p_[0] <= upto; }), color: C.char }], { xl: 'number of trees', yl: 'R2', y0: 0, y1: 1, x0: 1, x1: fr.per.length, xdec: 0 }); }
     function drawDepth(){ var rows = tForestDepth(), p = TP(), g = cv(qs('canvas', dp)), x = g.x, box = { l: 36, r: g.w - 8, t: 8, b: g.h - 28 }, bw = (box.r - box.l) / rows.length; x.strokeStyle = C.silver; x.beginPath(); x.moveTo(box.l, box.b); x.lineTo(box.r, box.b); x.stroke();
       rows.forEach(function(r, i){ var near = Math.abs(r.d - p.fd) === Math.min.apply(null, rows.map(function(q){ return Math.abs(q.d - p.fd); })), bx = box.l + i * bw + bw * 0.1, w2 = bw * 0.38, h1 = Math.max(0, r.tr) * (box.b - box.t), h2 = Math.max(0, r.te) * (box.b - box.t); x.fillStyle = C.char; x.fillRect(bx, box.b - h1, w2, h1); x.fillStyle = C.red; x.fillRect(bx + w2 + 2, box.b - h2, w2, h2); x.fillStyle = C.char; x.font = (near ? '700 ' : '') + '11px Aptos, Segoe UI, sans-serif'; x.textAlign = 'center'; x.fillText('depth ' + r.d, bx + w2, box.b + 14); x.fillText(r.te.toFixed(2), bx + w2 * 1.5, box.b - h2 - 4); }); x.fillStyle = C.mid; x.textAlign = 'left'; x.font = '11px Aptos, Segoe UI, sans-serif'; x.fillText('dark: studied   red: unseen', box.l, box.t + 8); }
-    async function setup(next){ await loadStructs(); if (!cur || next || cur._ep !== EP) { cur = await pickStruct(); cur._ep = EP; } qs('.struct', sp).innerHTML = cur.svg; qs('.vm', fp).innerHTML = 'Measured: <b>' + D.Y[cur.i].toFixed(2) + '</b><br>Each of the ' + TP().nt + ' trees sees a random resample of the training compounds and a random subset of features, so no two trees agree.'; }
+    async function setup(next){ await loadStructs(); if (!cur || next || cur._ep !== EP) { cur = await pickStruct(); cur._ep = EP; } qs('.struct', sp).innerHTML = cur.svg; qs('.vm', fp).innerHTML = 'Measured: <b>' + D.Y[cur.i].toFixed(2) + '</b><br>Each of the ' + TP().nt + ' trees learned from a different random draw of the training compounds, so the trees do not all agree.'; }
     function vote(upto, tt){ var fr = tForest(), vals = featVals(cur.i), preds = fr.trees.map(function(t){ return predictVals(t, D.B, vals); }), lo = D.ylo, hi = D.yhi, g = cv(qs('canvas', vp)), x = g.x, box = { l: 14, r: g.w - 10, t: 10, b: g.h - 40 }, bins = 36, bw = (box.r - box.l) / bins, cnt = new Array(bins).fill(0), dots = preds.map(function(p_){ var b = clamp(Math.floor((p_ - lo) / (hi - lo) * bins), 0, bins - 1); return { b: b, h: cnt[b]++ }; }), rad = Math.min(bw / 2 - 1, 6), sx = function(v){ return box.l + (v - lo) / (hi - lo) * (box.r - box.l); }, my = D.Y[cur.i];
       x.strokeStyle = C.silver; x.beginPath(); x.moveTo(box.l, box.b); x.lineTo(box.r, box.b); x.stroke(); x.fillStyle = C.mid; x.textAlign = 'center'; for (var v = Math.ceil(lo); v <= hi; v++) x.fillText(v, sx(v), box.b + 14); x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.fillText('prediction of one tree', (box.l + box.r) / 2, box.b + 32);
       for (var d = 0; d < upto; d++) { var dd = dots[d], cyp = box.b - rad - dd.h * (rad * 2 + 1), prog = d === upto - 1 ? tt : 1; x.fillStyle = 'rgba(161,177,195,.95)'; x.beginPath(); x.arc(box.l + (dd.b + 0.5) * bw, lerp(box.t, cyp, prog), rad, 0, 6.3); x.fill(); }
@@ -241,9 +246,9 @@ L2.add({ short: 'Forest', title: 'A forest averages many different trees',
   } });
 
 /* ---------- T5: boosting ---------- */
-L2.add({ short: 'Boosting', title: 'Boosting corrects the errors a little at a time',
+L2.add({ short: 'Boosting', title: 'Boosting builds trees one after another, each fixing the last',
   change: 'Drag Boosting rounds and Boosting learning rate. Drag Round below the stage to see the predictions at any point.',
-  watch: 'Dots move toward the diagonal as rounds are added. Dashed lines show other learning rates with the same number of rounds.',
+  watch: 'The first tree makes a rough prediction. The next tree is trained only on the mistakes that are left, and its correction is added on top, and so on. Each correction is added at a small strength, the learning rate, so the model improves a little at a time. The dots start in a flat line, because everyone gets the same guess, and move toward the diagonal, where the prediction equals the lab value. Dashed lines show other learning rates.',
   build: function(api){
     var sp = api.el('pn', 'left:28px;top:28px;width:420px;height:408px', '<h4>Predicted against measured, unseen compounds</h4><canvas width="398" height="352"></canvas>');
     var cp = api.el('pn', 'left:468px;top:28px;width:464px;height:300px', '<h4>Unseen R2 against rounds</h4><canvas width="442" height="250"></canvas>');
@@ -260,7 +265,7 @@ L2.add({ short: 'Boosting', title: 'Boosting corrects the errors a little at a t
 /* ---------- T6: which features matter ---------- */
 L2.add({ short: 'Which features matter', title: 'Which features the model relies on',
   change: 'Untick a feature in the options.',
-  watch: 'Left: how much each feature helped the trees split. Right: how much unseen R2 falls when the model is retrained without that feature.',
+  watch: 'A feature is useful if the trees keep using it to split compounds into tidier groups. Left: how much each feature contributed to the splits. Right: how much the score drops if the model is trained without that feature.',
   build: function(api){
     var lp = api.el('pn', 'left:28px;top:28px;width:440px;height:408px', '<h4>Split gain inside the boosted trees</h4><div class="ib"></div>');
     var rp = api.el('pn', 'left:488px;top:28px;width:444px;height:408px', '<h4>Change in unseen R2 when a feature is removed</h4><div class="ab"></div>');
@@ -288,17 +293,19 @@ L2.add({ short: 'Results', title: 'Score and training time of the three tree mod
   } });
 
 L2.glossary([
-  ['Decision tree', 'Yes/no questions on features. A compound lands in a leaf and gets that leaf\'s average.'],
-  ['Split', 'One question in the tree, such as logP <= 2.9.'], ['Depth', 'Questions in a row.'],
-  ['Leaf', 'A box at the bottom of a tree. Its prediction is the training average of the compounds in it.'],
-  ['Random forest', 'Many deep trees, each on a random resample of the compounds and a random subset of features. Predictions are averaged.'],
+  ['Feature', 'A number that describes a compound, such as logP or molecular weight.'],
+  ['Decision tree', 'A flowchart of yes or no questions about a compound. The answers send it to a group, and the average of that group is the prediction.'],
+  ['Split', 'One question in the tree, such as "is logP at most 2.9?". It divides a group in two.'], ['Depth', 'How many questions in a row a tree may ask.'],
+  ['Leaf', 'A box at the bottom of a tree. Its prediction is the average of the training compounds that ended up in it.'],
+  ['Miss score', 'How far compounds sit from their group\'s average, on average, with big misses counting extra. Lower is better.'],
+  ['Random forest', 'Many trees, each trained on a different random draw of the compounds. The forest answers with the average of its trees.'],
   ['Ensemble', 'Several models combined into one prediction.'],
-  ['Gradient boosting', 'Small trees added in sequence, each fitting the error left by the earlier ones.'],
-  ['Learning rate', 'Share of each new tree\'s correction that is applied.'],
-  ['Studied R2', 'R2 on the compounds the model trained on. It rises with depth even when the model is overfitting.'],
-  ['Unseen R2', 'R2 on held-out compounds. This is the score that matters.'],
-  ['Feature importance', 'How much a feature helped the model. Depends on how it is measured.'],
-  ['Ablation', 'Retraining without one feature to see how much the score falls.']
+  ['Gradient boosting', 'Trees built one after another, each trained on the mistakes the earlier ones left.'],
+  ['Learning rate', 'How strongly each new tree\'s correction is added. Small means slow and careful.'],
+  ['Training R2', 'The score on the compounds the model learned from. It can look excellent even when the model is memorising.'],
+  ['Unseen R2', 'The score on compounds held back from training. This is the score that matters.'],
+  ['Feature importance', 'How much a feature helped the model. The answer depends on how it is measured.'],
+  ['Ablation', 'Training again without one feature to see how much the score falls.']
 ]);
 
 L2.move('Workbench', 1);

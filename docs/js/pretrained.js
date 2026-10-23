@@ -35,7 +35,7 @@ function pScratch(){
 }
 L6.add({ short: 'Why pre-train', uses: ['endpoint', 'features', 'plabels'],
   title: 'Labelled data is scarce, unlabelled molecules are plentiful',
-  watch: 'A model that learns from scratch needs many compounds with lab values, and those are expensive. The curve shows a boosted tree model on the features you ticked, scored on the unseen compounds, as the number of labelled compounds grows. Pre-training tries to avoid the slow start on the left by learning chemistry first from molecules that have no lab values at all.',
+  watch: 'Compounds with lab values are expensive to make and test, but structures with no lab values are cheap and plentiful. The curve shows how well a model predicts when it only has a few labelled compounds (compounds with a lab value) to learn from: poorly. Pre-training teaches a model general chemistry first, from molecules with no lab values, so it starts ahead.',
   change: 'Drag Labelled compounds in the options to move the dashed line along the curve. Switch the endpoint to compare HLM and logD.',
   build: function(api){
     var cp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>Learning from scratch: score against labelled compounds</h4><canvas width="576" height="350"></canvas>');
@@ -85,7 +85,7 @@ function hlSvg(smi, atoms, bonds, w, h){ var m = RDK.get_mol(smi); if (!m || !m.
 function motifMatch(smi, smarts){ var m = RDK.get_mol(smi), q = RDK.get_qmol(smarts), r = null; try { var j = JSON.parse(m.get_substruct_match(q)); if (j && j.atoms && j.atoms.length) r = j; } catch (e) { r = null; } if (m) m.delete(); if (q) q.delete(); return r; }
 L6.add({ short: 'Which groups are present', uses: ['endpoint'],
   title: 'A second blank to fill: which chemical groups does the molecule contain',
-  watch: 'Pre-training also uses labels that a computer can read straight from the structure, such as the presence of an amide or a carboxylic acid. RDKit finds each group below by pattern matching. No chemist and no experiment is involved.',
+  watch: 'A functional group is a small recognisable piece of a molecule, such as an amide or a carboxylic acid. A computer can find these straight from the structure, so no experiment is needed. Pre-training can ask a model to name the groups it sees. RDKit finds each group below by pattern matching.',
   change: 'Choose a molecule under the stage. Click a group that is present to highlight its atoms.',
   build: function(api){
     var sp = api.el('pn', 'left:28px;top:28px;width:440px;height:408px', '<h4>Structure</h4><div class="struct" style="height:350px"></div>');
@@ -105,8 +105,8 @@ L6.add({ short: 'Which groups are present', uses: ['endpoint'],
 
 /* ---------- step 4: architecture and scale ---------- */
 L6.add({ short: 'The model and its size', uses: [],
-  title: 'GROVER is a transformer that reads the molecule as a graph',
-  watch: 'The GPT earlier in this course reads a SMILES string one token at a time. GROVER reads the molecular graph instead: atoms are the nodes and bonds are the connections. Atoms pass information along bonds and across the whole molecule through transformer layers, and the result is one vector that describes the molecule. A small head on top turns that vector into a prediction such as HLM clearance.',
+  title: 'GROVER reads a molecule as a graph of atoms and bonds',
+  watch: 'The GPT earlier reads a molecule as a line of text. GROVER, a published model, reads it as a graph instead: atoms are dots and bonds are lines. It passes information between neighbouring atoms through many layers and ends with one list of numbers that describes the molecule. A small final layer, the head, turns that list into a prediction such as clearance.',
   change: 'Nothing to drag here. The bars compare GROVER with the small GPT you can train in this course.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<svg viewBox="0 0 580 372" width="580" height="372"></svg>');
@@ -162,7 +162,7 @@ function preCurve(){
 }
 L6.add({ short: 'Fixed features', uses: ['endpoint', 'features', 'filters', 'plabels'],
   title: 'Use the pre-trained GPT as a fixed feature extractor',
-  watch: 'The simplest way to use a pre-trained model is to leave it alone. The GPT from the previous lesson read SMILES with no lab values, so it is a small pre-trained model. Each molecule is turned into 64 numbers by that GPT, and a simple model (ridge regression) learns the labels from those numbers. Red uses the trained GPT, grey uses a GPT with random weights, and dark learns from the descriptors. This GPT is tiny, so do not expect it to win. The gap between red and grey is what its pre-training added.',
+  watch: 'The simplest way to use a pre-trained model is to leave it alone and use what it outputs. The GPT turns each molecule into 64 numbers, and a simple line-fitting model learns the lab values from those numbers. Red uses the trained GPT, grey uses the same GPT with random weights, and dark uses ordinary features such as logP. This GPT is tiny, so it is not expected to win. The gap between red and grey shows what its pre-training added.',
   change: 'Train the GPT in its workbench first. Drag Labelled compounds. Train it for more steps and press Recompute to see whether the red line moves.',
   build: function(api){
     var cp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>Score against labelled compounds, unseen compounds</h4><canvas width="576" height="350"></canvas>');
@@ -213,7 +213,7 @@ async function ftRun(o){
 }
 L6.add({ short: 'Fine-tune', bench: true, uses: ['endpoint', 'filters', 'plabels', 'ftmode', 'ftlr', 'ftsteps'],
   title: 'Fine-tune the pre-trained GPT on labelled compounds',
-  watch: 'Fine-tuning starts from the pre-trained model and teaches it your labels. A small head (65 numbers) is added on top of the GPT to predict the value. Head only keeps the GPT frozen and trains just the head. Everything also lets the GPT\'s own weights move. The grey curve starts from a GPT with random weights instead, so the gap between red and grey is what pre-training bought. Train the GPT in its workbench first.',
+  watch: 'Fine-tuning starts from the pre-trained model and teaches it your lab values. A small new piece called the head (65 numbers) is added on top to give the prediction. Head only freezes the GPT, so only the head learns. Everything lets the GPT\'s own weights change too. The grey curve starts from a GPT with random weights instead, so the gap between red and grey is what pre-training bought. A demo GPT is loaded for you, or train your own in the GPT lesson.',
   change: 'Choose what to update, then drag the learning rate, the steps and Labelled compounds, and press Train. Try both endpoints: the GPT read only Biogen molecules. Narrow the chemistry under Filter training data to see a model fine-tuned on one series fail on the rest.',
   build: function(api){
     var bb = benchBar(api);
@@ -260,8 +260,8 @@ L6.add({ short: 'Fine-tune', bench: true, uses: ['endpoint', 'filters', 'plabels
 
 /* ---------- fine-tuning a graph network: Chemprop, results from notebook 08 ---------- */
 L6.add({ short: 'Fine-tune Chemprop', uses: ['plabels'],
-  title: 'Fine-tuning a graph network: Chemprop pre-trained on logD, then adapted to HLM',
-  watch: 'Chemprop is a graph neural network, so it reads atoms and bonds directly. Here it was first trained on 4,200 logD measurements (AstraZeneca), then adapted to HLM clearance using only a few labelled HLM compounds. Three ways to start are compared. From scratch: random weights. Frozen encoder: the pre-trained message-passing layers stay fixed and only the small network on top learns. Full fine-tuning: every weight can move. These runs come from notebook 08 because Chemprop needs Python.',
+  title: 'Fine-tuning Chemprop: learn logD first, then adapt to HLM',
+  watch: 'Chemprop is a neural network that reads a molecule as a graph of atoms and bonds. It was first trained on 4,200 logD values from another company, then adapted to HLM clearance using only a few HLM compounds. Three starts are compared. From scratch: random weights. Frozen: the part that reads the molecule is kept as it was, and only the small final part learns. Full fine-tuning: every weight can change. These runs were done in notebook 08 because Chemprop needs Python.',
   change: 'Drag Labelled compounds in the options to read the scores at that size. Tick or untick a start to show or hide its line.',
   build: function(api){
     var cp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>HLM score on unseen scaffolds, by number of labelled HLM compounds</h4><canvas width="576" height="350"></canvas>');

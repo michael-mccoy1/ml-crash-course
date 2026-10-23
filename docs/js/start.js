@@ -22,13 +22,13 @@ function updateInfo(){ var e = $('dsinfo'); if (!e || !D) return; var c = D.cens
 function unitWord(){ return D.key === 'HLM' ? 'HLM clearance (log10)' : 'logD'; }
 
 L0.add(lineStepDef({ short: 'What learning means', title: 'Machine learning is fitting a rule to examples',
-  watch: 'You have compounds with lab values. A model is a rule that turns something known about a compound, here one feature, into a predicted lab value. Learning means choosing the rule that misses the lab values by the least. The red line is the simplest rule there is, with two numbers: a weight (how steeply the line rises) and a bias (where it sits). The thin lines show how far it misses each compound.',
+  watch: 'Chemists want to know how fast the liver breaks down a compound (its clearance), but measuring it costs time and money. A model tries to predict that number from something we already know about the compound. Here the known thing is one feature, logP, which says how oily the compound is. The model is a straight line with two settings: the weight (how steeply the line rises) and the bias (where it sits). Learning means picking the settings that put the line closest to the real lab values. The thin lines show how far the line misses each compound.',
   change: 'Drag Weight and Bias to bend the rule yourself, then press Find the best weights to let the computer do it. You can also choose another feature.' }));
 
 /* ---------- Step 1: structure to prediction ---------- */
 L0.add({ short: 'Structure to prediction', title: 'Machine learning reads chemical structure',
   change: 'Press Next compound. Untick a feature in the options and the model is refit without it.',
-  watch: 'One compound goes from drawing to SMILES text to numbers to a prediction. The lab value is shown beside it.',
+  watch: 'A model cannot look at a drawing. So the molecule is turned into text (called SMILES) and then into a handful of numbers (called features), such as how oily it is. The model predicts the lab value from those numbers. The real lab value is shown beside the prediction. Turn features off in the options and the model has less to go on.',
   build: function(api){
     var cur = null;
     var lib = api.el('pn fd', 'left:28px;top:28px;width:300px;height:158px', '<h4>Compound library</h4><div class="lg" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"></div>');
@@ -75,7 +75,7 @@ L0.add({ short: 'Structure to prediction', title: 'Machine learning reads chemic
 /* ---------- Step 2: descriptors come from the structure ---------- */
 L0.add({ short: 'Where features come from', title: 'Features are sums over the atoms RDKit sees',
   change: 'Press Next compound.',
-  watch: 'Atoms are shaded by how much each adds to logP, then to polar surface area. The totals are the features.',
+  watch: 'A feature is a number computed from the molecule. logP says how oily the compound is. TPSA says how much of its surface is polar, meaning water-loving. Each atom adds or subtracts a small amount, shown by the shading, and the total over all atoms is the feature.',
   build: function(api){
     var cur = null, mode = 0;
     var box = api.el('pn', 'left:28px;top:28px;width:430px;height:408px', '<h4 class="t">Structure</h4><div class="ly" style="position:relative;height:356px"></div>');
@@ -100,7 +100,7 @@ L0.add({ short: 'Where features come from', title: 'Features are sums over the a
 /* ---------- Step 3: the unseen set ---------- */
 L0.add({ short: 'The unseen set', title: 'Hold compounds back to test a model honestly',
   change: 'Switch between a random split and a scaffold split under the stage.',
-  watch: 'Unseen compounds are the ones the model never studied. Compare the two splits by how many unseen compounds have a close relative in the training set.',
+  watch: 'To test a model fairly, hold some compounds back and never show them while it learns. These are the unseen compounds. A random split can be too easy, because unseen compounds often have close relatives among the training compounds. A scaffold split keeps whole families of compounds (those sharing the same ring skeleton) out of training, which is closer to real use, where you predict brand-new chemistry. The numbers show how many unseen compounds have a close relative in the training set.',
   build: function(api){
     var mode = 'rand', a = 0;
     var mapP = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Chemical space map of every compound (RDKit fingerprints, projected to 2D)</h4><canvas width="540" height="352" style="margin-top:4px"></canvas>');
@@ -139,7 +139,7 @@ L0.add(censorStepDef());
 /* ---------- Step 4: underfitting to overfitting ---------- */
 L0.add({ short: 'Underfitting and overfitting', title: 'A flexible model can memorise noise',
   change: 'Choose a feature and drag Tree depth under the stage. Untick features in the options to change the list.',
-  watch: 'The red line is a decision tree on one feature. At small depth it misses the trend. At large depth it chases individual dots and the unseen error rises.',
+  watch: 'A decision tree is a flowchart of yes or no questions, and its depth is how many questions in a row it may ask. The red line is what a tree predicts from one feature. With few questions it is too simple and misses the trend (underfitting). With many questions it chases every single dot, including random noise, so it does worse on compounds it has not seen (overfitting).',
   build: function(api){
     var G_ = 200, cur = null, lab = null, depthEl, featSel;
     var plot = api.el('pn', 'left:28px;top:28px;width:620px;height:408px', '<h4 class="pt">Measured value against the feature, with a decision tree fit</h4><canvas width="600" height="352" style="margin-top:2px"></canvas>');
@@ -180,7 +180,7 @@ L0.add({ short: 'Underfitting and overfitting', title: 'A flexible model can mem
 /* ---------- Step 5: how a model is scored ---------- */
 L0.add({ short: 'Scoring a model', title: 'R2, Spearman and RMSE measure different things',
   change: 'Drag Model quality under the stage.',
-  watch: 'Dots move toward the diagonal as predictions improve. R2 and RMSE respond to the size of errors. Spearman responds to ranking only.',
+  watch: 'A score says how good the predictions are. Dots closer to the diagonal line mean predictions closer to the lab values. R2 and RMSE measure how big the errors are: an R2 of 1 is perfect and 0 is no better than always guessing the average. Spearman only checks whether the compounds are put in the right order.',
   build: function(api){
     var q = 100, pv = null, ys = null, idx = null, pm = 0;
     var plot = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Predicted against measured, unseen compounds</h4><canvas width="540" height="352" style="margin-top:2px"></canvas>');
@@ -209,7 +209,7 @@ L0.add({ short: 'Scoring a model', title: 'R2, Spearman and RMSE measure differe
 /* ---------- Step 6: second endpoint, logD feeds HLM ---------- */
 L0.add({ short: 'logD feeds HLM', title: 'One endpoint can feed another',
   change: 'Switch the endpoint to HLM clearance if it is on logD. Untick descriptors in the options and the comparison reruns.',
-  watch: 'A logD model trained on AstraZeneca data predicts logD for every Biogen compound. The comparison retrains the HLM model with and without that prediction.',
+  watch: 'logD says how oily a compound is at the pH of the body. We have thousands of logD measurements from another company (AstraZeneca). A model learns logD from them, then predicts logD for every compound in the clearance data. That prediction becomes one more feature. The comparison trains the clearance model with and without it.',
   build: function(api){
     var ab = null;
     var flow = api.el('pn', 'left:28px;top:28px;width:904px;height:130px', '<svg viewBox="0 0 880 100" width="880" height="100"></svg>');
@@ -246,7 +246,7 @@ L0.add({ short: 'logD feeds HLM', title: 'One endpoint can feed another',
 /* ---------- Step 7: predict your own compound (RDKit in the browser) ---------- */
 L0.add({ short: 'Predict a compound', title: 'Predict a compound from its structure',
   change: 'Edit the SMILES and press Predict. The first time, RDKit downloads (about 7 MB).',
-  watch: 'RDKit draws the structure and computes the features in your browser. The logD model runs first and the HLM model uses its output.',
+  watch: 'Type a molecule as a SMILES string, which is a line of text that describes its structure. The page draws it, computes its features, predicts its logD, and then uses that prediction to predict clearance.',
   auto: false,
   build: function(api){
     var inp = api.el('pn', 'left:28px;top:28px;width:904px;height:70px', '<h4>SMILES</h4><div style="display:flex;gap:10px"><input type="text" class="si" spellcheck="false" style="font-family:Cascadia Mono,Consolas,monospace"><button type="button" class="btn sm" data-go style="white-space:nowrap">Predict</button></div>');

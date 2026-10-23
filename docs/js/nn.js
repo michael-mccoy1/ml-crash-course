@@ -125,13 +125,13 @@ function lossChart(canvas, hist, best, upto, xmax){
 }
 
 L3.add(lineStepDef({ short: 'What a weight is', title: 'A weight says how strongly one input pushes the prediction',
-  watch: 'Every neural network is built from weights. Start with the smallest model there is: one input, one weight and one bias. The prediction is the weight times the input, plus the bias. The red line is that prediction for every possible input, and the thin vertical lines show how far it misses each compound.',
+  watch: 'A neural network is built from weights, so start with the smallest model there is. It has one input (a feature), one weight and one bias. The prediction is the weight times the input, plus the bias. A bigger weight means the input pushes the prediction harder. The red line is the prediction for every possible input, and the thin vertical lines show how far it misses each compound.',
   change: 'Drag Weight and Bias under the plot and watch the error. Then press Find the best weights and watch the computer adjust them step by step. You can also choose another input feature.' }));
 
 /* ---------- workbench: set up a network, press Train ---------- */
 L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly'],
   title: 'Train a network: it starts with random weights and adjusts them',
-  watch: 'A neural network is many neurons wired together in layers, and every line between neurons is a weight. Training begins with random weights, compares the network\'s predictions with the lab values, and nudges every weight to shrink the error. One pass over the training compounds is an epoch. Press Train to watch the weights, the error and the predictions change.',
+  watch: 'A neural network is many neurons arranged in columns called layers, and every line between two neurons is a weight. At the start the weights are random, so the predictions are poor. Training repeats a loop: predict, measure how far off the prediction is from the lab value (the error), and nudge every weight a little to shrink the error. One full pass over the training compounds is called an epoch. Press Train to watch the weights, the error and the predictions change.',
   change: 'Drag the options and the diagram changes. Then press Train. Slow shows every epoch, Fast skips ahead.',
   build: function(api){
     var bb = benchBar(api);
@@ -181,7 +181,7 @@ L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filter
 /* ---------- N1: a neuron is a weighted sum ---------- */
 L3.add({ short: 'One neuron', title: 'A neuron adds up its weighted inputs',
   change: 'Drag the weight and bias sliders inside the picture. Untick features in the options to change the inputs. Next compound picks another molecule.',
-  watch: 'The same idea as the previous step, now with three inputs. Each input is multiplied by its own weight, the products and a bias are added, and a switch called ReLU turns a negative total into zero. Red lines add to the total and grey lines subtract.',
+  watch: 'A neuron is the same idea with several inputs. Each input is multiplied by its own weight, the results are added together with a bias, and then a switch called ReLU turns any negative total into zero. Red lines push the total up and grey lines push it down.',
   build: function(api){
     var cur = 0, feats = [], x = [0, 0, 0], w = [0.9, -0.6, 0.4], bias = 0.2, built = false;
     var svg = api.el('abs', 'left:0;top:0;width:960px;height:540px;pointer-events:none', '<svg viewBox="0 0 960 540" width="960" height="540"></svg>');
@@ -214,7 +214,7 @@ L3.add({ short: 'One neuron', title: 'A neuron adds up its weighted inputs',
 /* ---------- N2: layers and units ---------- */
 L3.add({ short: 'Layers and neurons', title: 'More layers and neurons mean more weights to learn',
   change: 'Drag Hidden layers, Neurons per layer and Dropout in the options.',
-  watch: 'A layer is a column of neurons. Every neuron connects to every neuron in the next layer, and each connection is a weight, so the count grows quickly. The table on the right counts every weight and bias. Dashed circles are neurons switched off by dropout.',
+  watch: 'More layers and more neurons mean more weights for the network to learn. The table on the right counts them. Dashed circles are neurons that dropout switches off during training, which a later step explains.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<svg viewBox="0 0 620 380" width="620" height="380"></svg>');
     var cp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>Parameters to learn</h4><div class="big pc" style="color:' + C.red + '">0</div><div class="note" style="font-size:12px;color:#6B7280;margin-bottom:8px">weights and biases</div><div class="pl" style="font-size:12px"></div>');
@@ -258,7 +258,7 @@ L3.add({ short: 'Learning rate', title: 'The learning rate sets how big each nud
 /* ---------- N5: dropout and early stopping ---------- */
 L3.add({ short: 'Dropout and early stopping', title: 'Dropout and the best epoch guard against overfitting',
   change: 'Set Dropout and the other options, then press Run comparison under the stage.',
-  watch: 'Overfitting means memorising the training compounds instead of learning a pattern. Dropout switches off random neurons during training so the network cannot lean on any one of them. Two networks train side by side, one without dropout and one with yours. The curves are validation error, and dashed lines mark each network\'s best epoch.',
+  watch: 'A network can memorise the compounds it trains on instead of learning a general pattern. This is called overfitting: scores look good on the training compounds and poor on new ones. Dropout fights it by switching off random neurons during training, so the network cannot rely on any single neuron. Two networks train side by side, one without dropout and one with yours. The curves show the error on a small set of compounds held back to check progress (validation error), and the dashed lines mark each network\'s best epoch.',
   auto: false,
   build: function(api){
     var np = api.el('pn', 'left:28px;top:28px;width:360px;height:408px', '<h4>Neurons switched off in each training step</h4><svg viewBox="0 0 340 330" width="340" height="330"></svg><div class="dn note" style="font-size:12px;color:#6B7280"></div>');

@@ -224,3 +224,4 @@ details.filtgrp .fr{margin-top:6px}
 .cmap b{color:var(--red);font-size:.8rem}
 .cmap i{font-style:normal;font-weight:700;color:var(--char)}
 @media(max-width:900px){.cmap{grid-template-columns:minmax(0,1fr)}}
+.iwhat{margin:8px 0 0;font-size:.92rem;line-height:1.5;color:#3f4350}

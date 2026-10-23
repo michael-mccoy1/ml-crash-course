@@ -65,7 +65,7 @@ function gStaleText(){ return G.demo ? 'Showing the demo model (' + G.steps + ' 
 async function gptLoadDemo(){
   if (G.trained || G.busy || G.demoTried) return G.trained; G.demoTried = true; if (typeof tf === 'undefined') return false;
   try {
-    var r = await fetch('data/transformer_demo.json?v=d5'); if (!r.ok) return false; var j = await r.json(); gptSetup(); gCorpus(); if (JSON.stringify(j.vocab) !== JSON.stringify(G.vocab)) return false; if (G.trained || G.busy) return G.trained;
+    var r = await fetch('data/transformer_demo.json?v=d8'); if (!r.ok) return false; var j = await r.json(); gptSetup(); gCorpus(); if (JSON.stringify(j.vocab) !== JSON.stringify(G.vocab)) return false; if (G.trained || G.busy) return G.trained;
     if (G.P) Object.keys(G.P).forEach(function(k){ G.P[k].dispose(); }); var P = {}; Object.keys(j.params).forEach(function(k){ var q = j.params[k]; P[k] = tf.variable(tf.tensor(q.data, q.shape)); });
     var P0 = gMake(j.nl); G.emb0 = P0.tok.arraySync(); Object.keys(P0).forEach(function(k){ P0[k].dispose(); });
     G.P = P; G.NL = j.nl; G.losses = j.losses; G.steps = j.steps; G.secs = j.secs; G.params = Object.keys(P).reduce(function(a, k){ return a + P[k].size; }, 0); G.trained = true; G.demo = true; G.sig = JSON.stringify([j.nl, j.steps, gptCorpusSig()]); G.readIds = null;
@@ -87,7 +87,7 @@ L4.onOpts = function(){ gResultsBox(); var fire = function(){ clearTimeout(gTime
 function gMeanAbs(name){ return tf.tidy(function(){ return G.P[name].abs().mean().dataSync()[0]; }); }
 L4.add({ short: 'Workbench', bench: true, uses: ['filters', 'glayers', 'gsteps', 'gtemp'],
   title: 'Train the GPT and watch it learn to write SMILES',
-  watch: 'A GPT learns to guess the next piece of a SMILES string, where each piece is a token. Training shows it many molecules and adjusts its weights so its guesses improve. The stack on the left is the model and the bars show how large its weights have grown. The curve is its error, the coloured boxes show how sure it is about each token, and the dark box shows what it writes.',
+  watch: 'A GPT learns one skill: guess the next token. During training it is shown many molecules and its weights are adjusted so its guesses improve. Left: the model, with a bar for how large its weights have grown. Top right: its error, where lower is better. The coloured boxes show how sure it is about each token of one real molecule, and the dark box shows a molecule it writes.',
   change: 'Drag Transformer layers, Training steps or Temperature, then press Train. Slow shows every stage, Fast skips ahead.',
   build: function(api){
     var bb = benchBar(api);
@@ -148,7 +148,7 @@ L4.add({ short: 'Workbench', bench: true, uses: ['filters', 'glayers', 'gsteps',
 /* ---------- G1: text becomes tokens ---------- */
 L4.add({ short: 'Tokens', title: 'A GPT reads a molecule as a sequence of tokens',
   change: 'Press Next compound for another molecule.',
-  watch: 'RDKit writes the structure as a SMILES string. The string is cut into tokens and each token has an ID number. The model only ever sees the IDs.',
+  watch: 'A GPT works with text. A molecule can be written as text called SMILES, where letters are atoms and symbols are bonds and branches. The text is cut into small pieces called tokens, and each token gets an ID number. The model only ever sees the numbers.',
   build: function(api){
     var cur = null;
     var sp = api.el('pn fd', 'left:28px;top:28px;width:250px;height:226px', '<h4>Compound drawn by RDKit</h4><div class="struct" style="height:186px"></div>');
@@ -169,7 +169,7 @@ function sepRatio(xy){ var cats = G.vocab.map(function(t){ return tokCat(t); }),
 /* ---------- G2: embeddings ---------- */
 L4.add({ short: 'Embeddings', title: 'Each token becomes a list of numbers the model can adjust',
   change: 'Switch between Untrained and Trained under the stage. Train in the workbench first to see the trained map.',
-  watch: 'Before training every token has random numbers. After training, tokens that play a similar role sit closer together on the map.',
+  watch: 'Each token is turned into a list of numbers called its embedding. At first the numbers are random. Training adjusts them so that tokens used in similar ways get similar numbers. The map squashes each token\'s list onto a flat picture, so tokens that sit close together are being treated alike.',
   build: function(api){
     var ep = api.el('pn', 'left:28px;top:28px;width:420px;height:408px', '<h4>First 14 of the 64 numbers for each token</h4><div class="em"></div>');
     var mp = api.el('pn', 'left:468px;top:28px;width:464px;height:408px', '<h4 class="mt">Map of all tokens (PCA of their 64 numbers)</h4><canvas width="440" height="326"></canvas><div class="legend ml" style="font-size:11px;margin-top:4px"></div>');
@@ -193,7 +193,7 @@ L4.add({ short: 'Embeddings', title: 'Each token becomes a list of numbers the m
 /* ---------- G3: the transformer stack ---------- */
 L4.add({ short: 'The stack', title: 'A transformer repeats attention and a small network',
   change: 'Drag Transformer layers in the options. Walk through lights up each stage.',
-  watch: 'Each block lets every token look back at earlier tokens, then processes each token on its own. The parameter count follows your settings.',
+  watch: 'The model is a stack of identical blocks. In each block, every token looks back at the tokens before it (this is called attention) and then each token is processed on its own. Stacking blocks lets later blocks build on what earlier ones found. The parameter count is the total number of numbers the model has to learn.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:904px;height:408px', '<svg viewBox="0 0 880 380" width="880" height="380"></svg>');
     function per(){ return DM * 3 * DM + 3 * DM + DM * DM + DM + DM * 4 * DM + 4 * DM + 4 * DM * DM + DM + 4 * DM; }
@@ -241,7 +241,7 @@ L4.add({ short: 'Attention', title: 'Attention shows which earlier tokens a toke
 /* ---------- G6: next token and temperature ---------- */
 L4.add({ short: 'Next token', title: 'The model outputs odds, and temperature reshapes them',
   change: 'Edit the SMILES start, drag Temperature under the stage, or press Auto-write.',
-  watch: 'Bars show the probability of each possible next token. A low temperature concentrates on the favourite. A high temperature spreads the odds.',
+  watch: 'After reading some text, the model gives every possible next token a probability. Temperature controls how it picks. A low temperature almost always picks the most likely token, which is safe but repetitive. A high temperature gives unlikely tokens a real chance, which is more varied but makes more mistakes.',
   build: function(api){
     var ip = api.el('pn', 'left:28px;top:28px;width:440px;height:170px', '<h4>SMILES so far</h4><input type="text" class="pf" spellcheck="false" style="font-family:Cascadia Mono,Consolas,monospace" value="CC(=O)Nc1ccc"><div class="pr" style="margin-top:10px"></div>');
     var wp = api.el('pn', 'left:28px;top:210px;width:440px;height:226px', '<h4>Written by sampling</h4><div class="wt smi" style="min-height:60px;background:#34373F;color:#fff;border-radius:6px;padding:10px;font-size:12.5px"></div><div class="note" style="font-size:12px;color:#6B7280;margin-top:8px">Press Auto-write to add tokens one at a time, each drawn from the odds on the right.</div>');
@@ -263,7 +263,7 @@ L4.add({ short: 'Next token', title: 'The model outputs odds, and temperature re
 /* ---------- G7: generate and check with RDKit ---------- */
 L4.add({ short: 'Generate and check', title: 'Generate molecules and let RDKit check them',
   change: 'Press Generate under the stage. The first time, RDKit downloads (about 7 MB). Change Temperature and generate again.',
-  watch: 'Each card is a molecule the GPT wrote. RDKit says whether it is valid and draws it. Valid molecules have a red outline.',
+  watch: 'The GPT writes molecules as text. Each card is one it wrote. RDKit, a chemistry toolkit, checks whether the text is a real, valid molecule and draws it if so. Valid molecules have a red outline.',
   auto: false,
   build: function(api){
     var gp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<h4>Twelve generated molecules</h4><div class="mol3 gridm" style="margin-top:4px"></div>');

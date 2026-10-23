@@ -8,7 +8,7 @@ function nnAct(i){
 /* ---------- N6: one compound through the trained network ---------- */
 L3.add({ short: 'One compound', title: 'Follow one compound through the trained network',
   change: 'Train the network in the workbench first. Press Next compound for another molecule, or Walk through to step layer by layer.',
-  watch: 'The compound\'s features light up the inputs. Each hidden layer turns them into new numbers. The last neuron gives the prediction.',
+  watch: 'Follow one compound through a trained network. Its feature values go into the circles on the left. Each column of neurons turns the numbers it receives into new numbers, and the last circle gives the prediction. Darker red means a neuron is more active for this compound.',
   build: function(api){
     var cur = null, act = null;
     var sp = api.el('pn', 'left:28px;top:28px;width:230px;height:226px', '<h4>Compound</h4><div class="struct" style="height:186px"></div>');
@@ -32,7 +32,7 @@ L3.add({ short: 'One compound', title: 'Follow one compound through the trained 
 /* ---------- N7: inside one neuron ---------- */
 L3.add({ short: 'Inside a neuron', title: 'Open one neuron and read its arithmetic',
   change: 'Click any circle in hidden layer 1.',
-  watch: 'The table lists the learned weight for each input, what it adds for this compound, and the running total.',
+  watch: 'Open one neuron from the first column. For each input, the table shows the weight the network learned, how much that input adds for this compound, and the running total.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:360px;height:408px', '<h4>Click a neuron in hidden layer 1</h4><svg viewBox="0 0 340 360" width="340" height="360"></svg>');
     var tp = api.el('pn', 'left:408px;top:28px;width:524px;height:408px', '<div class="nt"></div>');
@@ -52,7 +52,7 @@ L3.add({ short: 'Inside a neuron', title: 'Open one neuron and read its arithmet
 /* ---------- N8: what the network learned ---------- */
 L3.add({ short: 'What it learned', title: 'What the network learned about one feature',
   change: 'Choose a feature under the stage.',
-  watch: 'Each grey line is one unseen compound: its prediction as this feature changes while its other features stay fixed. The red line is the average.',
+  watch: 'Take 15 compounds the network has not seen. For each one, change just one feature and ask the network for a new prediction. Each grey line is one compound and the red line is their average. It shows how the network thinks that feature affects the lab value.',
   build: function(api){
     var pp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<h4>Prediction as one feature changes</h4><canvas width="618" height="350"></canvas>');
     var sp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>How to read it</h4><div class="rd" style="font-size:12.5px;color:#4a4f5a"></div>');
@@ -70,9 +70,9 @@ L3.add({ short: 'What it learned', title: 'What the network learned about one fe
   } });
 
 /* ---------- N9: Chemprop and message passing ---------- */
-L3.add({ short: 'Chemprop', title: 'Chemprop passes messages along the bonds of the molecule',
+L3.add({ short: 'Chemprop', title: 'Chemprop reads a molecule as atoms and bonds',
   change: 'Click an atom to start from it, and drag Rounds under the stage. Walk through plays the rounds.',
-  watch: 'Atoms in the red zone have received information from the chosen atom. Each round extends the zone by one bond.',
+  watch: 'Chemprop is a neural network that reads a molecule as a graph: atoms are the dots and bonds are the lines between them. In each round, every atom passes a message to the atoms bonded to it. The red zone shows how far the chosen atom\'s information has spread: one bond further each round.',
   build: function(api){
     var G = [], cur = { g: 0, c: 0, k: 0 }, playing = false, EL = { N: C.red, O: C.dred, S: '#9a7400', F: '#2c7a57', Cl: '#2c7a57', Br: '#2c7a57' };
     var gp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<svg viewBox="0 0 540 372" width="540" height="372"></svg>');
