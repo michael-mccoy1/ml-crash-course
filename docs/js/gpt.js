@@ -12,30 +12,35 @@ var G = { P: null, NL: 2, vocab: null, stoi: null, V: 0, seqs: null, trained: fa
 function GP(){ return { nl: +$('glayers').value, steps: +$('gsteps').value, temp: +$('gtemp').value }; }
 function gptCorpusSig(){ return JSON.stringify([FILT.mw, FILT.lp]); }
 function gptSetup(){
-  if (G.vocab) return; var d = DATA.HLM, sm = (d && d.smiles) || [], toks = sm.map(function(x){ return x.match(TOK) || []; }), set = {};
-  G.tokLen = toks.map(function(t){ return t.length <= TLEN - 2 ? t.length : 0; }); toks.forEach(function(t){ if (t.length <= TLEN - 2) t.forEach(function(x){ set[x] = 1; }); });
-  G.vocab = ['<pad>', '<bos>', '<eos>'].concat(Object.keys(set).sort()); G.stoi = {}; G.vocab.forEach(function(t, i){ G.stoi[t] = i; }); G.V = G.vocab.length;
-  G.allIds = toks.map(function(t){ if (t.length > TLEN - 2) return null; var ids = [1].concat(t.map(function(x){ return G.stoi[x]; }), [2]); while (ids.length < TLEN + 1) ids.push(0); return ids; }); gCorpus();
+  if (G.vocab) return; var d = DATA.HLM, sm = d.smi_all || [], n = sm.length, toks = new Array(n), set = {}, pool = [];
+  for (var i = 0; i < n; i++) { var t = sm[i].match(TOK) || []; toks[i] = t; if (!d.test[i] && sm[i].length <= 55 && t.length <= TLEN - 2 && pool.length < 1500) { pool.push(i); t.forEach(function(x){ set[x] = 1; }); } }
+  G.tokLen = toks.map(function(t){ return t.length; }); G.vocab = ['<pad>', '<bos>', '<eos>'].concat(Object.keys(set).sort()); G.stoi = {}; G.vocab.forEach(function(t, k){ G.stoi[t] = k; }); G.V = G.vocab.length;
+  G.allIds = new Array(n).fill(null); pool.forEach(function(i){ var ids = [1].concat(toks[i].map(function(x){ return G.stoi[x]; }), [2]); while (ids.length < TLEN + 1) ids.push(0); G.allIds[i] = ids; }); gCorpus();
 }
 function gCorpus(){
-  var d = DATA.HLM, sig = gptCorpusSig(); if (G.csig === sig && G.seqs) return; G.seqs = []; G.smiles = []; for (var i = 0; i < d.N; i++) if (G.allIds[i] && passRange(d, i)) { G.seqs.push(G.allIds[i]); G.smiles.push(d.smiles[i]); }
-  if (G.seqs.length < 40) { G.seqs = []; G.smiles = []; for (var j = 0; j < d.N; j++) if (G.allIds[j]) { G.seqs.push(G.allIds[j]); G.smiles.push(d.smiles[j]); } } G.csig = sig; G.readIds = null;
+  var d = DATA.HLM, sig = gptCorpusSig(); if (G.csig === sig && G.seqs) return; G.seqs = []; G.smiles = []; for (var i = 0; i < d.N; i++) if (G.allIds[i] && passRange(d, i)) { G.seqs.push(G.allIds[i]); G.smiles.push(d.smi_all[i]); }
+  if (G.seqs.length < 40) { G.seqs = []; G.smiles = []; for (var j = 0; j < d.N; j++) if (G.allIds[j]) { G.seqs.push(G.allIds[j]); G.smiles.push(d.smi_all[j]); } } G.csig = sig; G.readIds = null;
 }
 function tokName(i){ return i === 0 ? '[pad]' : (i === 1 ? '[start]' : (i === 2 ? '[end]' : G.vocab[i])); }
-function gInit(nl){
-  gptSetup(); gCorpus(); if (G.P) Object.keys(G.P).forEach(function(k){ G.P[k].dispose(); }); G.NL = nl; var V = G.V;
+function gMake(nl){
+  var V = G.V;
   var nrm = function(s){ return tf.variable(tf.randomNormal(s, 0, 0.02)); }, one = function(n){ return tf.variable(tf.ones([n])); }, zero = function(n){ return tf.variable(tf.zeros([n])); };
   var P = { tok: nrm([V, DM]), pos: nrm([TLEN, DM]), lnfg: one(DM), lnfb: zero(DM), Wout: nrm([DM, V]) };
   for (var l = 0; l < nl; l++) { P['g1_' + l] = one(DM); P['b1_' + l] = zero(DM); P['Wqkv' + l] = nrm([DM, 3 * DM]); P['bqkv' + l] = zero(3 * DM); P['Wo' + l] = nrm([DM, DM]); P['bo' + l] = zero(DM); P['g2_' + l] = one(DM); P['b2_' + l] = zero(DM); P['W1' + l] = nrm([DM, 4 * DM]); P['c1' + l] = zero(4 * DM); P['W2' + l] = nrm([4 * DM, DM]); P['c2' + l] = zero(DM); }
+  return P;
+}
+function gInit(nl){
+  gptSetup(); gCorpus(); if (G.P) Object.keys(G.P).forEach(function(k){ G.P[k].dispose(); }); G.NL = nl; var P = gMake(nl);
   G.P = P; G.trained = false; G.losses = []; G.emb0 = P.tok.arraySync(); G.params = Object.keys(P).reduce(function(a, k){ return a + P[k].size; }, 0);
 }
 function glin(x, W, b){ var s = x.shape, y = x.reshape([-1, s[s.length - 1]]).matMul(W); if (b) y = y.add(b); return y.reshape(s.slice(0, -1).concat([W.shape[1]])); }
 function gln(x, g, b){ var mm = tf.moments(x, -1, true); return x.sub(mm.mean).div(mm.variance.add(1e-5).sqrt()).mul(g).add(b); }
-function gforward(ids, nl, wantAtt){
-  var P = G.P, B = ids.shape[0], T = ids.shape[1], dh = DM / HEADS, atts = [], x = tf.gather(P.tok, ids.flatten()).reshape([B, T, DM]).add(P.pos.slice([0, 0], [T, DM])), mask = tf.linalg.bandPart(tf.ones([T, T]), -1, 0).sub(1).mul(1e9);
+function gforward(ids, nl, wantAtt, PP, wantHid){
+  var P = PP || G.P, B = ids.shape[0], T = ids.shape[1], dh = DM / HEADS, atts = [], x = tf.gather(P.tok, ids.flatten()).reshape([B, T, DM]).add(P.pos.slice([0, 0], [T, DM])), mask = tf.linalg.bandPart(tf.ones([T, T]), -1, 0).sub(1).mul(1e9);
   for (var l = 0; l < nl; l++) { var h = gln(x, P['g1_' + l], P['b1_' + l]), qkv = glin(h, P['Wqkv' + l], P['bqkv' + l]), part = function(k){ return qkv.slice([0, 0, k * DM], [B, T, DM]).reshape([B, T, HEADS, dh]).transpose([0, 2, 1, 3]); };
     var q = part(0), k = part(1), v = part(2), a = tf.softmax(q.matMul(k, false, true).div(Math.sqrt(dh)).add(mask)); if (wantAtt) atts.push(a);
     x = x.add(glin(a.matMul(v).transpose([0, 2, 1, 3]).reshape([B, T, DM]), P['Wo' + l], P['bo' + l])); var h2 = gln(x, P['g2_' + l], P['b2_' + l]); x = x.add(glin(tf.relu(glin(h2, P['W1' + l], P['c1' + l])), P['W2' + l], P['c2' + l])); }
+  if (wantHid) return gln(x, P.lnfg, P.lnfb);
   var logits = glin(gln(x, P.lnfg, P.lnfb), P.Wout, null); return wantAtt ? { logits: logits, atts: atts } : logits;
 }
 function gLoss(batch, nl){ var V = G.V, inp = tf.tensor2d(batch.map(function(s){ return s.slice(0, TLEN); }), null, 'int32'), tgt = tf.tensor2d(batch.map(function(s){ return s.slice(1, TLEN + 1); }), null, 'int32'), lp = tf.logSoftmax(gforward(inp, nl)), nll = tf.neg(lp.mul(tf.oneHot(tgt.flatten(), V).reshape([batch.length, TLEN, V])).sum(-1)), m = tf.notEqual(tgt, 0).cast('float32'); return nll.mul(m).sum().div(m.sum()); }
@@ -66,8 +71,8 @@ L4.onOpts = function(){ var fire = function(){ clearTimeout(gTimer); gTimer = se
 /* ---------- workbench: set up the GPT, press Train ---------- */
 function gMeanAbs(name){ return tf.tidy(function(){ return G.P[name].abs().mean().dataSync()[0]; }); }
 L4.add({ short: 'Workbench', bench: true, uses: ['filters', 'glayers', 'gsteps', 'gtemp'],
-  title: 'Set up the GPT, press Train, and watch it learn SMILES',
-  watch: 'The stack on the left follows Transformer layers. Train starts from random weights and replays the training slowly: the bars show how large each part\'s weights have grown, the curve shows the error, and the boxes on the right show how sure the model is and what it writes.',
+  title: 'Train the GPT and watch it learn to write SMILES',
+  watch: 'A GPT learns to guess the next piece of a SMILES string, where each piece is a token. Training shows it many molecules and adjusts its weights so its guesses improve. The stack on the left is the model and the bars show how large its weights have grown. The curve is its error, the coloured boxes show how sure it is about each token, and the dark box shows what it writes.',
   change: 'Drag Transformer layers, Training steps or Temperature, then press Train. Slow shows every stage, Fast skips ahead.',
   build: function(api){
     var bb = benchBar(api);
@@ -75,7 +80,7 @@ L4.add({ short: 'Workbench', bench: true, uses: ['filters', 'glayers', 'gsteps',
     var lp = api.el('pn', 'left:504px;top:80px;width:428px;height:148px', '<h4>Error per training step</h4><canvas width="404" height="112"></canvas>');
     var rp = api.el('pn', 'left:504px;top:240px;width:428px;height:212px', '<h4>Confidence in the correct next token, one real molecule</h4><div class="rv" style="min-height:62px"></div><div class="rs note" style="font-size:12px;color:#6B7280;margin:4px 0 8px"></div><h4>It writes now</h4><div class="at smi" style="background:#34373F;color:#fff;border-radius:6px;padding:8px 10px;min-height:42px;font-size:12px;word-break:break-all"></div><div class="ac" style="font-size:12px;color:#6B7280;margin-top:5px"></div>');
     var mn = api.el('pn', 'left:28px;top:462px;width:904px;height:56px;display:flex;align-items:center;font-size:14px;line-height:1.4', '<div class="mn"></div>');
-    var svg = qs('svg', np), running = false;
+    var svg = qs('svg', np), running = false, writing = false;
     function fresh(){ return G.trained && !gStale(); }
     function stack(){
       gptSetup(); var N = GP().nl, V = G.V, items = [{ t: 'Next-token odds', s: V + ' probabilities', k: 'out', p: 'Wout' }], tot = V * DM + TLEN * DM + 2 * DM + DM * V, per = DM * 3 * DM + 3 * DM + DM * DM + DM + DM * 4 * DM + 4 * DM + 4 * DM * DM + DM + 4 * DM; tot += N * per;
@@ -88,7 +93,7 @@ L4.add({ short: 'Workbench', bench: true, uses: ['filters', 'glayers', 'gsteps',
         if (i < items.length - 1) s += '<path d="M151 ' + (y + bh + gap - 1) + 'L151 ' + (y + bh + 1) + '" stroke="' + C.red + '" stroke-width="1.6"/>'; y += bh + gap; });
       s += '<text x="422" y="' + (y + 4) + '" font-size="11" text-anchor="end" fill="' + C.mid + '">bar: average size of the weights</text><text x="6" y="' + (y + 4) + '" font-size="12" font-weight="700" fill="' + C.dred + '">' + tot.toLocaleString() + ' parameters</text>'; svg.innerHTML = s;
     }
-    function lossDraw(n){ var p = GP(), pts = G.losses.slice(0, n === undefined ? G.losses.length : n).map(function(v, i){ return [i + 1, v]; }), o = { xl: 'training step', yl: 'error', x0: 1, x1: Math.max(2, p.steps), xdec: 0, ydec: 1 }; if (!pts.length) lineChart(qs('canvas', lp), [{ pts: [[1, 0], [Math.max(2, p.steps), 3]], color: 'rgba(0,0,0,0)', nodot: true }], Object.assign({ y0: 0 }, o)); else lineChart(qs('canvas', lp), [{ pts: pts, color: C.red, nodot: true }], o); }
+    function lossDraw(n){ var p = GP(), pts = G.losses.slice(0, n === undefined ? G.losses.length : n).map(function(v, i){ return [i + 1, v]; }), o = { xl: 'training step', yl: 'error', x0: 1, x1: Math.max(2, p.steps), xdec: 0, ydec: 1 }; if (!pts.length) { var g0 = lineChart(qs('canvas', lp), [{ pts: [[1, 0], [Math.max(2, p.steps), 3]], color: 'rgba(0,0,0,0)', nodot: true }], Object.assign({ y0: 0 }, o)); g0.x.fillStyle = C.mid; g0.x.textAlign = 'center'; g0.x.fillText('The error curve appears when you press Train', (g0.box.l + g0.box.r) / 2, (g0.box.t + g0.box.b) / 2); } else lineChart(qs('canvas', lp), [{ pts: pts, color: C.red, nodot: true }], o); }
     function readViz(){
       if (!G.P) { qs('.rv', rp).innerHTML = ''; qs('.rs', rp).textContent = ''; return; } if (!G.readIds) { var sm = G.smiles.filter(function(x){ return x.match(TOK).length <= 22; })[2] || G.smiles[0], t = sm.match(TOK); G.readIds = [1].concat(t.map(function(x){ return G.stoi[x]; }), [2]); }
       var ids = G.readIds, pr; tf.tidy(function(){ var pm = tf.softmax(gforward(tf.tensor2d([ids.slice(0, -1)], null, 'int32'), G.NL)).arraySync()[0]; pr = ids.slice(1).map(function(id, k){ return pm[k][id]; }); });
@@ -100,7 +105,7 @@ L4.add({ short: 'Workbench', bench: true, uses: ['filters', 'glayers', 'gsteps',
     function render(){
       stack(); note(); var p = GP();
       if (fresh()) { lossDraw(); readViz(); attempt(G.last || ''); api.stale(''); bb.say('Final error ' + G.losses[G.losses.length - 1].toFixed(2) + '. Training took ' + fmtT(G.secs) + '.'); }
-      else { lossDraw(0); qs('.rv', rp).innerHTML = ''; qs('.rs', rp).textContent = ''; attempt(''); api.stale(G.trained ? 'Options changed. Press Train.' : ''); bb.say(G.trained ? '' : 'Ready. Press Train.'); }
+      else { lossDraw(0); if (!G.trained && !G.busy) { if (!G.P || G.NL !== p.nl) gInit(p.nl); readViz(); stack(); if (!writing) { writing = true; gWrite([1], 1.0, 30).then(function(t){ writing = false; if (!fresh() && !running) attempt(t); }); } } else { qs('.rv', rp).innerHTML = ''; qs('.rs', rp).textContent = ''; attempt(''); } api.stale(G.trained ? 'Options changed. Press Train.' : ''); bb.say(G.trained ? '' : 'Ready. Press Train.'); }
     }
     async function train(){
       if (running || G.busy) return; running = true; bb.btn.disabled = true; api.tok++; var tok = api.tok, p = GP(); api.stale('');
@@ -269,4 +274,5 @@ L4.glossary([
 ]);
 
 L4.add(filterStepDef('gpt'));
-setUses(L4, [null, [], ['glayers', 'gsteps'], ['glayers'], ['glayers', 'gsteps'], ['gtemp', 'glayers', 'gsteps'], ['gtemp', 'glayers', 'gsteps'], null]);
+L4.move('Workbench', 3);
+setUses(L4, [[], ['glayers', 'gsteps'], ['glayers'], null, ['glayers', 'gsteps'], ['gtemp', 'glayers', 'gsteps'], ['gtemp', 'glayers', 'gsteps'], null]);

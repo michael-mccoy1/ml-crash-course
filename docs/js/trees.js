@@ -67,8 +67,8 @@ function glyphTree(x0, y0, w, h, depth, seed, lit){
   return s;
 }
 L2.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr'],
-  title: 'Set up a tree model, press Train, and watch it fit',
-  watch: 'The picture on the left follows your options as you drag them. Train fits the model on the training compounds, then replays the fit slowly: the model builds on the left while the score curve and the predictions on the right update.',
+  title: 'Build a model, press Train, and watch it fit',
+  watch: 'A decision tree asks yes or no questions about a compound, for example whether logP is at most 2.9, and ends in a group. The average of the group is the prediction. A random forest averages many different trees. Gradient boosting adds small trees one after another, each fixing what the earlier ones got wrong. Drag the options to change the shape, then press Train to watch the model grow and the score climb.',
   change: 'Choose a model type, drag its options, then press Train. Slow shows every step, Fast jumps to the end.',
   build: function(api){
     var bb = benchBar(api, { leftHTML: '<div class="seg mode" data-mode>' + [['tree', 'Decision tree'], ['forest', 'Random forest'], ['boost', 'Gradient boosting']].map(function(it){ return '<button type="button" data-v="' + it[0] + '"' + (it[0] === TB.mode ? ' class="on"' : '') + '>' + it[1] + '</button>'; }).join('') + '</div>' });
@@ -301,4 +301,5 @@ L2.glossary([
   ['Ablation', 'Retraining without one feature to see how much the score falls.']
 ]);
 
-setUses(L2, [null, ['endpoint', 'features', 'filters', 'tdepth'], ['endpoint', 'features', 'filters', 'tdepth'], ['endpoint', 'features', 'filters', 'tntrees', 'tfdepth'], ['endpoint', 'features', 'filters', 'trounds', 'tlr'], ['endpoint', 'features', 'filters'], null, ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr']]);
+L2.move('Workbench', 1);
+setUses(L2, [['endpoint', 'features', 'filters', 'tdepth'], null, ['endpoint', 'features', 'filters', 'tdepth'], ['endpoint', 'features', 'filters', 'tntrees', 'tfdepth'], ['endpoint', 'features', 'filters', 'trounds', 'tlr'], ['endpoint', 'features', 'filters'], null, ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr']]);

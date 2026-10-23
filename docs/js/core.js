@@ -36,7 +36,7 @@ function prepareDS(d){
   d.BASE.forEach(function(f){ if (!(f in FSEL)) FSEL[f] = true; });
   ensureBins(d);
 }
-async function loadJSON(name){ var r = await fetch('data/' + name + '.json'); if (!r.ok) throw new Error('Could not load data/' + name + '.json'); return r.json(); }
+async function loadJSON(name){ var r = await fetch('data/' + name + '.json?v=c2'); if (!r.ok) throw new Error('Could not load data/' + name + '.json'); return r.json(); }
 async function loadDataset(key){
   if (!DATA[key]) { var d = await loadJSON(key === 'HLM' ? 'hlm' : 'logd'); DATA[key] = d; prepareDS(d); }
   return DATA[key];
@@ -159,10 +159,11 @@ async function loadExtras(){ if (!EXTRAS) EXTRAS = await loadJSON('extras'); ret
 /* =====================================================================
    Lesson framework
    ===================================================================== */
-var LESSONS = {}, LORDER = ['start', 'trees', 'nn', 'gpt', 'compare'], ACTIVE = 'start', featListeners = [];
+var LESSONS = {}, LORDER = ['start', 'trees', 'nn', 'gpt', 'pre', 'compare'], ACTIVE = 'start', featListeners = [];
 function Lesson(id, title){ this.id = id; this.title = title; this.steps = []; this.gloss = null; this.optsHTML = ''; this.onOpts = null; this.onData = null; LESSONS[id] = this; }
 Lesson.prototype.add = function(def){ this.steps.push(def); return this; };
 Lesson.prototype.glossary = function(items){ this.gloss = items; return this; };
+Lesson.prototype.move = function(short, to){ var i = -1; this.steps.forEach(function(s, k){ if (s.short === short) i = k; }); if (i < 0) return; var s = this.steps.splice(i, 1)[0]; this.steps.splice(to, 0, s); };
 Lesson.prototype.refresh = function(){ var L = this; L.steps.forEach(function(s){ s.dirty = true; if (s.visible && s.handlers && s.handlers.render) { s.dirty = false; s.api.tok++; s.api.clearTexts(); s.safe(function(){ return s.handlers.render(); }); } }); };
 
 function seg(items, cur, attr){ return '<div class="seg" ' + attr + '>' + items.map(function(it){ return '<button type="button" data-v="' + it[0] + '"' + (it[0] === cur ? ' class="on"' : '') + '>' + it[1] + '</button>'; }).join('') + '</div>'; }
@@ -209,7 +210,7 @@ function buildStep(L, s, idx, total, parent){
   api.stat = function(t){ sx.innerHTML = t || ''; };
   api.stale = function(t){ if (t) { stale.textContent = t; stale.classList.add('on'); } else stale.classList.remove('on'); };
   api.busy = function(t){ qs('span', busy).textContent = t || 'Updating'; busy.classList.add('on'); };
-  api.gate = function(t){ var sp = qs('span', busy); sp.innerHTML = esc(t) + ' <button type="button" class="btn sm" style="margin-left:10px">Go to workbench</button>'; qs('button', sp).addEventListener('click', function(){ var w = $(L.id + '-s1'); if (w) window.scrollTo({ top: w.getBoundingClientRect().top + window.scrollY - 70, behavior: ANIM ? 'smooth' : 'auto' }); }); busy.classList.add('on', 'gate'); };
+  api.gate = function(t){ var sp = qs('span', busy); sp.innerHTML = esc(t) + ' <button type="button" class="btn sm" style="margin-left:10px">Go to workbench</button>'; qs('button', sp).addEventListener('click', function(){ var bi = 0; L.steps.forEach(function(st, k){ if (st.bench) bi = k; }); var w = $(L.id + '-s' + (bi + 1)); if (w) window.scrollTo({ top: w.getBoundingClientRect().top + window.scrollY - 70, behavior: ANIM ? 'smooth' : 'auto' }); }); busy.classList.add('on', 'gate'); };
   api.idle = function(){ busy.classList.remove('on', 'gate'); };
   api.sleep = function(ms){ var tok = api.tok; return new Promise(function(res, rej){ setTimeout(function(){ if (api.tok !== tok) rej(new Cancel()); else res(); }, ANIM ? ms : 0); }); };
   api.anim = function(ms, fn){ var tok = api.tok; return new Promise(function(res, rej){ if (!ANIM) { fn(1); return res(); } var t0 = performance.now(); (function f(now){ if (api.tok !== tok) return rej(new Cancel()); var t = clamp((now - t0) / ms, 0, 1); fn(ease(t)); if (t < 1) requestAnimationFrame(f); else res(); })(t0); }); };

@@ -198,10 +198,12 @@ def main():
     smiles = [s for s, t in zip(hlm.smiles, np.isin(np.arange(len(hlm)), te)) if not t and len(s) <= 55][:1500]
     d_h, te_h = build_dataset("HLM", hlm, {"floor": round(floor, 4), "cens": cens, "smiles": smiles,
                                            "label": "HLM clearance", "full": "Human liver microsome clearance (Biogen)", "unit": "log10 mL/min/kg"})
+    d_h["smi_all"] = [str(s) for s in hlm.smiles]
     json.dump(d_h, open(os.path.join(OUT, "hlm.json"), "w"), separators=(",", ":"))
 
     az = c.load_logd()
     d_a, te_a = build_dataset("logD", az, {"label": "logD", "full": "logD at pH 7.4 (AstraZeneca, ChEMBL)", "unit": "log D", "smiles": []})
+    d_a["smi_all"] = [str(s) for s in az.smiles]
     json.dump(d_a, open(os.path.join(OUT, "logd.json"), "w"), separators=(",", ":"))
 
     structs = {"HLM": structs_for(hlm, te_h, 120, 4, with_maps=14), "logD": structs_for(az, te_a, 60, 5, with_maps=14)}

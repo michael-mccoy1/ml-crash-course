@@ -151,7 +151,7 @@ function gptFilterStep(){
       var P2 = api.el('pn', 'left:336px;top:28px;width:288px;height:408px', '<h4>SMILES length of the corpus</h4><canvas width="264" height="250"></canvas><div class="f2 nums" style="font-size:12.5px;margin-top:8px"></div>');
       var P3 = api.el('pn', 'left:644px;top:28px;width:288px;height:408px', '<h4>Length of molecules it wrote</h4><canvas width="264" height="250"></canvas><div class="f3 nums" style="font-size:12.5px;margin-top:8px"></div>');
       function render(){
-        var d = DATA.HLM; if (!d) return; gptSetup(); var all = []; for (var i = 0; i < d.N; i++) if (G.tokLen[i] > 0) all.push(i); var mw = qRange('MW', d), out = function(i){ return !passRange(d, i); }, kept = all.filter(function(i){ return !out(i); });
+        var d = DATA.HLM; if (!d) return; gptSetup(); var all = []; for (var i = 0; i < d.N; i++) if (G.allIds[i]) all.push(i); var mw = qRange('MW', d), out = function(i){ return !passRange(d, i); }, kept = all.filter(function(i){ return !out(i); });
         drawHist(qs('canvas', P1), all, { val: function(i){ return d.COL.MW[i]; }, lo: mw[0], hi: mw[1], unit: 'MW', dec: 0, out: out });
         qs('.f1', P1).innerHTML = '<div><span>Molecules the GPT can read</span><b>' + all.length + '</b></div><div><span>Kept by your range</span><b>' + kept.length + '</b></div><div><span>Mean MW kept</span><b>' + mean(kept.map(function(i){ return d.COL.MW[i]; })).toFixed(0) + '</b></div>';
         drawHist(qs('canvas', P2), all, { val: function(i){ return G.tokLen[i]; }, lo: 0, hi: TLEN, unit: 'tokens', dec: 0, nb: 24, out: out });

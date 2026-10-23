@@ -105,7 +105,7 @@ L3.add({ short: 'Chemprop', title: 'Chemprop passes messages along the bonds of 
 L3.glossary([
   ['Neural network', 'A model built from many small calculators (neurons) in layers. It learns by adjusting the strength of the connections.'],
   ['Neuron', 'Multiplies each input by a weight, adds a bias, and passes the total through an activation.'],
-  ['Weight', 'Strength of one connection. Training changes the weights.'], ['Bias', 'A learned offset added in each neuron.'],
+  ['Weight', 'A number that says how strongly one input pushes the prediction. A bigger weight is a stronger push, a negative weight pushes the other way. Training changes the weights.'], ['Bias', 'A learned offset added in each neuron.'],
   ['Layer', 'A column of neurons: input, hidden or output.'], ['ReLU', 'Negative values become 0 and positive values pass unchanged.'],
   ['Parameters', 'All weights and biases together.'], ['Epoch', 'One pass through the training data.'],
   ['Loss', 'Average squared error. Training tries to lower it.'], ['Gradient descent', 'Repeatedly stepping the weights in the direction that lowers the loss.'],
@@ -118,4 +118,5 @@ L3.glossary([
   ['Chemprop', 'A message-passing neural network for molecules that reads the graph instead of descriptors.']
 ]);
 
-setUses(L3, [null, ['features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'features'], ['nlr', 'nepochs', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'features', 'endpoint'], null, ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], []]);
+L3.move('Workbench', 2);
+setUses(L3, [null, ['features', 'endpoint'], null, ['nlayers', 'nunits', 'ndrop', 'features'], ['nlr', 'nepochs', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'features', 'endpoint'], null, ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], []]);
