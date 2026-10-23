@@ -21,7 +21,7 @@ Nothing to install. Each lesson lists its goals, has an options panel, steps wit
 | 04 GPT | Tokens, embeddings, the stack, workbench, attention, temperature, RDKit check, filtering, a design test |
 | 05 Pre-trained models | Why pre-train, hiding atoms and groups, GROVER, fixed features, fine-tuning a GPT and Chemprop |
 | 06 Compare | Leaderboard, accuracy against time, discussion |
-| 07 Role of AI | What the models do, the training range, lab noise, a can and cannot sort, five checks |
+| 07 Role of AI | AI, machine learning and generative AI, jobs given to AI, the training range, lab noise, a can and cannot sort, five checks |
 
 ## Notebooks
 
