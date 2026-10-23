@@ -7,7 +7,7 @@
 
 ## How the site works
 
-* Each lesson opens with a card: goals and words.
+* Each lesson opens with its goals.
 * The options panel changes every stage. Have people change something before reading.
 * The tree, network and GPT lessons have a workbench. Change an option, then press Train. Slow shows every step. Fast skips ahead.
 * Each step has a Notice line and a Pop quiz. Ask the question before anyone opens the answer.

@@ -207,7 +207,7 @@ details.filtgrp .fr{margin-top:6px}
 .intro .it{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;font-size:.9rem}
 .intro .it b{color:var(--dred)}
 .intro .it span{color:#34373F}
-.intro .ig{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:10px 28px;margin-top:10px}
+.intro .ig{display:grid;display:block;margin-top:0}
 @media(max-width:760px){.intro .ig{grid-template-columns:minmax(0,1fr)}}
 .intro ul{margin:4px 0 0;padding-left:18px;font-size:.92rem;line-height:1.5}
 .intro .wd{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}

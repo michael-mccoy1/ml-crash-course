@@ -11,7 +11,7 @@ RDKit builds the data and also runs in the browser.
 
 **https://michael-mccoy1.github.io/ml-crash-course/**
 
-Nothing to install. Each lesson has a card (goals and words), an options panel, steps with a Notice line and a Pop quiz, and a glossary. The tree, network and GPT lessons have a workbench: change an option and the picture updates, press Train and the fit replays slowly. Every lesson has Filter training data in its options.
+Nothing to install. Each lesson lists its goals, has an options panel, steps with a Notice line and a Pop quiz, and a glossary. The tree, network and GPT lessons have a workbench: change an option and the picture updates, press Train and the fit replays slowly. Every lesson has Filter training data in its options.
 
 | Lesson | Content |
 |---|---|
