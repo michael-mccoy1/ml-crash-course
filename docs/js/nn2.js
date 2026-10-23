@@ -7,7 +7,7 @@ function nnAct(i){
 
 /* ---------- N6: one compound through the trained network ---------- */
 L3.add({ short: 'One compound', title: 'Follow one compound through the trained network',
-  change: 'Press Play, then Next compound. The first time, a network is trained with your current options.',
+  change: 'Train the network in the workbench first. Press Next compound for another molecule, or Walk through to step layer by layer.',
   watch: 'The compound\'s features light up the inputs. Each hidden layer turns them into new numbers. The last neuron gives the prediction.',
   build: function(api){
     var cur = null, act = null;
@@ -25,14 +25,14 @@ L3.add({ short: 'One compound', title: 'Follow one compound through the trained 
     async function play(tok){ if (!(await setup(false))) return; var L = NN.params.layers; draw(-1); op.classList.remove('on'); await api.beat('Start with the compound and its features. This network has ' + NN.prep.feats.length + ' inputs.', 2800);
       draw(0); await api.beat('The features enter the input neurons. Red neurons are above average for the training set, dark ones below.', 3200);
       for (var l = 1; l <= L; l++) { draw(l); await api.beat('Hidden layer ' + l + ': every neuron adds up its weighted inputs and applies ReLU. Darker red means more active.', 3200); }
-      draw(L + 1); showOut(); await api.beat('The last neuron combines the final layer into one number, the prediction. Compare it with the lab value.', 3400); api.key('A network turns features into a prediction through layers of weighted sums. Nothing in it is hand-written.'); }
+      draw(L + 1); showOut(); await api.beat('The last neuron combines the final layer into one number, the prediction. Compare it with the lab value.', 3400); }
     return { render: render, play: play };
   } });
 
 /* ---------- N7: inside one neuron ---------- */
 L3.add({ short: 'Inside a neuron', title: 'Open one neuron and read its arithmetic',
-  change: 'Click any circle in hidden layer 1, or press Play.',
-  watch: 'The table shows the real learned weight for each input, the contribution it makes for this compound, and the running total.',
+  change: 'Click any circle in hidden layer 1.',
+  watch: 'The table lists the learned weight for each input, what it adds for this compound, and the running total.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:360px;height:408px', '<h4>Click a neuron in hidden layer 1</h4><svg viewBox="0 0 340 360" width="340" height="360"></svg>');
     var tp = api.el('pn', 'left:408px;top:28px;width:524px;height:408px', '<div class="nt"></div>');
@@ -46,15 +46,13 @@ L3.add({ short: 'Inside a neuron', title: 'Open one neuron and read its arithmet
     }
     async function ready(){ if (!(await nnReady(api))) return false; if (!NN.act) NN.act = nnAct(D.TEST[Math.floor(Math.random() * D.TEST.length)]); return true; }
     async function render(){ if (!(await ready())) return; draw(); table(1); }
-    async function play(tok){ if (!(await ready())) return; draw(); table(0); await api.beat('Every neuron in the first hidden layer reads all the inputs. Pick one.', 2600); api.cap('Each row is one input: its value, the learned weight, and what it adds to the total.');
-      for (var k = 1; k <= NN.prep.feats.length + 2; k++) { table(k / (NN.prep.feats.length + 2)); await api.sleep(750); } api.cap('The bias is added, then ReLU switches the neuron on or off. Click another neuron to compare.'); await api.sleep(3200); api.key('Each neuron weighs the same inputs differently, so each one detects a different pattern.'); }
-    return { render: render, play: play };
+    return { render: render };
   } });
 
 /* ---------- N8: what the network learned ---------- */
-L3.add({ short: 'What it learned', title: 'See what the network learned about one feature',
-  change: 'Choose a feature in the control below, then press Play.',
-  watch: 'Each grey line is one unseen compound: the prediction as that feature changes while the compound\'s other features stay fixed. The red line is the average.',
+L3.add({ short: 'What it learned', title: 'What the network learned about one feature',
+  change: 'Choose a feature under the stage.',
+  watch: 'Each grey line is one unseen compound: its prediction as this feature changes while its other features stay fixed. The red line is the average.',
   build: function(api){
     var pp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<h4>Prediction as one feature changes</h4><canvas width="618" height="350"></canvas>');
     var sp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>How to read it</h4><div class="rd" style="font-size:12.5px;color:#4a4f5a"></div>');
@@ -68,14 +66,13 @@ L3.add({ short: 'What it learned', title: 'See what the network learned about on
     sel.addEventListener('change', function(){ api.tok++; cache = compute(); draw(1); });
     async function ready(){ if (!(await nnReady(api))) return false; fill(); if (sel.value) cache = compute(); return true; }
     async function render(){ if (!(await ready())) return; draw(1); }
-    async function play(tok){ if (!(await ready())) return; if (!cache) return; draw(0); await api.beat('Take 15 unseen compounds. For each one, change only ' + cache.f + ' and ask the network for a new prediction.', 3200); await api.anim(ANIM ? 4200 : 1, function(t){ draw(t); }); api.cap('The red line is the average effect of ' + cache.f + ' according to the network.'); await api.sleep(3400); api.key('You can look inside a neural network by asking it what happens when one input changes.'); }
-    return { render: render, play: play };
+    return { render: render };
   } });
 
 /* ---------- N9: Chemprop and message passing ---------- */
-L3.add({ short: 'Chemprop', title: 'Chemprop passes messages along the bonds of the molecular graph',
-  change: 'Press Play. Click an atom to start from it, or drag the rounds control.',
-  watch: 'Atoms inside the red zone have received information from the chosen atom. After more rounds the zone grows by one bond.',
+L3.add({ short: 'Chemprop', title: 'Chemprop passes messages along the bonds of the molecule',
+  change: 'Click an atom to start from it, and drag Rounds under the stage. Walk through plays the rounds.',
+  watch: 'Atoms in the red zone have received information from the chosen atom. Each round extends the zone by one bond.',
   build: function(api){
     var G = [], cur = { g: 0, c: 0, k: 0 }, playing = false, EL = { N: C.red, O: C.dred, S: '#9a7400', F: '#2c7a57', Cl: '#2c7a57', Br: '#2c7a57' };
     var gp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<svg viewBox="0 0 540 372" width="540" height="372"></svg>');
@@ -101,7 +98,7 @@ L3.add({ short: 'Chemprop', title: 'Chemprop passes messages along the bonds of 
     async function render(){ await ready(); draw(); }
     async function play(tok){ await ready(); playing = true; try { cur.k = 0; draw(); await api.beat('A molecule is a graph: atoms are nodes and bonds are edges. Chemprop works on this graph directly, with no descriptor table.', 3600);
       for (var k = 1; k <= 4; k++) { await setK(k, true); api.cap(k === 1 ? 'Round 1: the chosen atom has heard from its bonded neighbours.' : 'Round ' + k + ': information has travelled ' + k + ' bonds from the chosen atom.'); await api.sleep(2000); }
-      api.cap('After a few rounds every atom carries a summary of the chemistry around it. These are pooled and passed to a small network.'); await api.sleep(3400); api.key('Chemprop learns its own features from the graph. It needs Python and more compute, so it is run in notebook 06.'); } finally { playing = false; } }
+      api.cap('After a few rounds every atom carries a summary of the chemistry around it. These are pooled and passed to a small network.'); await api.sleep(3400); } finally { playing = false; } }
     return { render: render, play: play };
   } });
 
@@ -121,5 +118,4 @@ L3.glossary([
   ['Chemprop', 'A message-passing neural network for molecules that reads the graph instead of descriptors.']
 ]);
 
-[5, 6, 7].forEach(function(i){ L3.steps[i].needsNet = true; });
-setUses(L3, [['features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'features'], ['nlr', 'nepochs', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], []]);
+setUses(L3, [null, ['features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'features'], ['nlr', 'nepochs', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'features', 'endpoint'], null, ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], []]);

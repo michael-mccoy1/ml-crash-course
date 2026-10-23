@@ -11,16 +11,15 @@ Structures, descriptors, scaffolds and similarity statistics come from RDKit. RD
 
 **https://michael-mccoy1.github.io/ml-crash-course/**
 
-Nothing to install. Each lesson has a fixed options panel on the left and a scrolling sequence of steps on the right. Each step has a short instruction (what to change, what to watch), an animated stage that follows the options, and a key point. Every lesson ends with its own glossary.
+Nothing to install. Each lesson has a fixed options panel on the left. The three model lessons open with a workbench: drag an option and the picture changes at once, press Train and the fit replays slowly with the error curve and predictions updating. Steps below the workbench respond to the same options. Filtering the training data is part of every lesson, and each lesson ends with its own glossary.
 
 | Lesson | Minutes | Content |
 |---|---|---|
-| 01 Data and ML basics | 12 | Structure to prediction, descriptor maps, the unseen set, over and underfitting, scoring, logD feeding HLM, predict your own SMILES |
-| 02 Data quality | 12 | Censored values, outliers, property ranges, the test-set trap, a combined comparison |
-| 03 Tree models | 20 | Split search, depth, one compound down the tree, forest, boosting, feature importance |
-| 04 Neural networks | 20 | One neuron, layers, learning rate, live training, dropout, one compound through the network, one neuron opened, what it learned, Chemprop |
-| 05 GPT | 18 | Tokens, embeddings, the transformer stack, training, attention, next-token odds, generation checked by RDKit |
-| 06 Compare | 8 | Leaderboard, accuracy against training time, discussion questions |
+| 01 Data and ML basics | 14 | Structure to prediction, descriptor maps, the unseen set, the target distribution, censoring, over and underfitting, scoring, logD feeding HLM, predict your own SMILES |
+| 02 Tree models | 22 | Workbench (tree, forest, boosting), split search, one compound down the tree, forest votes, boosting, feature importance, filtering the data |
+| 03 Neural networks | 26 | Workbench, one neuron, layers, learning rate, dropout, filtering the data, one compound through the network, one neuron opened, what it learned, Chemprop |
+| 04 GPT | 20 | Workbench, tokens, embeddings, the transformer stack, attention, next-token odds, generation checked by RDKit, filtering the corpus |
+| 05 Compare | 8 | Leaderboard, accuracy against training time, discussion questions |
 
 The endpoint (HLM or logD) and the feature toggles are shared by all lessons. The GPT always reads the Biogen SMILES.
 

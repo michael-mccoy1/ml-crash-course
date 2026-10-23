@@ -9,8 +9,8 @@ function cmpRows(){
 }
 function gptRow(){ return G && G.trained ? { n: 'GPT (' + G.NL + ' layers, ' + G.steps + ' steps)', t: G.secs } : null; }
 
-L5.add({ short: 'Leaderboard', title: 'Accuracy and training time for every model you trained',
-  change: 'Press Play. Train more models in the other lessons and come back.',
+L5.add({ short: 'Leaderboard', title: 'Every model you trained, with accuracy and time',
+  change: 'Train more models in the other lessons and come back.',
   watch: 'Red bars are models trained in this session. Blue-grey bars are reference runs from the notebooks, which use about 2,000 more features.',
   build: function(api){
     var pn = api.el('pn', 'left:28px;top:28px;width:904px;height:408px;overflow:auto', '<div class="lb"></div><p class="note" style="font-size:12px;margin-top:12px">R2 is measured on unseen compounds. Time covers fitting the model only, in your browser or on the notebook machine. The GPT predicts tokens, not a property, so it has a time but no R2.</p>');
@@ -20,13 +20,13 @@ L5.add({ short: 'Leaderboard', title: 'Accuracy and training time for every mode
       if (g) html += '<div class="nm">' + esc(g.n) + '</div><div class="tr"></div><div class="vv">n/a</div><div class="vv" style="font-weight:500;color:#555B66">' + fmtT(g.t) + '</div>';
       qs('.lb', pn).innerHTML = html; var n = Object.keys(D.scores).length; var st = $('cst'); if (st) st.textContent = n ? n + ' model' + (n > 1 ? 's' : '') + ' trained on ' + EP + (g ? ' and a GPT' : '') + '.' : 'Nothing trained on ' + EP + ' yet.'; }
     function render(){ draw(1); }
-    async function play(tok){ draw(0); var rows = cmpRows(); await api.beat(Object.keys(D.scores).length ? 'These are the models you trained, next to the notebook references.' : 'You have not trained any model on this endpoint yet. Only the notebook references are shown.', 2600); await api.anim(ANIM ? 3200 : 1, function(t){ draw(t); }); api.cap('Compare the bars first, then ask what each extra bit of accuracy cost in training time.'); await api.sleep(3600); api.key('The best model is the one that is accurate enough on unseen compounds for the time and data you have.'); }
+    async function play(tok){ draw(0); var rows = cmpRows(); await api.beat(Object.keys(D.scores).length ? 'These are the models you trained, next to the notebook references.' : 'You have not trained any model on this endpoint yet. Only the notebook references are shown.', 2600); await api.anim(ANIM ? 3200 : 1, function(t){ draw(t); }); api.cap('Compare the bars first, then ask what each extra bit of accuracy cost in training time.'); await api.sleep(3600); }
     return { render: render, play: play };
   } });
 
-L5.add({ short: 'Accuracy against time', title: 'Accuracy rarely comes free',
-  change: 'Press Play. Train other settings in the earlier lessons and watch the points move.',
-  watch: 'Each point is a model. Higher is more accurate. Further left is faster. Models up and to the left dominate the others.',
+L5.add({ short: 'Accuracy against time', title: 'Accuracy against training time',
+  change: 'Train other settings in the earlier lessons and watch the points move.',
+  watch: 'Each point is a model. Higher is more accurate and further left is faster.',
   build: function(api){
     var pp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<h4>Unseen R2 against training time (log scale)</h4><canvas width="618" height="350"></canvas>');
     var sp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>How to read it</h4><div class="rd" style="font-size:12.5px;color:#4a4f5a"></div>');
@@ -40,18 +40,18 @@ L5.add({ short: 'Accuracy against time', title: 'Accuracy rarely comes free',
       P.forEach(function(p, i){ var vis = clamp(prog * P.length - i * 0.7, 0, 1); if (vis <= 0) return; var X = sx(Math.log10(p.t)), Y = sy(p.v); x.globalAlpha = vis; x.fillStyle = p.ref ? C.bg : C.red; x.beginPath(); x.arc(X, Y, 7 * (0.5 + 0.5 * vis), 0, 6.3); x.fill(); x.fillStyle = C.char; x.font = '600 11px Aptos, Segoe UI, sans-serif'; x.textAlign = X > box.r - 130 ? 'right' : 'left'; x.fillText(p.n.length > 26 ? p.n.slice(0, 26) : p.n, X + (X > box.r - 130 ? -11 : 11), Y + 4); x.globalAlpha = 1; });
       qs('.rd', sp).innerHTML = '<p><b style="color:' + C.red + '">Red</b>: trained in this session.</p><p><b style="color:#6B7B8C">Blue grey</b>: notebook runs that report a time.</p><p>Moving right costs time. Moving up buys accuracy. A point that is both slower and less accurate than another is not worth using.</p><p class="note" style="color:#6B7280">The time axis is logarithmic, so each gridline is ten times slower.</p>'; }
     function render(){ draw(1); }
-    async function play(tok){ draw(0); await api.beat('Every model sits at its accuracy and its training time.', 2400); await api.anim(ANIM ? 3000 : 1, function(t){ draw(t); }); api.cap('The ideal model is in the top left corner: accurate and fast.'); await api.sleep(3200); api.key('Pick the cheapest model that is accurate enough, then check it on compounds it has not seen.'); }
+    async function play(tok){ draw(0); await api.beat('Every model sits at its accuracy and its training time.', 2400); await api.anim(ANIM ? 3000 : 1, function(t){ draw(t); }); api.cap('The ideal model is in the top left corner: accurate and fast.'); await api.sleep(3200); }
     return { render: render, play: play };
   } });
 
 L5.add({ short: 'Discussion', title: 'Questions to settle before trusting a result',
-  change: 'Press Play and discuss each question before the next appears.',
-  watch: 'Use your own scores from the earlier lessons as evidence.',
+  change: 'Pick one question and answer it from your own scores.',
+  watch: 'Six questions that decide whether a score can be trusted.',
   build: function(api){
-    var qs_ = ['Would the same model win on another split of the data? What would you run to find out?', 'Why do tree ensembles often match or beat neural networks on a few thousand compounds?', 'Which score did you report, and on which compounds? Would a colleague get the same answer from the same data?', 'Does handling of censored values change which model looks best? Look at the data quality lesson.', 'How does assay noise limit the best possible R2? How would you estimate that limit?', 'The GPT has no R2. What would you do with it in a project: predict, generate, or embed compounds?'];
+    var qs_ = ['Would the same model win on another split of the data? What would you run to find out?', 'Why do tree ensembles often match or beat neural networks on a few thousand compounds?', 'Which score did you report, and on which compounds? Would a colleague get the same answer from the same data?', 'Does handling of censored values change which model looks best? Try the filters in each model lesson.', 'How does assay noise limit the best possible R2? How would you estimate that limit?', 'The GPT has no R2. What would you do with it in a project: predict, generate, or embed compounds?'];
     var els = qs_.map(function(q, i){ return api.el('pn fd', 'left:' + (28 + (i % 2) * 456) + 'px;top:' + (28 + Math.floor(i / 2) * 134) + 'px;width:448px;height:122px', '<h4>Question ' + (i + 1) + '</h4><div style="font-size:15px;line-height:1.45;color:#34373F">' + esc(q) + '</div>'); });
     function render(){ els.forEach(function(e){ e.classList.add('on'); }); }
-    async function play(tok){ els.forEach(function(e){ e.classList.remove('on'); }); for (var i = 0; i < els.length; i++) { els[i].classList.add('on'); await api.sleep(1200); } api.key('A model is only as trustworthy as the way it was tested. Ask these questions of every result.'); }
+    async function play(tok){ els.forEach(function(e){ e.classList.remove('on'); }); for (var i = 0; i < els.length; i++) { els[i].classList.add('on'); await api.sleep(1200); } }
     return { render: render, play: play };
   } });
 
