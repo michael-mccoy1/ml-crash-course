@@ -109,15 +109,14 @@ L3.add({ short: 'Is it useful', uses: ['endpoint', 'features', 'filters', 'nlaye
   change: 'Press Run test below the plot.',
   build: function(api){
     var cp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>Score on unseen compounds, by number of labelled compounds</h4><canvas width="576" height="330"></canvas><div class="note" style="font-size:12px;margin-top:4px">Dark: boosted trees. Red: neural network.</div>');
-    var sp = api.el('pn', 'left:648px;top:28px;width:284px;height:408px;overflow:hidden', '<div class="vs" style="font-size:12.5px;line-height:1.45"></div>');
+    var sp = api.el('pn', 'left:648px;top:28px;width:284px;height:408px;overflow:auto', '<div class="vs" style="font-size:12px;line-height:1.4"></div>');
     var ctl = api.addControl('<button type="button" class="btn sm" data-run>Run test</button> <span class="note" style="font-size:12px">Trains a few models. It takes a moment.</span>'), busy = false;
     function key(){ var p = NP(); return JSON.stringify(['nnv', EP, activeFeats(), filtKey(), p.layers, p.units, p.drop, p.lr]); }
     function show(res){
       var T = res.map(function(r){ return [r.n, r.tree]; }), N = res.map(function(r){ return [r.n, r.nn]; });
       curveChart(qs('canvas', cp), [{ pts: T, color: C.char }, { pts: N, color: C.red }], null); var a = res[0], z = res[res.length - 1];
       qs('.vs', sp).innerHTML = '<div class="lbl">With ' + a.n + ' labelled compounds</div><div class="nums" style="margin:4px 0 8px"><div><span>Trees</span><b>' + a.tree.toFixed(2) + '</b></div><div><span style="color:' + C.red + '">Network</span><b>' + a.nn.toFixed(2) + '</b></div></div><div class="lbl">With all ' + z.n + '</div><div class="nums" style="margin:4px 0 8px"><div><span>Trees</span><b>' + z.tree.toFixed(2) + '</b></div><div><span style="color:' + C.red + '">Network</span><b>' + z.nn.toFixed(2) + '</b></div></div>' +
-        '<p style="margin:0 0 8px">' + (z.nn > z.tree + 0.02 ? 'With all the data the network came out ahead here.' : (z.nn < z.tree - 0.02 ? 'Even with all the data the trees came out ahead here.' : 'With all the data the two are about equal here.')) + '</p>' +
-        '<div class="lbl" style="color:#2c7a57">Use a network when</div><ul style="margin:3px 0 7px;padding-left:16px"><li>You have a lot of labelled data, or inputs such as molecular graphs.</li><li>You can afford to tune and check it.</li></ul><div class="lbl" style="color:' + C.red + '">Be careful when</div><ul style="margin:3px 0 0;padding-left:16px"><li>You have a few hundred compounds: it is easy to overfit.</li><li>You need to explain why it predicted a value.</li></ul>';
+        '<p style="margin:0 0 6px">' + (z.nn > z.tree + 0.02 ? 'With all the data the network came out ahead.' : (z.nn < z.tree - 0.02 ? 'Even with all the data the trees came out ahead.' : 'With all the data the two are about equal.')) + '</p><div class="lbl" style="color:#2c7a57">Use a network when</div><p style="margin:2px 0 6px">You have a lot of labelled data, or graph inputs, and can tune it.</p><div class="lbl" style="color:' + C.red + '">Be careful when</div><p style="margin:2px 0 0">You have a few hundred compounds, or must explain a prediction.</p>';
     }
     async function run(){
       if (busy) return; if (!activeFeats().length) { qs('.vs', sp).innerHTML = '<span class="note">Switch on at least one feature.</span>'; return; } D.cache.nnv = D.cache.nnv || {}; var k = key(); if (D.cache.nnv[k]) { show(D.cache.nnv[k]); return; }
