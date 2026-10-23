@@ -10,7 +10,7 @@ L2.optsHTML = function(){
     optRange('tlr', 'Boosting learning rate', 0.01, 0.3, 0.01, 0.08, 'Share of each tree\'s correction that is applied.') +
     '<div class="og"><button type="button" class="btn ghost wide" id="ttrain">Train all three for Compare</button><div class="status" id="tst"></div><div class="rbox" id="tres"></div></div>' + filterGroup();
 };
-function TP(){ return { depth: +$('tdepth').value, nt: +$('tntrees').value, fd: +$('tfdepth').value, rounds: +$('trounds').value, lr: +$('tlr').value }; }
+function TP(){ var g = function(id, d){ var e = $(id); return e ? +e.value : d; }; return { depth: g('tdepth', 4), nt: g('tntrees', 60), fd: g('tfdepth', 10), rounds: g('trounds', 150), lr: g('tlr', 0.08) }; }
 function tKey(name, extra){ return name + JSON.stringify([EP, activeFeats(), activeTrain().length, filtKey(), extra]); }
 function tCache(name, extra, fn){ D.cache.t = D.cache.t || {}; var k = tKey(name, extra); if (!D.cache.t[k]) D.cache.t[k] = fn(); return D.cache.t[k]; }
 function tPeek(name, extra){ return D.cache.t ? D.cache.t[tKey(name, extra)] : null; }
@@ -23,10 +23,10 @@ function tBoost(){ var p = TP(); return tCache('boost', [p.rounds, p.lr], functi
 function tBoostLr(){ var p = TP(); return tCache('boostlr', p.rounds, function(){ return [0.02, 0.08, 0.3].map(function(lr){ return { lr: lr, curve: fitBoost(activeFeats(), activeTrain(), p.rounds, lr, 3, Math.max(1, Math.round(p.rounds / 40))).curve }; }); }); }
 function tAblation(){ return tCache('abl', 0, function(){ var f = activeFeats(), idx = activeTrain(), full = fitBoost(f, idx, 60, 0.1, 3), base = r2(D.TEST, full.F); return { base: base, rows: f.map(function(x){ if (f.length < 2) return { f: x, d: 0 }; var m = fitBoost(f.filter(function(y){ return y !== x; }), idx, 60, 0.1, 3); return { f: x, d: r2(D.TEST, m.F) - base }; }) }; }); }
 var TNAMES = { tree: 'Decision tree', forest: 'Random forest', boost: 'Gradient boosting' };
-function recordMode(mode){
+function recordMode(mode, auto){
   var p = TP(), f = activeFeats(); if (!f.length) return null;
   var a = mode === 'tree' ? tTree() : (mode === 'forest' ? tForest() : tBoost()), ms = record(TNAMES[mode], f, mode === 'tree' ? a.pred : (mode === 'forest' ? a.pred : a.F), a.secs);
-  ms.params = mode === 'tree' ? 'depth ' + p.depth : (mode === 'forest' ? p.nt + ' trees, depth ' + p.fd : p.rounds + ' rounds, rate ' + p.lr); return ms;
+  ms.auto = !!auto; ms.params = mode === 'tree' ? 'depth ' + p.depth : (mode === 'forest' ? p.nt + ' trees, depth ' + p.fd : p.rounds + ' rounds, rate ' + p.lr); return ms;
 }
 function recordTrees(){ return ['tree', 'forest', 'boost'].map(recordMode); }
 function tResultsBox(){ var el = $('tres'); if (!el) return; var ms = ['Decision tree', 'Random forest', 'Gradient boosting'].map(function(n){ return D.scores[n]; }).filter(Boolean); el.innerHTML = ms.map(function(m, i){ return '<div class="rrow">' + ['Tree', 'Forest', 'Boosting'][i] + '<b>R2 ' + m.r2.toFixed(2) + ', ' + fmtT(m.secs) + '</b></div>'; }).join(''); }
@@ -299,40 +299,45 @@ L2.add({ short: 'Results', title: 'Score and fit time of each tree model',
     return { render: render };
   } });
 
-/* ---------- test it: where trees work and where they fail ---------- */
-L2.add({ short: 'Is it useful', uses: ['endpoint', 'features', 'filters'],
-  title: 'Test it: where trees fail',
-  watch: 'A tree can only repeat values it has seen, so outside the data its line goes flat. A straight line keeps going.',
-  change: 'Click anywhere on the plot, including the shaded zones.',
+/* ---------- all three tree types side by side ---------- */
+L2.add({ short: 'Is it useful', uses: ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr'],
+  title: 'All three side by side',
+  watch: 'Each plot fits one feature with a different model, using the options panel settings. The tree predicts in blocks. The forest smooths them. Boosting follows the dots most closely. Outside the data all three go flat, while the dashed straight line keeps going.',
+  change: 'Click any plot to compare the three predictions at that point. Pick another feature below the plots.',
   build: function(api){
-    var plot = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>Tree against straight line, one feature</h4><canvas width="576" height="350"></canvas>');
-    var side = api.el('pn', 'left:648px;top:28px;width:284px;height:408px;overflow:auto', '<div class="vs" style="font-size:12px;line-height:1.4"></div>');
+    var KINDS = [['tree', 'Decision tree', 'Quick and readable. Predicts in blocks and only repeats values it has seen.'], ['forest', 'Random forest', 'Steadier than one tree. Smoother, but still flat outside the data.'], ['boost', 'Gradient boosting', 'Usually the most accurate on tables like this. Fits closely, so watch for overfitting.']];
+    var P = KINDS.map(function(k, i){ return api.el('pn', 'left:' + (28 + i * 310) + 'px;top:28px;width:284px;height:296px', '<h4>' + k[1] + '</h4><svg viewBox="0 0 260 46" width="260" height="46"></svg><canvas width="260" height="192"></canvas>'); });
+    function icoTree(x0, y0, w, h, depth, col){ var out = '', dy = h / depth; (function rec(x, y, span, d){ if (d === depth) { out += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.2" fill="' + col + '"/>'; return; } var ny = y + dy, lx = x - span / 2, rx = x + span / 2; out += '<path d="M' + x.toFixed(1) + ' ' + y.toFixed(1) + 'L' + lx.toFixed(1) + ' ' + ny.toFixed(1) + 'M' + x.toFixed(1) + ' ' + y.toFixed(1) + 'L' + rx.toFixed(1) + ' ' + ny.toFixed(1) + '" stroke="' + col + '" stroke-width="1.3" fill="none"/>'; rec(lx, ny, span / 2, d + 1); rec(rx, ny, span / 2, d + 1); })(x0 + w / 2, y0 + 3, w * 0.46, 0); return out; }
+    (function(){ var s0 = icoTree(100, 2, 60, 38, 3, C.red) + '<text x="170" y="26" font-size="11" fill="' + C.mid + '">one tree</text>', s1 = '', s2 = '', i;
+      for (i = 0; i < 6; i++) s1 += icoTree(6 + i * 42, 4, 36, 34, 3, C.bg); 
+      for (i = 0; i < 4; i++) { s2 += icoTree(8 + i * 62, 4, 40, 34, 2, C.red); if (i < 3) s2 += '<text x="' + (54 + i * 62) + '" y="26" font-size="14" fill="' + C.char + '">+</text>'; } s2 += '<text x="252" y="26" font-size="12" fill="' + C.mid + '" text-anchor="end">...</text>';
+      [s0, s1, s2].forEach(function(s, k){ qs('svg', P[k]).innerHTML = s; }); })();
+    var Cd = KINDS.map(function(k, i){ return api.el('pn', 'left:' + (28 + i * 310) + 'px;top:336px;width:284px;height:104px;overflow:hidden', '<div class="vc" style="font-size:12px;line-height:1.4"></div>'); });
     var ctl = api.addControl('Feature <select></select>'), sel = qs('select', ctl), M = null, probe = null;
     function fill(){ var f = activeFeats(), cur = sel.value; sel.innerHTML = f.map(function(x){ return '<option>' + x + '</option>'; }).join(''); if (f.indexOf(cur) >= 0) sel.value = cur; }
     function fit(){
-      var feat = sel.value, idx = activeTrain(), xs = idx.map(function(i){ return D.COL[feat][i]; }), ys = idx.map(function(i){ return D.Y[i]; }), mn = Infinity, mx = -Infinity; xs.forEach(function(v){ if (v < mn) mn = v; if (v > mx) mx = v; });
-      var mxm = mean(xs), mym = mean(ys), cov = 0, vr = 0; xs.forEach(function(v, i){ cov += (v - mxm) * (ys[i] - mym); vr += (v - mxm) * (v - mxm); }); var slope = cov / (vr || 1), span = mx - mn, r = rng(5), pts = [];
-      idx.forEach(function(i){ if (r() < Math.min(1, 400 / idx.length)) pts.push(i); }); var model = fitBoost([feat], idx, 80, 0.1, 3);
-      return { feat: feat, model: model, slope: slope, icpt: mym - slope * mxm, mn: mn, mx: mx, lo: mn - 0.4 * span, hi: mx + 0.4 * span, pts: pts };
+      var feat = sel.value, idx = activeTrain(), p = TP(), xs = idx.map(function(i){ return D.COL[feat][i]; }), ys = idx.map(function(i){ return D.Y[i]; }), mn = Infinity, mx = -Infinity; xs.forEach(function(v){ if (v < mn) mn = v; if (v > mx) mx = v; });
+      var mxm = mean(xs), mym = mean(ys), cov = 0, vr = 0; xs.forEach(function(v, i){ cov += (v - mxm) * (ys[i] - mym); vr += (v - mxm) * (v - mxm); }); var slope = cov / (vr || 1), span = mx - mn, r = rng(5), pts = []; idx.forEach(function(i){ if (r() < Math.min(1, 300 / idx.length)) pts.push(i); });
+      var tree = fitTree([feat], idx, p.depth, 5, 1), fr = fitForest([feat], idx, p.nt, p.fd, 7), bo = fitBoost([feat], idx, p.rounds, p.lr, 3), all = [tTree(), tForest(), tBoost()], preds = [all[0].pred, all[1].pred, all[2].F];
+      return { feat: feat, tree: tree, fr: fr, bo: bo, slope: slope, icpt: mym - slope * mxm, mn: mn, mx: mx, lo: mn - 0.4 * span, hi: mx + 0.4 * span, pts: pts, r2: preds.map(function(q){ return r2(D.TEST, q); }), secs: [all[0].secs, all[1].secs, all[2].secs] };
     }
-    function tree(x){ var v = {}; v[M.feat] = x; return boostPredictVals(M.model, D.B, v); }
+    function val(k, x){ var v = {}; v[M.feat] = x; if (k === 0) return predictVals(M.tree, D.B, v); if (k === 1) { var s = 0; M.fr.trees.forEach(function(t){ s += predictVals(t, D.B, v); }); return s / M.fr.trees.length; } return boostPredictVals(M.bo, D.B, v); }
     function line(x){ return M.slope * x + M.icpt; }
     function draw(){
-      if (!M) return; var g = cv(qs('canvas', plot)), x = g.x, box = { l: 48, r: g.w - 12, t: 10, b: g.h - 40 }, lo = M.lo, hi = M.hi, ylo = D.ylo, yhi = D.yhi; axes(g, box, [lo, hi], [ylo, yhi], M.feat, unitWord(), 5);
-      var sx = function(v){ return box.l + (v - lo) / (hi - lo) * (box.r - box.l); }, sy = function(v){ return box.b - (v - ylo) / (yhi - ylo) * (box.b - box.t); };
-      x.fillStyle = 'rgba(52,55,63,.07)'; x.fillRect(box.l, box.t, sx(M.mn) - box.l, box.b - box.t); x.fillRect(sx(M.mx), box.t, box.r - sx(M.mx), box.b - box.t); x.fillStyle = C.mid; x.font = '11px Aptos, Segoe UI, sans-serif'; x.textAlign = 'center'; x.fillText('beyond the data', (box.l + sx(M.mn)) / 2, box.t + 14); x.fillText('beyond the data', (sx(M.mx) + box.r) / 2, box.t + 14);
-      x.fillStyle = 'rgba(161,177,195,.7)'; M.pts.forEach(function(i){ x.beginPath(); x.arc(sx(D.COL[M.feat][i]), sy(clamp(D.Y[i], ylo, yhi)), 2.6, 0, 6.3); x.fill(); });
-      x.save(); x.beginPath(); x.rect(box.l, box.t, box.r - box.l, box.b - box.t); x.clip();
-      x.strokeStyle = C.char; x.lineWidth = 2.4; x.setLineDash([7, 5]); x.beginPath(); x.moveTo(sx(lo), sy(line(lo))); x.lineTo(sx(hi), sy(line(hi))); x.stroke(); x.setLineDash([]);
-      x.strokeStyle = C.red; x.lineWidth = 3.2; x.beginPath(); for (var k = 0; k <= 200; k++) { var xv = lo + (hi - lo) * k / 200; k ? x.lineTo(sx(xv), sy(tree(xv))) : x.moveTo(sx(xv), sy(tree(xv))); } x.stroke(); x.restore(); x.lineWidth = 1;
-      
-      var px = probe === null ? M.hi - 0.1 * (M.hi - M.mx) : probe; x.strokeStyle = C.char; x.lineWidth = 1.4; x.beginPath(); x.moveTo(sx(px), box.t); x.lineTo(sx(px), box.b); x.stroke(); [[tree(px), C.red], [line(px), C.char]].forEach(function(d){ x.fillStyle = d[1]; x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.arc(sx(px), sy(clamp(d[0], ylo, yhi)), 6, 0, 6.3); x.fill(); x.stroke(); }); x.lineWidth = 1;
-      var inside = px >= M.mn && px <= M.mx, b = tBoost(), sc = r2(D.TEST, b.F);
-      qs('.vs', side).innerHTML = '<p style="margin:0 0 6px"><b style="color:' + C.red + '">Red line</b>: a tree. <b>Dashed line</b>: a straight line.</p><div class="lbl">At ' + esc(M.feat) + ' = ' + fmtFeat(M.feat, px) + (inside ? '' : ' (beyond the data)') + '</div><div class="nums" style="margin:3px 0 6px"><div><span style="color:' + C.red + '">Tree predicts</span><b>' + tree(px).toFixed(2) + '</b></div><div><span>Line predicts</span><b>' + line(px).toFixed(2) + '</b></div></div><p style="margin:0 0 6px">' + (inside ? 'Inside the data both follow the dots. Click a shaded zone.' : 'Outside the data the tree repeats its last value. The line keeps its slope.') + '</p><p style="margin:0 0 6px">Boosted trees on all features: unseen R2 <b>' + sc.toFixed(2) + '</b>, fit <b>' + fmtT(b.secs) + '</b>.</p><div class="lbl" style="color:#2c7a57">Use trees when</div><p style="margin:2px 0 6px">You have a table of numbers, up to a few thousand compounds, and want speed.</p><div class="lbl" style="color:' + C.red + '">Be careful when</div><p style="margin:2px 0 0">You must predict beyond the data, or you use one deep tree: it memorises noise.</p>';
-        '<div class="lbl">Measured on your options</div><p style="margin:4px 0 8px">Boosted trees on all ticked features score <b>' + sc.toFixed(2) + '</b> on unseen compounds and trained in <b>' + fmtT(b.secs) + '</b>.</p>' +
-        '<div class="lbl" style="color:#2c7a57">Use trees when</div><ul style="margin:3px 0 7px;padding-left:16px"><li>You have a table of numbers and up to a few thousand compounds.</li><li>You want a fast model that needs no rescaling and shows which features matter.</li></ul><div class="lbl" style="color:' + C.red + '">Be careful when</div><ul style="margin:3px 0 0;padding-left:16px"><li>You must predict well beyond the compounds it learned from.</li><li>A deep single tree: it memorises noise.</li></ul>';
+      if (!M) return; var px = probe === null ? M.hi - 0.1 * (M.hi - M.mx) : probe, cols = [C.char, C.mid, C.red];
+      KINDS.forEach(function(kd, k){
+        var g = cv(qs('canvas', P[k])), x = g.x, box = { l: 36, r: g.w - 8, t: 6, b: g.h - 40 }, lo = M.lo, hi = M.hi, ylo = D.ylo, yhi = D.yhi; axes(g, box, [lo, hi], [ylo, yhi], M.feat, '', 3);
+        var sx = function(v){ return box.l + (v - lo) / (hi - lo) * (box.r - box.l); }, sy = function(v){ return box.b - (v - ylo) / (yhi - ylo) * (box.b - box.t); };
+        x.fillStyle = 'rgba(52,55,63,.07)'; x.fillRect(box.l, box.t, sx(M.mn) - box.l, box.b - box.t); x.fillRect(sx(M.mx), box.t, box.r - sx(M.mx), box.b - box.t);
+        x.fillStyle = 'rgba(161,177,195,.7)'; M.pts.forEach(function(i){ x.beginPath(); x.arc(sx(D.COL[M.feat][i]), sy(clamp(D.Y[i], ylo, yhi)), 2.2, 0, 6.3); x.fill(); });
+        x.save(); x.beginPath(); x.rect(box.l, box.t, box.r - box.l, box.b - box.t); x.clip();
+        x.strokeStyle = C.char; x.globalAlpha = 0.55; x.lineWidth = 1.6; x.setLineDash([6, 4]); x.beginPath(); x.moveTo(sx(lo), sy(line(lo))); x.lineTo(sx(hi), sy(line(hi))); x.stroke(); x.setLineDash([]); x.globalAlpha = 1;
+        x.strokeStyle = C.red; x.lineWidth = 3; x.beginPath(); for (var q = 0; q <= 160; q++) { var xv = lo + (hi - lo) * q / 160, yv = val(k, xv); q ? x.lineTo(sx(xv), sy(yv)) : x.moveTo(sx(xv), sy(yv)); } x.stroke(); x.restore(); x.lineWidth = 1;
+        x.strokeStyle = C.char; x.beginPath(); x.moveTo(sx(px), box.t); x.lineTo(sx(px), box.b); x.stroke(); x.fillStyle = C.red; x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.arc(sx(px), sy(clamp(val(k, px), ylo, yhi)), 5.5, 0, 6.3); x.fill(); x.stroke(); x.lineWidth = 1;
+        qs('.vc', Cd[k]).innerHTML = '<div style="display:flex;justify-content:space-between;align-items:baseline"><span><b style="font-size:18px;color:' + C.red + '">' + M.r2[k].toFixed(2) + '</b> <span class="note" style="font-size:11px">unseen R2, all features</span></span><span class="note" style="font-size:11px">fit ' + fmtT(M.secs[k]) + '</span></div><div style="margin:2px 0">At ' + esc(M.feat) + ' ' + fmtFeat(M.feat, px) + ': predicts <b>' + val(k, px).toFixed(2) + '</b></div><div class="note" style="font-size:11.5px">' + kd[2] + '</div>';
+      });
     }
-    (function(){ var cvEl = qs('canvas', plot); cvEl.style.cursor = 'crosshair'; cvEl.addEventListener('pointerdown', function(e){ if (!M) return; var r = cvEl.getBoundingClientRect(), px = (e.clientX - r.left) / r.width * 576; probe = clamp(M.lo + (px - 48) / (576 - 12 - 48) * (M.hi - M.lo), M.lo, M.hi); draw(); }); })();
+    P.forEach(function(pnl, k){ var cvEl = qs('canvas', pnl); cvEl.style.cursor = 'crosshair'; cvEl.addEventListener('pointerdown', function(e){ if (!M) return; var r = cvEl.getBoundingClientRect(), x0 = (e.clientX - r.left) / r.width * 260; probe = clamp(M.lo + (x0 - 36) / (260 - 8 - 36) * (M.hi - M.lo), M.lo, M.hi); draw(); }); });
     sel.addEventListener('change', function(){ probe = null; M = fit(); draw(); });
     function render(){ fill(); if (!sel.value) return; M = fit(); draw(); }
     return { render: render };

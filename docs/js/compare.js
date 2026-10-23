@@ -4,22 +4,34 @@ var L5 = new Lesson('compare', 'Compare');
 L5.optsHTML = function(){ return optGroup('Endpoint', seg([['HLM', 'HLM clearance'], ['logD', 'logD']], EP, 'data-ep'), 'Scores are kept per endpoint.') + '<div class="og"><div class="ol">What is listed</div><div class="hint">Everything you trained on the selected endpoint, plus reference runs. Train models in the other lessons first.</div><div class="status" id="cst"></div></div>'; };
 L5.onData = function(){ };
 function cmpRows(){
-  var rows = [], names = Object.keys(D.scores); names.forEach(function(k){ var m = D.scores[k]; rows.push({ n: k + (m.params ? ' (' + m.params + ')' : ''), v: m.r2, t: m.secs, ref: false, m: m }); });
+  var rows = [], names = Object.keys(D.scores); names.forEach(function(k){ var m = D.scores[k]; rows.push({ n: k + (m.params ? ' (' + m.params + (m.auto ? ', default options' : '') + ')' : (m.auto ? ' (default options)' : '')), v: m.r2, t: m.secs, ref: false, m: m }); });
+  var ft = EXTRAS && EXTRAS.chemprop_ft; if (ft && EP === 'HLM') { var NM = { scratch: 'from scratch', frozen: 'frozen encoder', full: 'full fine-tuning' }; Object.keys(NM).forEach(function(md){ var r = ft.runs.filter(function(x){ return x.mode === md && x.n === 1000; }); if (r.length) rows.push({ n: 'Chemprop, 1,000 HLM compounds, ' + NM[md], v: mean(r.map(function(x){ return x.r2; })), t: mean(r.map(function(x){ return x.secs; })), ref: true }); }); }
   var refs = (EXTRAS && EXTRAS.refs && EXTRAS.refs[EP]) || []; refs.forEach(function(r){ rows.push({ n: r[0], v: r[1], t: r[2], ref: true }); }); return rows.sort(function(a, b){ return b.v - a.v; });
+}
+var POP = null;
+function populate(api){
+  if (D.popDone) return Promise.resolve(); if (POP) return POP; var d = D;
+  POP = (async function(){
+    try { if (api) api.busy('Training the default models'); await tick(); await tick();
+      if (activeFeats().length) { ['tree', 'forest', 'boost'].forEach(function(m){ if (!d.scores[TNAMES[m]]) recordMode(m, true); }); await tick(); if (!d.scores['Neural network']) { await nnReady(null); if (d.scores['Neural network']) d.scores['Neural network'].auto = true; } }
+      if (window.gptLoadDemo) await gptLoadDemo(); d.popDone = true;
+    } catch (e) { console.error(e); } finally { POP = null; if (api) api.idle(); }
+  })();
+  return POP;
 }
 function gptRow(){ return G && G.trained ? { n: 'GPT (' + G.NL + ' layers, ' + G.steps + ' steps)', t: G.secs } : null; }
 
 L5.add({ short: 'Leaderboard', title: 'Every model you trained, with accuracy and time',
-  change: 'Train models in the other lessons, then come back.',
-  watch: 'Each bar is a model scored on compounds it never saw. Red bars are yours. Blue-grey bars are reference runs with thousands of extra features.',
+  change: 'Train models in the other lessons. Their rows replace the defaults.',
+  watch: 'Each bar is a model scored on compounds it never saw. Red bars are models trained here, with default options until you train your own. Blue-grey bars are reference runs.',
   build: function(api){
-    var pn = api.el('pn', 'left:28px;top:28px;width:904px;height:408px;overflow:auto', '<div class="lb"></div><p class="note" style="font-size:12px;margin-top:12px">R2 is measured on unseen compounds. Time covers fitting only. The GPT predicts tokens, not a value, so it has no R2.</p>');
+    var pn = api.el('pn', 'left:28px;top:20px;width:904px;height:480px;overflow:auto', '<div class="lb"></div><p class="note" style="font-size:12px;margin-top:12px">R2 is measured on unseen compounds. Time covers fitting only. The GPT predicts tokens, not a value, so it has no R2.</p>');
     function draw(prog){
       var rows = cmpRows(), g = gptRow(), mx = Math.max(0.5, Math.max.apply(null, rows.map(function(r){ return r.v; }))), html = '<div class="hd">Model</div><div class="hd">R2 on unseen compounds</div><div class="hd" style="text-align:right">R2</div><div class="hd" style="text-align:right">Training time</div>';
       rows.forEach(function(r, i){ var vis = clamp(prog * rows.length - i * 0.6, 0, 1); html += '<div class="nm" style="opacity:' + (vis > 0.05 ? 1 : 0.15) + '">' + esc(r.n) + '</div><div class="tr"><i class="' + (r.ref ? 'ref' : '') + '" style="width:' + (clamp(r.v, 0, mx) / mx * 100 * vis) + '%;transition:none"></i></div><div class="vv">' + r.v.toFixed(2) + '</div><div class="vv" style="font-weight:500;color:#555B66">' + (r.t === null || r.t === undefined ? 'n/a' : fmtT(r.t)) + '</div>'; });
       if (g) html += '<div class="nm">' + esc(g.n) + '</div><div class="tr"></div><div class="vv">n/a</div><div class="vv" style="font-weight:500;color:#555B66">' + fmtT(g.t) + '</div>';
       qs('.lb', pn).innerHTML = html; var n = Object.keys(D.scores).length; var st = $('cst'); if (st) st.textContent = n ? n + ' model' + (n > 1 ? 's' : '') + ' trained on ' + EP + (g ? ' and a GPT' : '') + '.' : 'Nothing trained on ' + EP + ' yet.'; }
-    function render(){ draw(1); }
+    async function render(){ await populate(api); draw(1); }
     async function play(tok){ draw(0); var rows = cmpRows(); await api.beat(Object.keys(D.scores).length ? 'Your models, next to the reference runs.' : 'You have not trained a model on this endpoint yet. Only the reference runs are shown.', 2600); await api.anim(ANIM ? 3200 : 1, function(t){ draw(t); }); api.cap('Compare the bars first, then ask what each extra bit of accuracy cost in training time.'); await api.sleep(3600); }
     return { render: render, play: play };
   } });
@@ -39,7 +51,7 @@ L5.add({ short: 'Accuracy against time', title: 'Accuracy against training time'
       x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.fillText('training time', (box.l + box.r) / 2, g.h - 6); x.save(); x.translate(13, (box.t + box.b) / 2); x.rotate(-Math.PI / 2); x.fillText('unseen R2', 0, 0); x.restore();
       P.forEach(function(p, i){ var vis = clamp(prog * P.length - i * 0.7, 0, 1); if (vis <= 0) return; var X = sx(Math.log10(p.t)), Y = sy(p.v); x.globalAlpha = vis; x.fillStyle = p.ref ? C.bg : C.red; x.beginPath(); x.arc(X, Y, 7 * (0.5 + 0.5 * vis), 0, 6.3); x.fill(); x.fillStyle = C.char; x.font = '600 11px Aptos, Segoe UI, sans-serif'; x.textAlign = X > box.r - 130 ? 'right' : 'left'; x.fillText(p.n.length > 26 ? p.n.slice(0, 26) : p.n, X + (X > box.r - 130 ? -11 : 11), Y + 4); x.globalAlpha = 1; });
       qs('.rd', sp).innerHTML = '<p><b style="color:' + C.red + '">Red</b>: trained in this session.</p><p><b style="color:#6B7B8C">Blue grey</b>: reference runs that report a time.</p><p>Moving right costs time. Moving up buys accuracy. A point that is both slower and less accurate than another is not worth using.</p><p class="note" style="color:#6B7280">The time axis is logarithmic, so each gridline is ten times slower.</p>'; }
-    function render(){ draw(1); }
+    async function render(){ await populate(api); draw(1); }
     async function play(tok){ draw(0); await api.beat('Every model sits at its accuracy and its training time.', 2400); await api.anim(ANIM ? 3000 : 1, function(t){ draw(t); }); api.cap('The ideal model is in the top left corner: accurate and fast.'); await api.sleep(3200); }
     return { render: render, play: play };
   } });
