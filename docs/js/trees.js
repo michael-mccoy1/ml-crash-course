@@ -68,13 +68,13 @@ function glyphTree(x0, y0, w, h, depth, seed, lit){
 }
 L2.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr'],
   title: 'Build a model, press Train, and watch it fit',
-  watch: 'A decision tree is a flowchart of yes or no questions about a compound. A random forest trains many trees, each on a different random draw of the compounds, and averages them. Gradient boosting builds small trees one after another, each fixing the mistakes the earlier ones left. In the top-right chart, the dark curve is the score on training compounds and the red curve is the score on unseen compounds.',
+  watch: 'A decision tree is a flowchart of yes or no questions about a compound. A random forest trains many trees, each on a different random draw of the compounds, and averages them. Gradient boosting builds small trees one after another, each fixing the mistakes the earlier ones left. In the top-right chart, the dark curve is the score on training compounds and the red curve is the score on test compounds.',
   change: 'Pick a model type, set its options in the options panel, then press Train.',
   build: function(api){
     var bb = benchBar(api, { leftHTML: '<div class="seg mode" data-mode>' + [['tree', 'Decision tree'], ['forest', 'Random forest'], ['boost', 'Gradient boosting']].map(function(it){ return '<button type="button" data-v="' + it[0] + '"' + (it[0] === TB.mode ? ' class="on"' : '') + '>' + it[1] + '</button>'; }).join('') + '</div>' });
     var mp = api.el('pn', 'left:28px;top:80px;width:576px;height:372px', '<h4 class="mh"></h4><svg class="static" viewBox="0 0 552 318" width="552" height="318"></svg>');
     var cp = api.el('pn', 'left:624px;top:80px;width:308px;height:178px', '<h4 class="ch"></h4><canvas width="284" height="140"></canvas>');
-    var sp = api.el('pn', 'left:624px;top:270px;width:308px;height:182px', '<h4>Predictions on unseen compounds</h4><canvas width="284" height="144"></canvas>');
+    var sp = api.el('pn', 'left:624px;top:270px;width:308px;height:182px', '<h4>Predictions on test compounds</h4><canvas width="284" height="144"></canvas>');
     var np = api.el('pn', 'left:28px;top:462px;width:904px;height:56px;display:flex;align-items:center;font-size:14px;line-height:1.4', '<div class="mn"></div>');
     var svg = qs('svg', mp), running = false;
     function dimOpts(){ var map = { tree: ['tdepth'], forest: ['tntrees', 'tfdepth'], boost: ['trounds', 'tlr'] }; ['tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr'].forEach(function(id){ var og = $(id).closest('.og'); og.classList.toggle('dim', map[TB.mode].indexOf(id) < 0); }); }
@@ -125,15 +125,15 @@ L2.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filter
     }
     function render(){
       dimOpts(); qs('.mh', mp).textContent = TB.mode === 'tree' ? 'The tree you are building' : (TB.mode === 'forest' ? 'The forest you are building' : 'The boosted ensemble you are building'); var res = peek(), p = TP();
-      picture(res ? 1e9 : 0); drawCurve(res, 1e9); drawScatter(res ? res.pred : null, res ? 'unseen R2 ' + fix(r2(D.TEST, res.pred), 2) : null); note();
-      if (res) { api.stale(''); bb.say('Unseen R2 ' + fix(r2(D.TEST, res.pred), 2) + '. The fit took ' + fmtT(res.secs) + '.'); } else { api.stale(TB.last[TB.mode] ? 'Options changed. Press Train.' : ''); bb.say(TB.last[TB.mode] ? '' : 'Ready. Press Train.'); }
+      picture(res ? 1e9 : 0); drawCurve(res, 1e9); drawScatter(res ? res.pred : null, res ? 'test R2 ' + fix(r2(D.TEST, res.pred), 2) : null); note();
+      if (res) { api.stale(''); bb.say('Test R2 ' + fix(r2(D.TEST, res.pred), 2) + '. The fit took ' + fmtT(res.secs) + '.'); } else { api.stale(TB.last[TB.mode] ? 'Options changed. Press Train.' : ''); bb.say(TB.last[TB.mode] ? '' : 'Ready. Press Train.'); }
     }
     function fit(mode){ if (mode === 'tree') { var a = tTree(); return { pred: a.pred, secs: a.secs, sweep: a.sweep }; } if (mode === 'forest') { var b = tForest(); return { pred: b.pred, secs: b.secs, curve: b.curve, per: b.per }; } var c = tBoost(); return { pred: c.F, secs: c.secs, curve: c.curve, snaps: c.snaps }; }
     async function replay(mode, res, tok){
       var p = TP(), total = 9000 * speedMul(), f = activeFeats();
-      if (mode === 'tree') { var step = total / p.depth; for (var d = 1; d <= p.depth; d++) { api.checkTok(tok); var pr = tCache('treeD', d, function(){ return treeAll(fitTree(f, activeTrain(), d, 5, 1), D.N); }); pictureTree(d); drawCurve(res, d); drawScatter(pr, 'depth ' + d + ', R2 ' + fix(r2(D.TEST, pr), 2)); bb.say('Depth ' + d + ' of ' + p.depth + '. Unseen R2 ' + fix(r2(D.TEST, pr), 2)); await api.sleep(step); } }
-      else if (mode === 'forest') { var n = p.nt, cps = Math.min(n, 40), acc = new Float64Array(D.N), pred = new Float64Array(D.N), done = 0, shown = Math.min(n, 40); for (var c = 1; c <= cps; c++) { api.checkTok(tok); var k = Math.round(c * n / cps); while (done < k) { var pt = res.per[done]; for (var i = 0; i < D.N; i++) acc[i] += pt[i]; done++; } for (var j = 0; j < D.N; j++) pred[j] = acc[j] / k; pictureForest(Math.ceil(k / n * shown)); drawCurve(res, k); drawScatter(pred, k + ' trees, R2 ' + fix(r2(D.TEST, pred), 2)); bb.say('Tree ' + k + ' of ' + n + '. Unseen R2 ' + fix(r2(D.TEST, pred), 2)); await api.sleep(total / cps); } }
-      else { var sn = res.snaps; for (var q = 0; q < sn.length; q++) { api.checkTok(tok); pictureBoost(sn[q].r); drawCurve(res, sn[q].r); drawScatter(sn[q].p, 'round ' + sn[q].r + ', R2 ' + fix(r2(D.TEST, sn[q].p), 2)); bb.say('Round ' + sn[q].r + ' of ' + p.rounds + '. Unseen R2 ' + fix(r2(D.TEST, sn[q].p), 2)); await api.sleep(total / sn.length); } }
+      if (mode === 'tree') { var step = total / p.depth; for (var d = 1; d <= p.depth; d++) { api.checkTok(tok); var pr = tCache('treeD', d, function(){ return treeAll(fitTree(f, activeTrain(), d, 5, 1), D.N); }); pictureTree(d); drawCurve(res, d); drawScatter(pr, 'depth ' + d + ', R2 ' + fix(r2(D.TEST, pr), 2)); bb.say('Depth ' + d + ' of ' + p.depth + '. Test R2 ' + fix(r2(D.TEST, pr), 2)); await api.sleep(step); } }
+      else if (mode === 'forest') { var n = p.nt, cps = Math.min(n, 40), acc = new Float64Array(D.N), pred = new Float64Array(D.N), done = 0, shown = Math.min(n, 40); for (var c = 1; c <= cps; c++) { api.checkTok(tok); var k = Math.round(c * n / cps); while (done < k) { var pt = res.per[done]; for (var i = 0; i < D.N; i++) acc[i] += pt[i]; done++; } for (var j = 0; j < D.N; j++) pred[j] = acc[j] / k; pictureForest(Math.ceil(k / n * shown)); drawCurve(res, k); drawScatter(pred, k + ' trees, R2 ' + fix(r2(D.TEST, pred), 2)); bb.say('Tree ' + k + ' of ' + n + '. Test R2 ' + fix(r2(D.TEST, pred), 2)); await api.sleep(total / cps); } }
+      else { var sn = res.snaps; for (var q = 0; q < sn.length; q++) { api.checkTok(tok); pictureBoost(sn[q].r); drawCurve(res, sn[q].r); drawScatter(sn[q].p, 'round ' + sn[q].r + ', R2 ' + fix(r2(D.TEST, sn[q].p), 2)); bb.say('Round ' + sn[q].r + ' of ' + p.rounds + '. Test R2 ' + fix(r2(D.TEST, sn[q].p), 2)); await api.sleep(total / sn.length); } }
     }
     async function train(){
       if (running) return; if (!activeFeats().length) { bb.say('Switch on at least one feature.'); return; }
@@ -250,8 +250,8 @@ L2.add({ short: 'Boosting', title: 'Boosting fixes mistakes a little at a time',
   change: 'Drag Round below the plot. Change Boosting learning rate in the options panel.',
   watch: 'Boosting builds small trees one after another. The first tree makes a rough prediction. Each next tree is trained on the mistakes left so far, and its correction is added with a small weight. The learning rate is that weight: a small one adds corrections slowly and carefully. The dots move toward the diagonal as trees are added.',
   build: function(api){
-    var sp = api.el('pn', 'left:28px;top:28px;width:420px;height:408px', '<h4>Predicted against measured, unseen compounds</h4><canvas width="398" height="352"></canvas>');
-    var cp = api.el('pn', 'left:468px;top:28px;width:464px;height:300px', '<h4>Unseen R2 against rounds</h4><canvas width="442" height="250"></canvas>');
+    var sp = api.el('pn', 'left:28px;top:28px;width:420px;height:408px', '<h4>Predicted against measured, test compounds</h4><canvas width="398" height="352"></canvas>');
+    var cp = api.el('pn', 'left:468px;top:28px;width:464px;height:300px', '<h4>Test R2 against rounds</h4><canvas width="442" height="250"></canvas>');
     var tp = api.el('pn', 'left:468px;top:340px;width:464px;height:96px', '<div class="bt" style="font-size:12.5px;color:#34373F"></div>');
     function curves(upto){ var p = TP(), b = tBoost(), lrs = tBoostLr(), series = lrs.map(function(l, i){ return { pts: l.curve.filter(function(c){ return c.k <= upto; }).map(function(c){ return [c.k, c.te]; }), color: [C.bg, C.mid, C.tint][i], w: 1.8, dash: [4, 3], nodot: true, label: 'rate ' + l.lr }; });
       series.push({ pts: b.curve.filter(function(c){ return c.k <= upto; }).map(function(c){ return [c.k, c.te]; }), color: C.red, label: 'yours: ' + p.lr }); lineChart(qs('canvas', cp), series, { xl: 'boosting round', yl: 'R2', x0: 0, x1: p.rounds, y0: 0, xdec: 0 }); }
@@ -265,10 +265,10 @@ L2.add({ short: 'Boosting', title: 'Boosting fixes mistakes a little at a time',
 /* ---------- T6: which features matter ---------- */
 L2.add({ short: 'Which features matter', title: 'Which features the model relies on',
   change: 'Untick a feature in the options panel.',
-  watch: 'Feature importance asks which features the model relies on. Left: split gain, how much each feature reduced the miss score across all the questions that used it. Right: ablation, the drop in unseen R2 when the model is trained again without that feature. The two can disagree, because a correlated feature can take over the work of a missing one.',
+  watch: 'Feature importance asks which features the model relies on. Left: split gain, how much each feature reduced the miss score across all the questions that used it. Right: ablation, the drop in test R2 when the model is trained again without that feature. The two can disagree, because a correlated feature can take over the work of a missing one.',
   build: function(api){
     var lp = api.el('pn', 'left:28px;top:28px;width:440px;height:408px', '<h4>Split gain inside the boosted trees</h4><div class="ib"></div>');
-    var rp = api.el('pn', 'left:488px;top:28px;width:444px;height:408px', '<h4>Change in unseen R2 when a feature is removed</h4><div class="ab"></div>');
+    var rp = api.el('pn', 'left:488px;top:28px;width:444px;height:408px', '<h4>Change in test R2 when a feature is removed</h4><div class="ab"></div>');
     function rows(prog){ var b = tBoost(), ab = tAblation(), tot = Object.keys(b.gain).reduce(function(a, k){ return a + b.gain[k]; }, 0), f = activeFeats(), imp = f.map(function(x){ return [x, (b.gain[x] || 0) / (tot || 1)]; }).sort(function(a, c){ return c[1] - a[1]; }), mx = Math.max.apply(null, imp.map(function(r){ return r[1]; })) || 1;
       qs('.ib', lp).innerHTML = imp.map(function(r){ return '<div style="display:grid;grid-template-columns:78px 1fr 44px;gap:8px;align-items:center;margin:9px 0"><span style="font-weight:600">' + r[0] + '</span><div class="pbar" style="margin:0;height:16px"><i style="background:' + C.red + ';width:' + (r[1] / mx * 100 * prog) + '%;transition:none"></i></div><b style="text-align:right">' + Math.round(r[1] * 100 * prog) + '%</b></div>'; }).join('');
       var ar = ab.rows.slice().sort(function(a, c){ return a.d - c.d; }), mxa = Math.max(0.01, Math.max.apply(null, ar.map(function(r){ return Math.abs(r.d); })));
@@ -282,7 +282,7 @@ L2.add(filterStepDef('trees'));
 /* ---------- results ---------- */
 L2.add({ short: 'Results', title: 'Score and fit time of each tree model',
   change: 'Train a model type in the workbench to replace its card.',
-  watch: 'This step compares the three tree models on unseen R2 and on fit time, the seconds taken to train in your browser. Each card starts with the current options.',
+  watch: 'This step compares the three tree models on test R2 and on fit time, the seconds taken to train in your browser. Each card starts with the current options.',
   build: function(api){
     var cards = [0, 1, 2].map(function(k){ return api.el('abs', 'left:' + (28 + k * 307) + 'px;top:28px;width:290px;height:150px', ''); });
     var tp = api.el('pn', 'left:28px;top:196px;width:904px;height:240px', '<h4>Fit time in your browser</h4><div class="tm"></div>');
@@ -334,7 +334,7 @@ L2.add({ short: 'Is it useful', uses: ['endpoint', 'features', 'filters', 'tdept
         x.strokeStyle = C.char; x.globalAlpha = 0.55; x.lineWidth = 1.6; x.setLineDash([6, 4]); x.beginPath(); x.moveTo(sx(lo), sy(line(lo))); x.lineTo(sx(hi), sy(line(hi))); x.stroke(); x.setLineDash([]); x.globalAlpha = 1;
         x.strokeStyle = C.red; x.lineWidth = 3; x.beginPath(); for (var q = 0; q <= 160; q++) { var xv = lo + (hi - lo) * q / 160, yv = val(k, xv); q ? x.lineTo(sx(xv), sy(yv)) : x.moveTo(sx(xv), sy(yv)); } x.stroke(); x.restore(); x.lineWidth = 1;
         x.strokeStyle = C.char; x.beginPath(); x.moveTo(sx(px), box.t); x.lineTo(sx(px), box.b); x.stroke(); x.fillStyle = C.red; x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.arc(sx(px), sy(clamp(val(k, px), ylo, yhi)), 5.5, 0, 6.3); x.fill(); x.stroke(); x.lineWidth = 1;
-        qs('.vc', Cd[k]).innerHTML = '<div style="display:flex;justify-content:space-between;align-items:baseline"><span><b style="font-size:18px;color:' + C.red + '">' + M.r2[k].toFixed(2) + '</b> <span class="note" style="font-size:11px">unseen R2, all features</span></span><span class="note" style="font-size:11px">fit ' + fmtT(M.secs[k]) + '</span></div><div style="margin:2px 0">At ' + esc(M.feat) + ' ' + fmtFeat(M.feat, px) + ': predicts <b>' + val(k, px).toFixed(2) + '</b></div><div class="note" style="font-size:11.5px">' + kd[2] + '</div>';
+        qs('.vc', Cd[k]).innerHTML = '<div style="display:flex;justify-content:space-between;align-items:baseline"><span><b style="font-size:18px;color:' + C.red + '">' + M.r2[k].toFixed(2) + '</b> <span class="note" style="font-size:11px">test R2, all features</span></span><span class="note" style="font-size:11px">fit ' + fmtT(M.secs[k]) + '</span></div><div style="margin:2px 0">At ' + esc(M.feat) + ' ' + fmtFeat(M.feat, px) + ': predicts <b>' + val(k, px).toFixed(2) + '</b></div><div class="note" style="font-size:11.5px">' + kd[2] + '</div>';
       });
     }
     P.forEach(function(pnl, k){ var cvEl = qs('canvas', pnl); cvEl.style.cursor = 'crosshair'; cvEl.addEventListener('pointerdown', function(e){ if (!M) return; var r = cvEl.getBoundingClientRect(), x0 = (e.clientX - r.left) / r.width * 260; probe = clamp(M.lo + (x0 - 36) / (260 - 8 - 36) * (M.hi - M.lo), M.lo, M.hi); draw(); }); });
@@ -356,7 +356,7 @@ L2.glossary([
   ['Gradient boosting', 'Trees built one after another, each trained on the mistakes the earlier ones left.'],
   ['Learning rate', 'How strongly each new tree\'s correction is added. Small means slow and careful.'],
   ['Training R2', 'The score on the compounds the model learned from. It can look excellent even when the model is memorising.'],
-  ['Unseen R2', 'The score on compounds held back from training. This is the score that matters.'],
+  ['Test R2', 'The score on compounds held back from training. This is the score that matters.'],
   ['Feature importance', 'How much a feature helped the model. The answer depends on how it is measured.'],
   ['Ablation', 'Training again without one feature to see how much the score falls.']
 ]);

@@ -2,33 +2,34 @@
 /* Lesson cards, what to notice in each step, and a pop quiz question with a hidden answer. */
 var GUIDE = {
   intro: {
-    start: { what: 'We predict how fast the liver breaks a molecule down (HLM clearance) and how oily it is (logD).', goals: ['Turn a molecule into numbers.', 'Test a model on compounds it has not seen.', 'Spot three data problems.'], words: ['feature', 'unseen set', 'R2', 'censoring', 'overfitting'] },
+    start: { what: 'We predict how fast the liver breaks a molecule down (HLM clearance) and how oily it is (logD).', goals: ['Turn a molecule into numbers.', 'Test a model on compounds it has not seen.', 'Spot three data problems.'], words: ['feature', 'test set', 'R2', 'censoring', 'overfitting'] },
     trees: { goals: ['See how a tree predicts from yes or no questions.', 'See what forests and boosting add.', 'See where trees fail.'], words: ['tree', 'depth', 'forest', 'boosting', 'learning rate'] },
     nn: { goals: ['Learn what a weight is.', 'See training adjust many weights.', 'See overfitting and dropout.'], words: ['weight', 'neuron', 'layer', 'epoch', 'dropout'] },
     gpt: { what: 'A GPT is a model that writes text one piece at a time by guessing the next piece.', goals: ['See a molecule become tokens and numbers.', 'See a GPT learn to guess the next token.', 'Check its output with RDKit, a chemistry toolkit.'], words: ['token', 'embedding', 'attention', 'temperature', 'SMILES'] },
     pre: { goals: ['Learn from molecules with no lab values.', 'Fine-tune with a few labels.', 'Freeze or update a model.'], words: ['pre-training', 'fine-tuning', 'frozen', 'GROVER', 'labelled'] },
-    compare: { goals: ['Compare models on accuracy and time.', 'Decide what a fair comparison needs.'], words: ['unseen R2', 'training time'] }
+    ai: { goals: ['See what a trained model is and what it needs.', 'See how the data range and lab noise limit accuracy.', 'Know what to check before relying on a prediction.'] },
+    compare: { goals: ['Compare models on accuracy and time.', 'Decide what a fair comparison needs.'], words: ['test R2', 'training time'] }
   },
   steps: {
     'start/What learning means': { notice: 'The error number falls as the line fits better.', q: 'Can one straight line match every compound?', a: 'No. Compounds scatter around any line. Learning finds the line that misses least.' },
     'start/Structure to prediction': { notice: 'The model sees only the feature numbers.', q: 'Why can a few numbers such as logP give a rough prediction?', a: 'They describe how oily and how polar a compound is, which affects how fast the liver clears it. Other details are missing, so it stays rough.' },
     'start/Where features come from': { notice: 'Darker atoms add more.', q: 'What usually happens to logP when you add a carbon?', a: 'It rises.' },
-    'start/The unseen set': { notice: 'Compare how many unseen compounds have a close relative in training.', q: 'Why is a random split too optimistic?', a: 'Unseen compounds often have near twins in training, so the model scores well by recognising twins.' },
+    'start/The test set': { notice: 'Compare how many test compounds have a close relative in training.', q: 'Why is a random split too optimistic?', a: 'Test compounds often have near twins in training, so the model scores well by recognising twins.' },
     'start/The target': { notice: 'The tall red bar is the assay floor.', q: 'What does the tall bar say about the data?', a: 'Those values are not real measurements. A model cannot learn real differences among them.' },
     'start/Handling censoring': { notice: 'The right bar leaves out floor compounds. The left bar keeps them.', q: 'To rank measurable compounds, which option would you pick?', a: 'Drop censored values or use two models. Both score better on measured compounds.' },
-    'start/Underfitting and overfitting': { notice: 'Training error keeps falling. Unseen error eventually rises.', q: 'Which depth would you pick?', a: 'The depth with the lowest unseen error, not the lowest training error.' },
+    'start/Underfitting and overfitting': { notice: 'Training error keeps falling. Test error eventually rises.', q: 'Which depth would you pick?', a: 'The depth with the lowest test error, not the lowest training error.' },
     'start/Scoring a model': { notice: 'Watch R2 and Spearman as the dots move.', q: 'Can Spearman be good while R2 is poor?', a: 'Yes. Predictions can be in the right order but squeezed or shifted, so errors are large.' },
     'start/logD feeds HLM': { notice: 'Compare the two scores.', q: 'Why can a predicted logD help?', a: 'It was learned from thousands of logD measurements that the small clearance set lacks.' },
     'start/Predict a compound': { notice: 'logD is predicted first, then used for clearance.', q: 'When would you distrust this prediction?', a: 'For compounds unlike the training compounds.' },
 
     'trees/Choosing a question': { notice: 'The horizontal lines are each group\'s average, its prediction.', q: 'Drag the cut to the far left. What happens to the miss score?', a: 'It returns to about the no-cut value. A cut that separates nothing tells the tree nothing.' },
-    'trees/Workbench': { notice: 'Watch the red unseen curve while the model grows.', q: 'Train a tree at depth 2 and at depth 12. Which scores better?', a: 'Usually a moderate depth. The deep tree memorises the training compounds.' },
+    'trees/Workbench': { notice: 'Watch the red test curve while the model grows.', q: 'Train a tree at depth 2 and at depth 12. Which scores better?', a: 'Usually a moderate depth. The deep tree memorises the training compounds.' },
     'trees/One compound': { notice: 'One yes or no answer at each box.', q: 'Do two compounds in the same leaf get the same prediction?', a: 'Yes. The prediction is the leaf average.' },
     'trees/Forest': { notice: 'The trees disagree. Their average is steadier.', q: 'Why do the trees in a forest differ?', a: 'Each learned from a different random draw of the compounds.' },
     'trees/Boosting': { notice: 'Dots move toward the diagonal as trees are added.', q: 'What goes wrong with a very large learning rate?', a: 'Each tree overcorrects, so the score bounces or worsens.' },
     'trees/Which features matter': { notice: 'Compare the two charts.', q: 'Why can a feature rank high on the left but cost little on the right?', a: 'A correlated feature can take its place.' },
     'trees/Filtering the data': { notice: 'Grey bars are the compounds removed.', q: 'Dropping censored values lowers one score and raises another. Why?', a: 'The model stops learning the pile at the floor, so it misses floor compounds but ranks measured ones better.' },
-    'trees/Results': { notice: 'Cards marked current options use the options panel values.', q: 'Which model if training time matters most?', a: 'The single tree, if its unseen score is good enough.' },
+    'trees/Results': { notice: 'Cards marked current options use the options panel values.', q: 'Which model if training time matters most?', a: 'The single tree, if its test score is good enough.' },
     'trees/Seeds and ensembles': { notice: 'Grey bars are single runs. The red line averages the first runs.', q: 'Why does an average of runs usually beat a typical single run?', a: 'Each run makes different random mistakes. Averaging cancels part of them.' },
     'trees/Is it useful': { notice: 'Blocky, smoother, closest. All three go flat outside the data.', q: 'Which model would you trust for a compound far outside the data?', a: 'None blindly. All three repeat the last value they saw. Only a model that knows the trend could follow it.' },
 
@@ -37,7 +38,7 @@ var GUIDE = {
     'nn/Workbench': { notice: 'Each line is a weight. Watch them go from random to organised.', q: 'Raise Epochs to 120 and Train. What happens to the curves?', a: 'Training error keeps falling. Validation error stops falling or rises. That is overfitting.' },
     'nn/Layers and neurons': { notice: 'The table counts every weight.', q: 'Doubling the neurons per layer multiplies the weights between two hidden layers by how much?', a: 'Four.' },
     'nn/Learning rate': { notice: 'All three start from the same line.', q: 'Why does the largest rate fail?', a: 'Each step overshoots, so the error bounces or grows.' },
-    'nn/Dropout and early stopping': { notice: 'Compare the two curves and their best epochs.', q: 'Dropout worsens training error. Why use it?', a: 'The network cannot lean on one neuron, so unseen error is often lower.' },
+    'nn/Dropout and early stopping': { notice: 'Compare the two curves and their best epochs.', q: 'Dropout worsens training error. Why use it?', a: 'The network cannot lean on one neuron, so test error is often lower.' },
     'nn/Filtering the data': { notice: 'The network trains twice.', q: 'A filter removes 30% of compounds and the score barely moves. Why?', a: 'Those compounds added little, or others covered the same chemistry.' },
     'nn/One compound': { notice: 'Darker red is more active.', q: 'Where is the prediction made?', a: 'In the last circle.' },
     'nn/Inside a neuron': { notice: 'The table lists each learned weight.', q: 'What does a negative weight mean?', a: 'A larger input lowers this neuron\'s total.' },
@@ -63,10 +64,15 @@ var GUIDE = {
     'pre/Fixed features': { notice: 'The gap between red and grey is what pre-training added.', q: 'If red and grey are equal, what does that say?', a: 'This GPT\'s pre-training added nothing useful here.' },
     'pre/Fine-tune': { notice: 'Compare red with grey and watch the share of weights moved.', q: 'When choose Head only over Everything?', a: 'With few labels: the pre-trained model cannot be damaged.' },
     'pre/Fine-tune Chemprop': { notice: 'Hide lines to compare two at a time.', q: 'Which start wins at 1,000 compounds, and what happens to the frozen start at 50?', a: 'Full fine-tuning wins (0.41 against 0.24 from scratch). Frozen is worse than scratch at 50 and better from 100 up.' },
-    'pre/Using it in practice': { notice: 'The first stage is the costly one, and it is already done.', q: 'What must stay the same when comparing with a descriptor model?', a: 'The split and the unseen compounds.' },
+    'pre/Using it in practice': { notice: 'The first stage is the costly one, and it is already done.', q: 'What must stay the same when comparing with a descriptor model?', a: 'The split and the test compounds.' },
 
+    'ai/What these models do': { notice: 'Every model needs examples. The limit row is different for each.', q: 'What do the tree model and the network have in common?', a: 'Both learn a pattern from compounds that have a lab value, then predict for new ones.' },
+    'ai/Outside the training range': { notice: 'The red line goes flat beyond the dashed line.', q: 'Why is the test R2 outside the range zero or below?', a: 'The model never saw compounds there. It repeats its last value, so it is no better than the average and often worse.' },
+    'ai/Lab noise': { notice: 'At zero noise the ceiling is 1.00. It falls as the dots scatter.', q: 'Your model scores 0.45 and the ceiling at the real noise level is 0.50. Is it worth chasing 0.50?', a: 'Not much. It is already close to the most any model could show.' },
+    'ai/Can it or cannot it': { notice: 'Each reason points back to a lesson.', q: 'Which statement surprised you?', a: 'Any answer works. Reread the lesson the reason names.' },
+    'ai/Using it in a project': { notice: 'Check 5 has no lesson. It is a decision for people.', q: 'Which check would you run first?', a: 'Usually check 1 or 2, since they decide whether the score means anything for your compounds.' },
     'compare/Leaderboard': { notice: 'Red bars are yours.', q: 'Why are your scores lower than the reference runs?', a: 'They use thousands of extra features and train longer.' },
     'compare/Accuracy against time': { notice: 'Up is more accurate. Left is faster.', q: 'What if a model is both slower and less accurate?', a: 'There is no reason to choose it.' },
-    'compare/Discussion': { notice: 'Answer from your own scores.', q: 'Which result would you least trust?', a: 'Any score from one split or a small unseen set.' }
+    'compare/Discussion': { notice: 'Answer from your own scores.', q: 'Which result would you least trust?', a: 'Any score from one split or a small test set.' }
   }
 };

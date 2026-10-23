@@ -110,7 +110,7 @@ function boostPredictVals(model, B, vals){ var p = model.base; for (var k = 0; k
 
 /* ---------- scores per endpoint ---------- */
 function record(name, feats, pred, secs){ var m = { feats: feats, secs: secs, r2: r2(D.TEST, pred), sp: spearman(D.TEST, pred), rmse: rmse(D.TEST, pred), tr: r2(D.TRAIN, pred), ep: EP }; D.scores[name] = m; return m; }
-function scoreCard(name, m, i){ return '<div class="score" style="animation-delay:' + (i || 0) * 120 + 'ms"><b>' + esc(name) + '</b><div class="v">' + fix(m.r2, 2) + '</div><div class="s">R2 on unseen compounds<br>Spearman ' + fix(m.sp, 2) + ', studied R2 ' + fix(m.tr, 2) + (m.secs !== undefined && m.secs !== null ? '<br>trained in ' + fmtT(m.secs) : '') + '</div></div>'; }
+function scoreCard(name, m, i){ return '<div class="score" style="animation-delay:' + (i || 0) * 120 + 'ms"><b>' + esc(name) + '</b><div class="v">' + fix(m.r2, 2) + '</div><div class="s">R2 on test compounds<br>Spearman ' + fix(m.sp, 2) + ', studied R2 ' + fix(m.tr, 2) + (m.secs !== undefined && m.secs !== null ? '<br>trained in ' + fmtT(m.secs) : '') + '</div></div>'; }
 function fmtT(t){ return t === null || t === undefined ? 'n/a' : (t < 10 ? t.toFixed(2) : t.toFixed(1)) + ' s'; }
 
 /* ---------- canvas helpers ---------- */
@@ -159,7 +159,7 @@ async function loadExtras(){ if (!EXTRAS) EXTRAS = await loadJSON('extras'); ret
 /* =====================================================================
    Lesson framework
    ===================================================================== */
-var LESSONS = {}, LORDER = ['start', 'trees', 'nn', 'gpt', 'pre', 'compare'], ACTIVE = 'start', featListeners = [];
+var LESSONS = {}, LORDER = ['start', 'trees', 'nn', 'gpt', 'pre', 'compare', 'ai'], ACTIVE = 'start', featListeners = [];
 function Lesson(id, title){ this.id = id; this.title = title; this.steps = []; this.gloss = null; this.optsHTML = ''; this.onOpts = null; this.onData = null; LESSONS[id] = this; }
 Lesson.prototype.add = function(def){ this.steps.push(def); return this; };
 Lesson.prototype.glossary = function(items){ this.gloss = items; return this; };

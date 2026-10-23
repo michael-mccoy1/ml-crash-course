@@ -16,16 +16,17 @@
 
 | Lesson | Cover |
 |---|---|
-| 01 Data and ML basics | Fitting a line, features, the unseen set, assay floor, overfitting |
+| 01 Data and ML basics | Fitting a line, features, the test set, assay floor, overfitting |
 | 02 Tree models | One cut, workbench, forest, boosting, all three side by side, seeds |
 | 03 Neural networks | One weight, one neuron, workbench, learning rate, dropout, the comparison test, seeds |
 | 04 GPT | Tokens, attention, workbench, the design test |
 | 05 Pre-trained models | Fill in the blank, GROVER, fine-tuning a GPT and Chemprop |
 | 06 Compare | Leaderboard, discussion |
+| 07 Role of AI | Pattern finders, the training range, lab noise, can and cannot, five checks |
 
 ### 01 Data and ML basics
 * **Say:** a model is a rule fitted to examples.
-* **Do:** drag the weight and bias, then press Find the best weights. Switch the split in The unseen set.
+* **Do:** drag the weight and bias, then press Find the best weights. Switch the split in The test set.
 * **Ask:** why is a random split too optimistic?
 * **Watch for:** R2 of 0 means no better than the average, not a broken model.
 
@@ -55,6 +56,12 @@
 
 ### 06 Compare
 * Walk the leaderboard. Ask which result people trust least.
+
+### 07 Role of AI
+* **Say:** a trained model finds patterns in examples. It does not know why they hold.
+* **Do:** drag the training range until the score outside it falls to zero. Raise the lab noise and watch the ceiling. Sort the ten statements.
+* **Ask:** which of the five checks would have caught the weakest result you saw today?
+* **Watch for:** a score below the noise ceiling is not a failure. It may be as good as the assay allows.
 
 ## If something goes wrong
 
