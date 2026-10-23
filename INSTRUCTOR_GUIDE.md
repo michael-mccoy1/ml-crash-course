@@ -13,11 +13,12 @@ Open the website and let participants follow along. Each lesson has a fixed opti
 
 | Minutes | Lesson | What to do |
 |---|---|---|
-| 0 to 14 | 01 Data and ML basics | Step 1 gives the idea. Step 3 shows how the unseen set is chosen: in HLM the scaffold split barely matters, in logD it matters a lot. Steps 4 and 5 show the pile-up at the assay floor and three ways to treat it. Step 6 is the key picture for overfitting. |
-| 14 to 36 | 02 Tree models | Use the workbench: ask the group what depth 3 versus 10 will do, then press Train. Switch to forest and boosting. Finish with the filtering step. |
-| 36 to 62 | 03 Neural networks | Workbench first (layers, neurons, dropout, learning rate, epochs). Then the learning-rate landscape, dropout, the filtering step, and a trained network opened up. Chemprop is the last step. |
-| 62 to 82 | 04 GPT | Train once in the workbench (about 25 seconds at the default). Discuss the confidence ribbon and the molecule it writes while it runs. Attention, next-token odds and RDKit validity follow. |
-| 82 to 90 | 05 Compare | Walk the leaderboard and the accuracy against time chart. Use the discussion questions. |
+| 0 to 14 | 01 Data and ML basics | Step 1 gives the idea. Step 3 shows how the unseen set is chosen. Steps 4 and 5 show the pile-up at the assay floor and three ways to treat it. Step 6 is the key picture for overfitting. |
+| 14 to 32 | 02 Tree models | One tree choosing a question first, then the workbench: ask the group what depth 3 versus 10 will do, then press Train. Switch to forest and boosting. Finish with the filtering step. |
+| 32 to 52 | 03 Neural networks | Start with What a weight is: drag the weight and bias, then press Find the best weights. Then one neuron, the workbench (layers, neurons, dropout, learning rate, epochs), dropout, and the filtering step. Chemprop is the last step. |
+| 52 to 68 | 04 GPT | Tokens, embeddings and the stack first, then train once in the workbench (about 25 seconds at the default). Attention, next-token odds and RDKit validity follow. |
+| 68 to 84 | 05 Pre-trained models | Why pre-train, the fill-in-the-blank game, the model and its size, then fine-tuning: train the GPT first, then compare Head only with Everything and a random-weight start. Try both endpoints and narrow the chemistry with a filter. |
+| 84 to 90 | 06 Compare | Walk the leaderboard and the accuracy against time chart. Use the discussion questions. |
 
 ## Points to land
 
@@ -25,6 +26,7 @@ Open the website and let participants follow along. Each lesson has a fixed opti
 * Censoring changes which model looks best. Keeping everything is best on all unseen compounds, dropping censored values is best on measurable ones, and two models give both answers.
 * Trees need no scaling and are hard to beat on a few thousand compounds. Neural networks need care: scaling, validation, dropout, a stopping point.
 * A GPT is a generative model. Predicting clearance is not its job. Narrowing the molecular weight range changes what it writes. Check what it writes with RDKit.
+* Pre-training only helps if the pre-training molecules resemble yours, and fine-tuning everything with few labels or a large learning rate can wash it out. In the fine-tuning step, have participants try few labelled compounds with a high learning rate and Everything selected, and see what happens to the unseen score.
 * One endpoint can feed another (logD into HLM). The gain depends on how much the other features already say.
 
 ## If something goes wrong
