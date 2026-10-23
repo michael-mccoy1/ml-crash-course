@@ -65,7 +65,7 @@ function gStaleText(){ return G.demo ? 'Showing the demo model (' + G.steps + ' 
 async function gptLoadDemo(){
   if (G.trained || G.busy || G.demoTried) return G.trained; G.demoTried = true; if (typeof tf === 'undefined') return false;
   try {
-    var r = await fetch('data/transformer_demo.json?v=e5'); if (!r.ok) return false; var j = await r.json(); gptSetup(); gCorpus(); if (JSON.stringify(j.vocab) !== JSON.stringify(G.vocab)) return false; if (G.trained || G.busy) return G.trained;
+    var r = await fetch('data/transformer_demo.json?v=e7'); if (!r.ok) return false; var j = await r.json(); gptSetup(); gCorpus(); if (JSON.stringify(j.vocab) !== JSON.stringify(G.vocab)) return false; if (G.trained || G.busy) return G.trained;
     if (G.P) Object.keys(G.P).forEach(function(k){ G.P[k].dispose(); }); var P = {}; Object.keys(j.params).forEach(function(k){ var q = j.params[k]; P[k] = tf.variable(tf.tensor(q.data, q.shape)); });
     var P0 = gMake(j.nl); G.emb0 = P0.tok.arraySync(); Object.keys(P0).forEach(function(k){ P0[k].dispose(); });
     G.P = P; G.NL = j.nl; G.losses = j.losses; G.steps = j.steps; G.secs = j.secs; G.params = Object.keys(P).reduce(function(a, k){ return a + P[k].size; }, 0); G.trained = true; G.demo = true; G.sig = JSON.stringify([j.nl, j.steps, gptCorpusSig()]); G.readIds = null;
@@ -309,7 +309,7 @@ L4.add({ short: 'Is it useful', uses: ['gtemp', 'glayers', 'gsteps'],
   build: function(api){
     var cp = api.el('pn', 'left:28px;top:28px;width:420px;height:408px', '<h4>Share of what it wrote, by temperature</h4><canvas width="396" height="300"></canvas><div class="note" style="font-size:12px;margin-top:4px">Grey: accepted by RDKit. Red: accepted and new.</div>');
     var gp = api.el('pn', 'left:468px;top:28px;width:464px;height:250px;overflow:hidden', '<h4>Some valid molecules it wrote</h4><div class="gm" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px"></div>');
-    var sp = api.el('pn', 'left:468px;top:290px;width:464px;height:146px;overflow:hidden', '<div class="vs" style="font-size:12.5px;line-height:1.4"></div>');
+    var sp = api.el('pn', 'left:468px;top:290px;width:464px;height:146px;overflow:auto', '<div class="vs" style="font-size:12px;line-height:1.35"></div>');
     var ctl = api.addControl('<button type="button" class="btn sm" data-run>Run test</button> <span class="note" style="font-size:12px">Writes about 90 molecules. It takes a moment.</span>'), busy = false, TEMPS = [0.4, 0.8, 1.2], PER = 30;
     function sig(){ return JSON.stringify([G.sig, G.params, G.demo ? 'demo' : G.secs]); }
     function show(r){
@@ -318,7 +318,7 @@ L4.add({ short: 'Is it useful', uses: ['gtemp', 'glayers', 'gsteps'],
       r.rows.forEach(function(w, i){ var bx = box.l + i * gw + gw * 0.14, bw = gw * 0.34;[[w.valid / w.n, C.bg], [w.novel / w.n, C.red]].forEach(function(b, j){ var hh = b[0] * (box.b - box.t); x.fillStyle = b[1]; x.fillRect(bx + j * (bw + 4), box.b - hh, bw, hh); x.fillStyle = C.char; x.font = '700 12px Aptos, Segoe UI, sans-serif'; x.textAlign = 'center'; x.fillText(Math.round(b[0] * 100) + '%', bx + j * (bw + 4) + bw / 2, box.b - hh - 5); }); x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.textAlign = 'center'; x.fillText('temperature ' + w.t, box.l + i * gw + gw / 2, box.b + 18); });
       qs('.gm', gp).innerHTML = r.samples.map(function(s){ return '<div class="molc ok" style="padding:2px"><div class="struct" style="height:70px">' + s + '</div></div>'; }).join('') || '<span class="note">No valid molecule yet. Train the GPT for more steps.</span>';
       var mid = r.rows[1];
-      qs('.vs', sp).innerHTML = '<p style="margin:0 0 6px">At temperature ' + mid.t + ', RDKit accepted <b>' + mid.valid + ' of ' + mid.n + '</b> and <b>' + mid.novel + '</b> were new. A GPT proposes candidates. Every one still needs a check for stability, for whether it can be made, and for the property you care about.</p><div class="lbl" style="color:#2c7a57">Use a GPT when</div><span>you want many new structures in a known style and can filter them afterwards.</span> <div class="lbl" style="color:' + C.red + ';margin-top:4px">Be careful when</div><span>you need every output valid, or a predicted value such as clearance.</span>';
+      qs('.vs', sp).innerHTML = '<p style="margin:0 0 5px">At temperature ' + mid.t + ', RDKit accepted <b>' + mid.valid + ' of ' + mid.n + '</b> and <b>' + mid.novel + '</b> were new. Every one still needs checks.</p><div class="lbl" style="color:#2c7a57">Use a GPT when</div> you want many new structures and can filter them. <div class="lbl" style="color:' + C.red + ';margin-top:3px">Be careful when</div> you need every output valid, or a predicted value.';
     }
     async function run(){
       if (busy) return; if (!(await gReady(api))) return; if (GV.res && GV.key === sig()) { show(GV.res); return; } busy = true; qs('[data-run]', ctl).disabled = true;

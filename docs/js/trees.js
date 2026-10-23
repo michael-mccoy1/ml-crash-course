@@ -281,14 +281,21 @@ L2.add(filterStepDef('trees'));
 
 /* ---------- results ---------- */
 L2.add({ short: 'Results', title: 'Score and fit time of each tree model',
-  change: 'Train each model type in the workbench.',
-  watch: 'Only models you have trained appear here.',
+  change: 'Train a model type in the workbench to replace its card.',
+  watch: 'Score and fit time of the three tree models. Cards start with the current options and are replaced when you train a model.',
   build: function(api){
     var cards = [0, 1, 2].map(function(k){ return api.el('abs', 'left:' + (28 + k * 307) + 'px;top:28px;width:290px;height:150px', ''); });
     var tp = api.el('pn', 'left:28px;top:196px;width:904px;height:240px', '<h4>Fit time in your browser</h4><div class="tm"></div>');
-    function render(){ var names = ['Decision tree', 'Random forest', 'Gradient boosting'], ms = names.map(function(n){ return D.scores[n] || null; });
-      cards.forEach(function(c, k){ c.innerHTML = ms[k] ? scoreCard(names[k] + ' (' + ms[k].params + ')', ms[k], 0) : '<div class="score"><b>' + names[k] + '</b><div class="s" style="margin-top:8px">Not trained yet. Train it in the workbench.</div></div>'; c.firstChild.style.height = '150px'; });
-      var mx = Math.max.apply(null, ms.map(function(m){ return m ? m.secs : 0; })) || 1; qs('.tm', tp).innerHTML = ms.map(function(m, k){ return '<div style="display:grid;grid-template-columns:130px 1fr 80px;gap:12px;align-items:center;margin:12px 0;font-size:13px"><b>' + names[k] + '</b><div class="pbar" style="margin:0;height:16px"><i style="background:' + (k === 2 ? C.red : C.char) + ';width:' + (m ? Math.max(1.5, m.secs / mx * 100) : 0) + '%;transition:none"></i></div><span style="text-align:right;font-variant-numeric:tabular-nums">' + (m ? fmtT(m.secs) : 'n/a') + '</span></div>'; }).join('') + '<p class="note" style="font-size:12px;margin-top:10px">A single tree is nearly instant. Forests and boosting fit many trees, so they take longer. Neural networks and the GPT come next.</p>'; }
+    function auto(mode){
+      var f = activeFeats(); if (!f.length) return null; var p = TP(), a = mode === 'tree' ? tTree() : (mode === 'forest' ? tForest() : tBoost()), pred = mode === 'boost' ? a.F : a.pred;
+      return { r2: r2(D.TEST, pred), sp: spearman(D.TEST, pred), tr: r2(D.TRAIN, pred), secs: a.secs, auto: true, params: mode === 'tree' ? 'depth ' + p.depth : (mode === 'forest' ? p.nt + ' trees, depth ' + p.fd : p.rounds + ' rounds, rate ' + p.lr) };
+    }
+    async function render(){
+      var names = ['Decision tree', 'Random forest', 'Gradient boosting'], modes = ['tree', 'forest', 'boost'];
+      api.busy('Fitting the three models with the current options'); await tick(); await tick();
+      var ms = names.map(function(n, k){ return D.scores[n] || auto(modes[k]); }); api.idle();
+      cards.forEach(function(c, k){ var m = ms[k]; c.innerHTML = m ? scoreCard(names[k] + ' (' + m.params + (m.auto ? ', current options' : ', trained') + ')', m, 0) : '<div class="score"><b>' + names[k] + '</b><div class="s" style="margin-top:8px">Switch on a feature.</div></div>'; c.firstChild.style.height = '150px'; });
+      var mx = Math.max.apply(null, ms.map(function(m){ return m ? m.secs : 0; })) || 1; qs('.tm', tp).innerHTML = ms.map(function(m, k){ return '<div style="display:grid;grid-template-columns:130px 1fr 80px;gap:12px;align-items:center;margin:12px 0;font-size:13px"><b>' + names[k] + '</b><div class="pbar" style="margin:0;height:16px"><i style="background:' + (k === 2 ? C.red : C.char) + ';width:' + (m ? Math.max(1.5, m.secs / mx * 100) : 0) + '%;transition:none"></i></div><span style="text-align:right;font-variant-numeric:tabular-nums">' + (m ? fmtT(m.secs) : 'n/a') + '</span></div>'; }).join('') + '<p class="note" style="font-size:12px;margin-top:10px">Cards marked current options use the options in the panel. Train a model in the workbench and its card is replaced.</p>'; }
     return { render: render };
   } });
 
@@ -299,7 +306,7 @@ L2.add({ short: 'Is it useful', uses: ['endpoint', 'features', 'filters'],
   change: 'Click anywhere on the plot, including the shaded zones.',
   build: function(api){
     var plot = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>Tree against straight line, one feature</h4><canvas width="576" height="350"></canvas>');
-    var side = api.el('pn', 'left:648px;top:28px;width:284px;height:408px;overflow:hidden', '<div class="vs" style="font-size:12.5px;line-height:1.45"></div>');
+    var side = api.el('pn', 'left:648px;top:28px;width:284px;height:408px;overflow:auto', '<div class="vs" style="font-size:12px;line-height:1.4"></div>');
     var ctl = api.addControl('Feature <select></select>'), sel = qs('select', ctl), M = null, probe = null;
     function fill(){ var f = activeFeats(), cur = sel.value; sel.innerHTML = f.map(function(x){ return '<option>' + x + '</option>'; }).join(''); if (f.indexOf(cur) >= 0) sel.value = cur; }
     function fit(){
@@ -321,7 +328,7 @@ L2.add({ short: 'Is it useful', uses: ['endpoint', 'features', 'filters'],
       
       var px = probe === null ? M.hi - 0.1 * (M.hi - M.mx) : probe; x.strokeStyle = C.char; x.lineWidth = 1.4; x.beginPath(); x.moveTo(sx(px), box.t); x.lineTo(sx(px), box.b); x.stroke(); [[tree(px), C.red], [line(px), C.char]].forEach(function(d){ x.fillStyle = d[1]; x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.arc(sx(px), sy(clamp(d[0], ylo, yhi)), 6, 0, 6.3); x.fill(); x.stroke(); }); x.lineWidth = 1;
       var inside = px >= M.mn && px <= M.mx, b = tBoost(), sc = r2(D.TEST, b.F);
-      qs('.vs', side).innerHTML = '<p style="margin:0 0 8px"><b style="color:' + C.red + '">Red line</b>: a tree. <b>Dashed line</b>: a straight line.</p><div class="lbl">At ' + esc(M.feat) + ' = ' + fmtFeat(M.feat, px) + (inside ? '' : ' (beyond the data)') + '</div><div class="nums" style="margin:4px 0 8px"><div><span style="color:' + C.red + '">Tree predicts</span><b>' + tree(px).toFixed(2) + '</b></div><div><span>Line predicts</span><b>' + line(px).toFixed(2) + '</b></div></div><p style="margin:0 0 8px">' + (inside ? 'Inside the data both follow the dots. Click in a shaded zone to see them part ways.' : 'Outside the data the tree repeats the last value it saw, while the line keeps following its slope.') + '</p>' +
+      qs('.vs', side).innerHTML = '<p style="margin:0 0 6px"><b style="color:' + C.red + '">Red line</b>: a tree. <b>Dashed line</b>: a straight line.</p><div class="lbl">At ' + esc(M.feat) + ' = ' + fmtFeat(M.feat, px) + (inside ? '' : ' (beyond the data)') + '</div><div class="nums" style="margin:3px 0 6px"><div><span style="color:' + C.red + '">Tree predicts</span><b>' + tree(px).toFixed(2) + '</b></div><div><span>Line predicts</span><b>' + line(px).toFixed(2) + '</b></div></div><p style="margin:0 0 6px">' + (inside ? 'Inside the data both follow the dots. Click a shaded zone.' : 'Outside the data the tree repeats its last value. The line keeps its slope.') + '</p><p style="margin:0 0 6px">Boosted trees on all features: unseen R2 <b>' + sc.toFixed(2) + '</b>, fit <b>' + fmtT(b.secs) + '</b>.</p><div class="lbl" style="color:#2c7a57">Use trees when</div><p style="margin:2px 0 6px">You have a table of numbers, up to a few thousand compounds, and want speed.</p><div class="lbl" style="color:' + C.red + '">Be careful when</div><p style="margin:2px 0 0">You must predict beyond the data, or you use one deep tree: it memorises noise.</p>';
         '<div class="lbl">Measured on your options</div><p style="margin:4px 0 8px">Boosted trees on all ticked features score <b>' + sc.toFixed(2) + '</b> on unseen compounds and trained in <b>' + fmtT(b.secs) + '</b>.</p>' +
         '<div class="lbl" style="color:#2c7a57">Use trees when</div><ul style="margin:3px 0 7px;padding-left:16px"><li>You have a table of numbers and up to a few thousand compounds.</li><li>You want a fast model that needs no rescaling and shows which features matter.</li></ul><div class="lbl" style="color:' + C.red + '">Be careful when</div><ul style="margin:3px 0 0;padding-left:16px"><li>You must predict well beyond the compounds it learned from.</li><li>A deep single tree: it memorises noise.</li></ul>';
     }

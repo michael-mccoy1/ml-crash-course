@@ -28,7 +28,7 @@ var GUIDE = {
     'trees/Boosting': { notice: 'Dots move toward the diagonal as trees are added.', q: 'What goes wrong with a very large learning rate?', a: 'Each tree overcorrects, so the score bounces or worsens.' },
     'trees/Which features matter': { notice: 'Compare the two charts.', q: 'Why can a feature rank high on the left but cost little on the right?', a: 'A correlated feature can take its place.' },
     'trees/Filtering the data': { notice: 'Grey bars are the compounds removed.', q: 'Dropping censored values lowers one score and raises another. Why?', a: 'The model stops learning the pile at the floor, so it misses floor compounds but ranks measured ones better.' },
-    'trees/Results': { notice: 'Only models you trained appear.', q: 'Which model if training time matters most?', a: 'The single tree, if its unseen score is good enough.' },
+    'trees/Results': { notice: 'Cards marked current options use the options panel values.', q: 'Which model if training time matters most?', a: 'The single tree, if its unseen score is good enough.' },
     'trees/Is it useful': { notice: 'Outside the dots the tree\'s line goes flat.', q: 'Which would you trust far outside the data?', a: 'Neither blindly. The tree cannot follow a trend. The line can, but is wrong if the trend bends.' },
 
     'nn/What a weight is': { notice: 'The thin lines show the misses.', q: 'Set the weight to zero. What does the model predict?', a: 'The bias for every compound. The input has no effect.' },
