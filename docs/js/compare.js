@@ -11,7 +11,7 @@ function gptRow(){ return G && G.trained ? { n: 'GPT (' + G.NL + ' layers, ' + G
 
 L5.add({ short: 'Leaderboard', title: 'Every model you trained, with accuracy and time',
   change: 'Train more models in the other lessons and come back.',
-  watch: 'Red bars are models trained in this session. Blue-grey bars are reference runs from the notebooks, which use about 2,000 more features.',
+  watch: 'Each bar is a model, scored on compounds it never saw. Red bars are models you trained in this session. Blue-grey bars are reference runs from the notebooks, which use thousands of extra features.',
   build: function(api){
     var pn = api.el('pn', 'left:28px;top:28px;width:904px;height:408px;overflow:auto', '<div class="lb"></div><p class="note" style="font-size:12px;margin-top:12px">R2 is measured on unseen compounds. Time covers fitting the model only, in your browser or on the notebook machine. The GPT predicts tokens, not a property, so it has a time but no R2.</p>');
     function draw(prog){

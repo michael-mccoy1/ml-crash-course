@@ -111,7 +111,7 @@ function filterStepDef(kind){
   var nn = kind === 'nn', what = nn ? 'a neural network' : 'a gradient boosting model';
   return { short: 'Filtering the data', uses: nn ? ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'nepochs'] : ['endpoint', 'features', 'filters'],
     title: 'Filter the training data and compare scores',
-    watch: 'Each change below trains ' + what + ' on the filtered training set and scores it on the same unseen compounds as the unfiltered model.',
+    watch: 'Filtering means removing some compounds from the training set before the model learns. Each preset removes a different group. The left chart shows which compounds go (the grey bars). The middle chart compares the score of a model trained with no filter (grey) and with yours (red), on the same compounds neither has seen. The right chart shows the new model\'s predictions.',
     change: 'Pick a preset, or use Filter training data in the options. The grey bars show the compounds a filter removes.',
     build: function(api){
       var pr = presetBar(api, 18);
@@ -144,7 +144,7 @@ function filterStepDef(kind){
 function passRange(d, i, f){ f = f || FILT; if (f.mw && (d.COL.MW[i] < f.mw[0] || d.COL.MW[i] > f.mw[1])) return false; if (f.lp && (d.COL.logP[i] < f.lp[0] || d.COL.logP[i] > f.lp[1])) return false; return true; }
 function gptFilterStep(){
   return { short: 'Filtering the data', uses: ['filters', 'gsteps'], title: 'Filter which molecules the GPT reads',
-    watch: 'The GPT trains on SMILES text and never sees clearance values, so only the molecular weight and logP ranges apply. Narrow the range, press Train in the workbench, and the molecules it writes shift with the data it read.',
+    watch: 'The GPT only reads molecules and never sees lab values, so only the molecular weight and logP ranges can filter what it reads. Narrow a range, press Train in the workbench, and watch what it writes shift toward the molecules it read.',
     change: 'Set Minimum MW or Maximum MW under Filter training data. Then press Train above and return here.',
     build: function(api){
       var P1 = api.el('pn', 'left:28px;top:28px;width:288px;height:408px', '<h4>Molecular weight of the corpus</h4><canvas width="264" height="250"></canvas><div class="f1 nums" style="font-size:12.5px;margin-top:8px"></div>');
@@ -171,7 +171,7 @@ function gptFilterStep(){
 /* ---------- data steps for the first lesson ---------- */
 function targetStepDef(){
   return { short: 'The target', uses: ['endpoint', 'filters'], title: 'Look at the measured values first',
-    watch: 'Each bar counts training compounds in a range of values. HLM has a tall bar at the lowest value: those compounds are below what the assay can measure.',
+    watch: 'The target is the lab value we want to predict. Each bar counts how many training compounds have a value in that range. HLM has a tall bar at the lowest value. Those compounds are so stable that the lab test can only say "below its limit", so they all get the same number.',
     change: 'Switch the endpoint to logD to compare, then set a filter. Grey bars are the compounds the filter removes.',
     build: function(api){
       var plot = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>Measured values of the training compounds</h4><canvas width="576" height="350"></canvas>');
@@ -189,7 +189,7 @@ function censorStepDef(){
   var OPTS = [['Keep them all', 'One model learns from every training compound, including those at the assay floor.'], ['Drop them from training', 'The model learns only from compounds that were actually measured.'], ['Two models', 'One model guesses whether a compound is at the floor. A second model predicts the value for the rest.']];
   var sel = 0;
   return { short: 'Handling censoring', uses: ['endpoint', 'features'], title: 'Three ways to treat values stuck at the assay floor',
-    watch: 'Some compounds are so stable that the assay can only say "below the floor". That makes a pile of identical values (compounds at the floor), which a model should not treat as real measurements. Each card below is a different way of training on that data. The bars show how well each one predicts compounds it has never seen.',
+    watch: 'Some compounds are so stable that the lab test can only say "below its limit". Those values are not real measurements, and many compounds share the same number. This is called censoring. Each card below is a different way of training on that data. The bars show how well each one predicts compounds it has never seen.',
     change: 'Click a card to see its predictions on the right. Change Features in the options to test whether the pattern holds. Switch to HLM clearance if the endpoint is logD.',
     build: function(api){
       var cards = api.el('abs', 'left:28px;top:28px;width:540px;height:410px', ''), sp = api.el('pn', 'left:588px;top:28px;width:344px;height:410px', '<h4 class="sh2"></h4><canvas width="320" height="270"></canvas><div class="lg" style="font-size:12px;line-height:1.5;margin-top:6px"></div>');
