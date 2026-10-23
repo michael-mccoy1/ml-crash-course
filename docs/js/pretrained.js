@@ -111,7 +111,7 @@ L6.add({ short: 'Which groups are present', uses: ['endpoint'],
 L6.add({ short: 'The model and its size', uses: [],
   title: 'GROVER reads atoms and bonds',
   watch: 'GROVER is a published pre-trained model. It reads a molecule as a graph and turns it into one list of numbers that describes it. A small final layer called the head turns that list into a prediction such as clearance. GROVER has about 100 million weights and was pre-trained on about 10 million molecules, far too much to train in a browser. The bars compare it with the small GPT you can train in this course.',
-  change: 'Nothing to drag here. The bars compare GROVER with the small GPT you can train in this course.',
+  change: 'Nothing to drag here. Compare the lengths of the bars.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<svg viewBox="0 0 580 372" width="580" height="372"></svg>');
     var sp = api.el('pn', 'left:648px;top:28px;width:284px;height:408px', '<div class="pz" style="font-size:13px;line-height:1.45"></div>');
@@ -217,7 +217,7 @@ async function ftRun(o){
 }
 L6.add({ short: 'Fine-tune', bench: true, uses: ['endpoint', 'filters', 'plabels', 'ftmode', 'ftlr', 'ftsteps'],
   title: 'Fine-tune the pre-trained GPT on labelled compounds',
-  watch: 'Fine-tuning continues training a pre-trained model on your labelled compounds. A new head of 65 numbers makes the prediction. Head only freezes the GPT, meaning its weights do not change, and trains just the head. Everything lets all the weights change. Grey starts from random weights instead and is the baseline. The learning rate is the size of each weight change.',
+  watch: 'Fine-tuning continues training a pre-trained model on your labelled compounds. A new head makes the prediction: one weight for each of the 64 numbers, plus a bias. Head only freezes the GPT, meaning its weights do not change, and trains just the head. Everything lets all the weights change. Grey starts from random weights instead and is the baseline. The learning rate is the size of each weight change.',
   change: 'Choose Head only or Everything in the options panel, set the learning rate and steps, then press Train.',
   build: function(api){
     var bb = benchBar(api);
@@ -286,7 +286,7 @@ L6.add({ short: 'Fine-tune Chemprop', uses: ['plabels'],
 /* ---------- step 6: using it in a project ---------- */
 L6.add({ short: 'Using it in practice', uses: [],
   title: 'How a pre-trained model is used on your own data',
-  watch: 'A model like GROVER is trained once by its authors. You take the published weights and add your own labelled data.',
+  watch: 'A model like GROVER is trained once by its authors. You take the published weights and add your own labelled data. The four stages below show how, and the cautions list what can go wrong.',
   change: 'Read the four stages.',
   build: function(api){
     var st = [['1  Get the pre-trained model', 'Download the weights and code that the authors published. This is the expensive part, and it is already done.'], ['2  Describe your compounds', 'Run your SMILES through the model to get one vector per compound. These vectors replace, or sit next to, descriptors such as logP.'], ['3  Learn from your labels', 'Fit a small model on the vectors, or fine-tune the network itself. Fewer labels and a gentler learning rate favour keeping the pre-trained weights nearly fixed.'], ['4  Test it', 'Use the same scaffold split and the same unseen compounds as your baseline.']];

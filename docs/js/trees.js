@@ -68,7 +68,7 @@ function glyphTree(x0, y0, w, h, depth, seed, lit){
 }
 L2.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr'],
   title: 'Build a model, press Train, and watch it fit',
-  watch: 'A decision tree is a flowchart of yes or no questions about a compound. A random forest trains many trees, each on a different random draw of the compounds, and averages them. Gradient boosting builds small trees one after another, each fixing the mistakes the earlier ones left. Pick a type, set its options in the options panel, then press Train. The red curve is the score on unseen compounds.',
+  watch: 'A decision tree is a flowchart of yes or no questions about a compound. A random forest trains many trees, each on a different random draw of the compounds, and averages them. Gradient boosting builds small trees one after another, each fixing the mistakes the earlier ones left. In the top-right chart, the dark curve is the score on training compounds and the red curve is the score on unseen compounds.',
   change: 'Pick a model type, set its options in the options panel, then press Train.',
   build: function(api){
     var bb = benchBar(api, { leftHTML: '<div class="seg mode" data-mode>' + [['tree', 'Decision tree'], ['forest', 'Random forest'], ['boost', 'Gradient boosting']].map(function(it){ return '<button type="button" data-v="' + it[0] + '"' + (it[0] === TB.mode ? ' class="on"' : '') + '>' + it[1] + '</button>'; }).join('') + '</div>' });
@@ -282,7 +282,7 @@ L2.add(filterStepDef('trees'));
 /* ---------- results ---------- */
 L2.add({ short: 'Results', title: 'Score and fit time of each tree model',
   change: 'Train a model type in the workbench to replace its card.',
-  watch: 'This step compares the three tree models on unseen R2 and on fit time, the seconds taken to train in your browser. Each card starts with the current options and is replaced by your own result when you train that model in the workbench.',
+  watch: 'This step compares the three tree models on unseen R2 and on fit time, the seconds taken to train in your browser. Each card starts with the current options.',
   build: function(api){
     var cards = [0, 1, 2].map(function(k){ return api.el('abs', 'left:' + (28 + k * 307) + 'px;top:28px;width:290px;height:150px', ''); });
     var tp = api.el('pn', 'left:28px;top:196px;width:904px;height:240px', '<h4>Fit time in your browser</h4><div class="tm"></div>');
