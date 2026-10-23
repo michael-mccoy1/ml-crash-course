@@ -36,7 +36,7 @@ function prepareDS(d){
   d.BASE.forEach(function(f){ if (!(f in FSEL)) FSEL[f] = true; });
   ensureBins(d);
 }
-async function loadJSON(name){ var r = await fetch('data/' + name + '.json?v=d2'); if (!r.ok) throw new Error('Could not load data/' + name + '.json'); return r.json(); }
+async function loadJSON(name){ var r = await fetch('data/' + name + '.json?v=d3'); if (!r.ok) throw new Error('Could not load data/' + name + '.json'); return r.json(); }
 async function loadDataset(key){
   if (!DATA[key]) { var d = await loadJSON(key === 'HLM' ? 'hlm' : 'logd'); DATA[key] = d; prepareDS(d); }
   return DATA[key];
@@ -200,7 +200,7 @@ function buildStep(L, s, idx, total, parent){
   sec.innerHTML = '<div class="shead"><i class="tick"></i><div><div class="eyebrow">' + (s.bench ? 'WORKBENCH' : 'STEP ' + (idx + 1)) + '</div><h2>' + s.title + '</h2></div></div>' +
     '<p class="lead">' + s.watch + '</p><p class="try"><b>Try</b> ' + s.change + '</p>' + usesHTML(s) +
     '<div class="stagewrap"><div class="screen"><div class="inner"></div></div>' + (s.bench ? '' : '<div class="sbar"><button type="button" class="btn sm ghost" data-play>Walk through</button><span class="sx"></span></div>') + '</div>';
-  var gd = window.GUIDE && GUIDE.steps[L.id + '/' + s.short]; if (gd) sec.insertAdjacentHTML('beforeend', '<div class="guide"><p class="gn"><b>Notice</b>' + esc(gd.notice) + '</p><details class="gq"><summary>Check yourself: ' + esc(gd.q) + '</summary><p>' + esc(gd.a) + '</p></details></div>');
+  var gd = window.GUIDE && GUIDE.steps[L.id + '/' + s.short]; if (gd) sec.insertAdjacentHTML('beforeend', '<div class="guide"><p class="gn"><b>Notice</b>' + esc(gd.notice) + '</p><details class="gq"><summary>Pop quiz: ' + esc(gd.q) + '</summary><p>' + esc(gd.a) + '</p></details></div>');
   parent.appendChild(sec);
   var screen = qs('.screen', sec), inner = qs('.inner', sec), sbar = qs('.sbar', sec) || h('div', 'sbar'), sx = qs('.sx', sec) || h('span', 'sx');
   var cap = h('div', 'cap'), busy = h('div', 'busy', '<div class="bs"><i></i><span></span></div>'), stale = h('div', 'stalebadge'); inner.appendChild(cap); inner.appendChild(stale); inner.appendChild(busy);

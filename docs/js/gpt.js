@@ -65,7 +65,7 @@ function gStaleText(){ return G.demo ? 'Showing the demo model (' + G.steps + ' 
 async function gptLoadDemo(){
   if (G.trained || G.busy || G.demoTried) return G.trained; G.demoTried = true; if (typeof tf === 'undefined') return false;
   try {
-    var r = await fetch('data/gpt_demo.json?v=d2'); if (!r.ok) return false; var j = await r.json(); gptSetup(); gCorpus(); if (JSON.stringify(j.vocab) !== JSON.stringify(G.vocab)) return false; if (G.trained || G.busy) return G.trained;
+    var r = await fetch('data/gpt_demo.json?v=d3'); if (!r.ok) return false; var j = await r.json(); gptSetup(); gCorpus(); if (JSON.stringify(j.vocab) !== JSON.stringify(G.vocab)) return false; if (G.trained || G.busy) return G.trained;
     if (G.P) Object.keys(G.P).forEach(function(k){ G.P[k].dispose(); }); var P = {}; Object.keys(j.params).forEach(function(k){ var q = j.params[k]; P[k] = tf.variable(tf.tensor(q.data, q.shape)); });
     var P0 = gMake(j.nl); G.emb0 = P0.tok.arraySync(); Object.keys(P0).forEach(function(k){ P0[k].dispose(); });
     G.P = P; G.NL = j.nl; G.losses = j.losses; G.steps = j.steps; G.secs = j.secs; G.params = Object.keys(P).reduce(function(a, k){ return a + P[k].size; }, 0); G.trained = true; G.demo = true; G.sig = JSON.stringify([j.nl, j.steps, gptCorpusSig()]); G.readIds = null;

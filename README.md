@@ -11,7 +11,7 @@ Structures, descriptors, scaffolds and similarity statistics come from RDKit. RD
 
 **https://michael-mccoy1.github.io/ml-crash-course/**
 
-Nothing to install. Each lesson opens with a card that says how long it takes, what you will be able to do, and the words you will meet. Every step has a line on what to notice and a question to check understanding, with a hidden answer. Each lesson has a fixed options panel on the left. The three model lessons open with a workbench: drag an option and the picture changes at once, press Train and the fit replays slowly with the error curve and predictions updating. Steps below the workbench respond to the same options. Filtering the training data is part of every lesson, and each lesson ends with its own glossary.
+Nothing to install. Each lesson opens with a card that says how long it takes, what you will be able to do, and the words you will meet. Every step has a line on what to notice and a Pop quiz question with a hidden answer. Each lesson has a fixed options panel on the left. The three model lessons open with a workbench: drag an option and the picture changes at once, press Train and the fit replays slowly with the error curve and predictions updating. Steps below the workbench respond to the same options. Filtering the training data is part of every lesson, and each lesson ends with its own glossary.
 
 | Lesson | Minutes | Content |
 |---|---|---|

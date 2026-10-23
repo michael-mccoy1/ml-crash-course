@@ -11,7 +11,7 @@
 * Each lesson opens with a card: how long it takes, what participants will be able to do, and the words they will meet. Read the three goals aloud.
 * The options panel on the left drives every stage. Tell participants to change something before reading the explanation: the picture answers first.
 * The three model lessons have a workbench: drag the options, then press Train and watch a slowed-down fit. Slow shows every step, Fast skips ahead. The reported training time is the real compute time.
-* Under every stage there is a line that says what to notice and a question, Check yourself, with a hidden answer. Use the question as the discussion prompt before anyone opens the answer.
+* Under every stage there is a line that says what to notice and a Pop quiz question with a hidden answer. Use the question as the discussion prompt before anyone opens the answer.
 * Filter training data is in the options of every lesson, so participants can see how the choice of data helps or hurts each kind of model.
 
 ## Run of show
