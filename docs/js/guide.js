@@ -29,6 +29,7 @@ var GUIDE = {
     'trees/Which features matter': { notice: 'Compare the two charts.', q: 'Why can a feature rank high on the left but cost little on the right?', a: 'A correlated feature can take its place.' },
     'trees/Filtering the data': { notice: 'Grey bars are the compounds removed.', q: 'Dropping censored values lowers one score and raises another. Why?', a: 'The model stops learning the pile at the floor, so it misses floor compounds but ranks measured ones better.' },
     'trees/Results': { notice: 'Cards marked current options use the options panel values.', q: 'Which model if training time matters most?', a: 'The single tree, if its unseen score is good enough.' },
+    'trees/Seeds and ensembles': { notice: 'Grey bars are single runs. The red line averages the first runs.', q: 'Why does an average of runs usually beat a typical single run?', a: 'Each run makes different random mistakes. Averaging cancels part of them.' },
     'trees/Is it useful': { notice: 'Blocky, smoother, closest. All three go flat outside the data.', q: 'Which model would you trust for a compound far outside the data?', a: 'None blindly. All three repeat the last value they saw. Only a model that knows the trend could follow it.' },
 
     'nn/What a weight is': { notice: 'The thin lines show the misses.', q: 'Set the weight to zero. What does the model predict?', a: 'The bias for every compound. The input has no effect.' },
@@ -44,6 +45,7 @@ var GUIDE = {
     'nn/Chemprop': { notice: 'The red zone grows each round.', q: 'After three rounds, which atoms can affect the chosen atom?', a: 'Atoms up to three bonds away.' },
     'nn/Is it useful': { notice: 'Compare the lines at the smallest and largest sizes.', q: 'When is a network worth the effort?', a: 'Read your numbers. A network usually needs more data than a tree to catch up.' },
 
+    'nn/Seeds and ensembles': { notice: 'Same network, different seeds, different scores.', q: 'Is an ensemble the same as combining different model types?', a: 'No. It averages several runs of the same model with different seeds.' },
     'gpt/Tokens': { notice: 'Two-letter atoms such as Cl stay together.', q: 'Why does the model need ID numbers?', a: 'Models work with numbers. Each token needs one to look up its values.' },
     'gpt/Embeddings': { notice: 'Switch between Untrained and Trained.', q: 'Are the untrained numbers meaningful?', a: 'No. They are random until training.' },
     'gpt/The stack': { notice: 'Every block has the same shape.', q: 'What does adding a layer do to the parameter count?', a: 'It adds the same amount each time.' },

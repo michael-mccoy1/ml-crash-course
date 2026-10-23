@@ -52,7 +52,7 @@ function nnPrep(f, sub){
 }
 function mlpPredictAll(m, P){ var A = mlpBuf(m.sizes), out = new Float64Array(D.N); for (var i = 0; i < D.N; i++) out[i] = mlpForward(m, P.all, i * P.F, A, null, 0, null) + P.ymu; return out; }
 async function nnTrain(o){
-  var P = nnPrep(o.filt, o.sub), p = Object.assign(NP(), o.params || {}), sizes = netSizes(P.F, p.layers, p.units), m = mlpInit(sizes, 7 + p.layers * 13 + p.units), S = sizes, L = S.length - 1, r = rng(5 + p.units), tN = performance.now(), over = 0, sig = nnSig();
+  var P = nnPrep(o.filt, o.sub), p = Object.assign(NP(), o.params || {}), sizes = netSizes(P.F, p.layers, p.units), m = mlpInit(sizes, 7 + p.layers * 13 + p.units + (o.seed || 0) * 101), S = sizes, L = S.length - 1, r = rng(5 + p.units + (o.seed || 0) * 37), tN = performance.now(), over = 0, sig = nnSig();
   if (o.keep) NN.busy = true;
   try {
     var A = mlpBuf(S), masks = S.slice(1, -1).map(function(n){ return new Float32Array(n); }), gW = m.W.map(function(w){ return new Float32Array(w.length); }), gB = m.b.map(function(b){ return new Float32Array(b.length); });

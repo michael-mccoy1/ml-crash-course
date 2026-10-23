@@ -133,6 +133,8 @@ L3.add({ short: 'Is it useful', uses: ['endpoint', 'features', 'filters', 'nlaye
     return { render: render };
   } });
 
+L3.add(seedStepDef('nn'));
+
 L3.glossary([
   ['Neural network', 'A model built from many small calculators (neurons) in layers. It learns by adjusting the strength of the connections.'],
   ['Neuron', 'Multiplies each input by a weight, adds a bias, and passes the total through an activation.'],
@@ -150,4 +152,4 @@ L3.glossary([
 ]);
 
 L3.move('Workbench', 2);
-setUses(L3, [null, ['features', 'endpoint'], null, ['nlayers', 'nunits', 'ndrop', 'features'], ['nlr', 'nepochs', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'features', 'endpoint'], null, ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], [], null]);
+setUses(L3, [null, ['features', 'endpoint'], null, ['nlayers', 'nunits', 'ndrop', 'features'], ['nlr', 'nepochs', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'features', 'endpoint'], null, ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly', 'features', 'endpoint'], [], null, null]);
