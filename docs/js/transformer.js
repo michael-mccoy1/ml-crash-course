@@ -310,7 +310,7 @@ L4.add({ short: 'Is it useful', uses: ['gtemp', 'glayers', 'gsteps'],
     var cp = api.el('pn', 'left:28px;top:28px;width:420px;height:408px', '<h4>Share of what it wrote, by temperature</h4><canvas width="396" height="300"></canvas><div class="note" style="font-size:12px;margin-top:4px">Grey: accepted by RDKit. Red: accepted and new.</div>');
     var gp = api.el('pn', 'left:468px;top:28px;width:464px;height:250px;overflow:hidden', '<h4>Some valid molecules it wrote</h4><div class="gm" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px"></div>');
     var sp = api.el('pn', 'left:468px;top:290px;width:464px;height:146px;overflow:auto', '<div class="vs" style="font-size:12px;line-height:1.35"></div>');
-    var ctl = api.addControl('<button type="button" class="btn sm" data-run>Run test</button> <span class="note" style="font-size:12px">Writes about 90 molecules. It takes a moment.</span>'), busy = false, TEMPS = [0.4, 0.8, 1.2], PER = 30;
+    var ctl = api.addControl('<button type="button" class="btn sm" data-run>Run test</button>'), busy = false, TEMPS = [0.4, 0.8, 1.2], PER = 30;
     function sig(){ return JSON.stringify([G.sig, G.params, G.demo ? 'demo' : G.secs]); }
     function show(r){
       var g = cv(qs('canvas', cp)), x = g.x, box = { l: 40, r: g.w - 8, t: 16, b: g.h - 44 }, gw = (box.r - box.l) / TEMPS.length;
