@@ -216,7 +216,7 @@ async function ftRun(o){
 L6.add({ short: 'Fine-tune', bench: true, uses: ['endpoint', 'filters', 'plabels', 'ftmode', 'ftlr', 'ftsteps'],
   title: 'Fine-tune the pre-trained GPT on labelled compounds',
   watch: 'Fine-tuning starts from the pre-trained GPT and teaches it lab values. A new head of 65 numbers makes the prediction. Head only freezes the GPT. Everything lets its weights change too. Grey starts from random weights.',
-  change: 'Choose Head only or Everything in the left panel, set the learning rate and steps, then press Train.',
+  change: 'Choose Head only or Everything in the options panel, set the learning rate and steps, then press Train.',
   build: function(api){
     var bb = benchBar(api);
     var mp = api.el('pn', 'left:28px;top:80px;width:440px;height:372px', '<h4>What is being trained</h4><svg viewBox="0 0 416 330" width="416" height="330"></svg>');

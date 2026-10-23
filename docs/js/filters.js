@@ -145,7 +145,7 @@ function passRange(d, i, f){ f = f || FILT; if (f.mw && (d.COL.MW[i] < f.mw[0] |
 function gptFilterStep(){
   return { short: 'Filtering the data', uses: ['filters', 'gsteps'], title: 'Filter which molecules the GPT reads',
     watch: 'The GPT only reads molecules, never lab values, so only the weight and logP ranges apply. Narrow a range and the molecules it writes shift to match.',
-    change: 'Set Minimum MW or Maximum MW in the left panel, press Train in the GPT workbench, then return here.',
+    change: 'Set Minimum MW or Maximum MW in the options panel, press Train in the GPT workbench, then return here.',
     build: function(api){
       var P1 = api.el('pn', 'left:28px;top:28px;width:288px;height:408px', '<h4>Molecular weight of the corpus</h4><canvas width="264" height="250"></canvas><div class="f1 nums" style="font-size:12.5px;margin-top:8px"></div>');
       var P2 = api.el('pn', 'left:336px;top:28px;width:288px;height:408px', '<h4>SMILES length of the corpus</h4><canvas width="264" height="250"></canvas><div class="f2 nums" style="font-size:12.5px;margin-top:8px"></div>');
