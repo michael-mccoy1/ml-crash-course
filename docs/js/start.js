@@ -27,7 +27,7 @@ L0.add(lineStepDef({ short: 'What learning means', title: 'A model is a rule fit
 
 /* ---------- Step 1: structure to prediction ---------- */
 L0.add({ short: 'Structure to prediction', title: 'From structure to prediction',
-  change: 'Press Next compound. Untick a feature in the options panel and watch the prediction change.',
+  change: 'Click a compound in the library or press Next compound. Untick a feature in the options panel and the model refits without it.',
   watch: 'A model cannot read a drawing. The molecule becomes text (SMILES), then numbers (features) computed by RDKit, a chemistry toolkit, then a prediction.',
   build: function(api){
     var cur = null;
@@ -41,8 +41,8 @@ L0.add({ short: 'Structure to prediction', title: 'From structure to prediction'
     var panels = [lib, big, smi, feat, mod, pred];
     function pickCmp(){ var arr = STRUCTS[EP]; return arr[Math.floor(Math.random() * arr.length)]; }
     function fill(){
-      var e = cur, i = e.i, others = []; STRUCTS[EP].forEach(function(x){ if (x.i !== i) others.push(x); }); var r = rng(i + 3); others.sort(function(){ return r() - 0.5; }); var seven = others.slice(0, 7); seven.splice(3, 0, e);
-      qs('.lg', lib).innerHTML = seven.map(function(x, k){ return '<div class="struct fl" data-k="' + k + '" style="height:52px;background:#fff;border:1.5px solid ' + (x === e ? C.red : C.silver) + ';border-radius:5px">' + x.svg + '</div>'; }).join('');
+      var e = cur, i = e.i, others = []; STRUCTS[EP].forEach(function(x){ if (x.i !== i) others.push(x); }); var r = rng(i + 3); others.sort(function(){ return r() - 0.5; }); var seven = others.slice(0, 7); seven.splice(3, 0, e); lib._seven = seven;
+      qs('.lg', lib).innerHTML = seven.map(function(x, k){ return '<div class="struct fl" data-k="' + k + '" style="height:52px;cursor:pointer;background:#fff;border:1.5px solid ' + (x === e ? C.red : C.silver) + ';border-radius:5px">' + x.svg + '</div>'; }).join('');
       qs('.struct', big).innerHTML = e.svg; qs('.smi', smi).textContent = '';
       var pt = demoTree(), pv = pt ? predictTree(pt, D.B, i) : NaN, mv = D.Y[i], act = activeFeats();
       qs('.fr', feat).innerHTML = D.BASE.map(function(f){ var v = D.COL[f][i], on = FSEL[f] ? 1 : 0; return '<div class="fq" data-on="' + on + '" style="display:grid;grid-template-columns:62px 1fr 48px;gap:8px;align-items:center;margin:6px 0;opacity:0;transition:opacity .4s"><span class="lbl" style="text-transform:none;letter-spacing:0;font-size:12px;color:#34373F">' + f + '</span><div class="pbar" style="margin:0"><i style="background:' + (on ? C.red : C.bg) + ';width:0" data-w="' + Math.round(percentile(f, v) * 100) + '"></i></div><b style="text-align:right" data-v="' + v + '" data-f="' + f + '">0</b></div>'; }).join('');
@@ -56,7 +56,18 @@ L0.add({ short: 'Structure to prediction', title: 'From structure to prediction'
       qsa('.fq', feat).forEach(function(r){ r.style.opacity = r.dataset.on === '1' ? 1 : 0.35; var b = qs('b', r), v = +b.dataset.v, f = b.dataset.f; b.textContent = fmtFeat(f, v); var i = qs('i', r); i.style.transition = 'none'; i.style.width = i.dataset.w + '%'; });
       var ps = qs('.ps', pred), pv = ps.dataset.pv === '' ? NaN : +ps.dataset.pv, mv = +ps.dataset.mv; qsa('.pbar i', ps).forEach(function(i){ i.style.transition = 'none'; i.style.width = i.dataset.w + '%'; }); qs('.pv', ps).textContent = isNaN(pv) ? 'n/a' : pv.toFixed(2); qs('.mv', ps).textContent = mv.toFixed(2); qs('.er', ps).textContent = isNaN(pv) ? '' : 'Error ' + (pv - mv >= 0 ? '+' : '') + (pv - mv).toFixed(2);
     }
-    async function render(){ await loadStructs(); if (!cur || cur._ep !== EP) { cur = pickCmp(); cur._ep = EP; } fill(); showFinal(); }
+    var lastKey = null;
+    async function render(){
+      await loadStructs(); if (!cur || cur._ep !== EP) { cur = pickCmp(); cur._ep = EP; }
+      var key = EP + '|' + activeFeats().join(',') + '|' + filtKey(); fill(); showFinal();
+      if (lastKey !== null && lastKey !== key) {
+        var tk = ++api.tok, n = activeFeats().length;
+        qs('.mt', mod).innerHTML = n ? 'Refitting the decision tree with ' + n + ' feature' + (n > 1 ? 's' : '') + '.' : qs('.mt', mod).innerHTML;
+        pred.classList.remove('on'); await api.sleep(ANIM ? 900 : 0); if (tk !== api.tok) return; fill(); showFinal();
+      }
+      lastKey = key;
+    }
+    qs('.lg', lib).addEventListener('click', function(ev){ var t = ev.target.closest('.fl'); if (!t || !lib._seven) return; var x = lib._seven[+t.dataset.k]; if (!x) return; cur = x; cur._ep = EP; fill(); api.tok++; var tk = api.tok; api.stepDef.safe(function(){ return play(tk); }); });
     qs('[data-next]', api.sbar).addEventListener('click', async function(){ await loadStructs(); cur = pickCmp(); cur._ep = EP; fill(); api.tok++; var t = api.tok; api.stepDef.safe(function(){ return play(t); }); });
     async function play(tok){
       if (!cur) await render(); fill(); await api.sleep(150);
