@@ -17,8 +17,8 @@
 | Lesson | Cover |
 |---|---|
 | 01 Data and ML basics | Fitting a line, features, the unseen set, assay floor, overfitting |
-| 02 Tree models | One cut, workbench, forest, boosting, the failure test |
-| 03 Neural networks | One weight, one neuron, workbench, learning rate, dropout, the comparison test |
+| 02 Tree models | One cut, workbench, forest, boosting, all three side by side, seeds |
+| 03 Neural networks | One weight, one neuron, workbench, learning rate, dropout, the comparison test, seeds |
 | 04 GPT | Tokens, attention, workbench, the design test |
 | 05 Pre-trained models | Fill in the blank, GROVER, fine-tuning a GPT and Chemprop |
 | 06 Compare | Leaderboard, discussion |

@@ -251,3 +251,40 @@ function lineStepDef(c){
     return { render: render };
   } };
 }
+
+/* ---------- seeds and ensembles: the same model run several times, then averaged ---------- */
+function seedStepDef(kind){
+  var nn = kind === 'nn', K = nn ? 6 : 8, cache = {};
+  return { short: 'Seeds and ensembles', uses: nn ? ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'ndrop', 'nlr'] : ['endpoint', 'features', 'filters', 'tfdepth'],
+    title: 'Seeds and ensembles: smoothing out luck',
+    watch: 'A seed is the number that starts a model\'s random choices' + (nn ? ', such as its starting weights' : ', such as which compounds each tree sees') + '. Run the same model with different seeds and the score moves a little. An ensemble averages several runs of the same model, which smooths out that luck. ' + (nn ? 'Each run is a network with your options.' : 'Each run here is a small random forest of 15 trees.'),
+    change: 'Press Run seeds below the plot, then drag Runs averaged.',
+    build: function(api){
+      var cp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Unseen R2 of each run, and of the average of the first runs</h4><canvas width="536" height="330"></canvas><div class="note" style="font-size:12px;margin-top:4px">Grey bars: single runs. Red line: average of the first runs. Dashed: mean of the single runs.</div>');
+      var sp = api.el('pn', 'left:608px;top:28px;width:324px;height:408px;overflow:auto', '<div class="sd" style="font-size:12.5px;line-height:1.4"></div><h4 style="margin-top:8px">Predictions of the average</h4><canvas width="300" height="160"></canvas>');
+      var ctl = api.addControl('<button type="button" class="btn sm" data-run>Run seeds</button> Runs averaged <input type="range" min="1" max="' + K + '" step="1" value="' + K + '" style="width:200px"><b class="kv"></b>'), rs = qs('input', ctl), busy = false;
+      function key(){ var p = nn ? NP() : TP(); return JSON.stringify([kind, EP, activeFeats(), filtKey(), nn ? [p.layers, p.units, p.drop, p.lr] : p.fd]); }
+      function show(res){
+        var k = +rs.value, runs = res.map(function(r){ return r.r2; }), ens = [], acc = new Float64Array(D.N); res.forEach(function(r, i){ for (var j = 0; j < D.N; j++) acc[j] += r.pred[j]; var m = new Float64Array(D.N); for (var q = 0; q < D.N; q++) m[q] = acc[q] / (i + 1); ens.push({ r2: r2(D.TEST, m), pred: m }); });
+        var g = cv(qs('canvas', cp)), x = g.x, box = { l: 44, r: g.w - 12, t: 16, b: g.h - 40 }, lo = Math.min(0, Math.min.apply(null, runs.concat(ens.map(function(e){ return e.r2; })))), hi = Math.max(0.3, Math.max.apply(null, runs.concat(ens.map(function(e){ return e.r2; })))) * 1.12, bw = (box.r - box.l) / K, sy = function(v){ return box.b - (v - lo) / (hi - lo) * (box.b - box.t); };
+        x.strokeStyle = C.silver; x.fillStyle = C.mid; x.textAlign = 'right'; x.font = '11px Aptos, Segoe UI, sans-serif'; for (var t = 0; t <= 4; t++) { var y = box.b - t / 4 * (box.b - box.t); x.beginPath(); x.moveTo(box.l, y); x.lineTo(box.r, y); x.stroke(); x.fillText((lo + (hi - lo) * t / 4).toFixed(2), box.l - 5, y + 4); }
+        res.forEach(function(r, i){ var h0 = sy(Math.max(lo, 0)), y0 = sy(r.r2); x.fillStyle = i < k ? C.bg : 'rgba(209,216,224,.5)'; x.fillRect(box.l + i * bw + bw * 0.2, Math.min(y0, h0), bw * 0.6, Math.abs(h0 - y0)); x.fillStyle = C.char; x.textAlign = 'center'; x.font = '600 11px Aptos, Segoe UI, sans-serif'; x.fillText(r.r2.toFixed(2), box.l + i * bw + bw / 2, y0 - 5); x.fillText('run ' + (i + 1), box.l + i * bw + bw / 2, box.b + 16); });
+        x.setLineDash([5, 4]); x.strokeStyle = C.char; x.beginPath(); x.moveTo(box.l, sy(mean(runs))); x.lineTo(box.r, sy(mean(runs))); x.stroke(); x.setLineDash([]);
+        x.strokeStyle = C.red; x.lineWidth = 3; x.beginPath(); for (var i2 = 0; i2 < k; i2++) { var X = box.l + i2 * bw + bw / 2, Y = sy(ens[i2].r2); i2 ? x.lineTo(X, Y) : x.moveTo(X, Y); } x.stroke(); x.fillStyle = C.red; for (var i3 = 0; i3 < k; i3++) { x.beginPath(); x.arc(box.l + i3 * bw + bw / 2, sy(ens[i3].r2), 4.5, 0, 6.3); x.fill(); } x.lineWidth = 1;
+        scatterPV(qs('canvas', sp), ens[k - 1].pred, D.TEST, 'average of ' + k + ' run' + (k > 1 ? 's' : '') + ', R2 ' + ens[k - 1].r2.toFixed(2), { max: 260 }); qs('.kv', ctl).textContent = k;
+        var best = Math.max.apply(null, runs), worst = Math.min.apply(null, runs), e = ens[K - 1].r2;
+        qs('.sd', sp).innerHTML = '<div class="lbl">Single runs</div><div class="nums" style="margin:3px 0 7px"><div><span>Best</span><b>' + best.toFixed(2) + '</b></div><div><span>Worst</span><b>' + worst.toFixed(2) + '</b></div><div><span>Mean</span><b>' + mean(runs).toFixed(2) + '</b></div></div><div class="lbl" style="color:' + C.red + '">Average of all ' + K + '</div><div class="big" style="font-size:24px;color:' + C.red + '">' + e.toFixed(2) + '</div><p style="margin:3px 0 0">' + (e > mean(runs) + 0.003 ? 'Better than the typical single run by ' + (e - mean(runs)).toFixed(2) + '.' : 'About the same as a typical single run here.') + '</p>';
+      }
+      async function run(){
+        if (busy) return; if (!activeFeats().length) return; var kk = key(); if (cache[kk]) { show(cache[kk]); return; } busy = true; qs('[data-run]', ctl).disabled = true;
+        try { var res = [], feats = activeFeats(), idx = activeTrain();
+          for (var s = 1; s <= K; s++) { api.busy('Run ' + s + ' of ' + K + ' with seed ' + s); await tick(); await tick(); var pred; if (nn) { var o = await nnTrain({ params: { epochs: Math.min(NP().epochs, 30) }, seed: s }); pred = o.pred; } else { var fr = fitForest(feats, idx, 15, TP().fd, 100 + s); pred = fr.pred; } res.push({ r2: r2(D.TEST, pred), pred: pred }); }
+          cache[kk] = res; api.idle(); show(res);
+        } catch (e) { console.error(e); api.idle(); qs('.sd', sp).innerHTML = '<span style="color:' + C.red + '">' + esc(e.message) + '</span>'; }
+        busy = false; qs('[data-run]', ctl).disabled = false;
+      }
+      qs('[data-run]', ctl).addEventListener('click', run); rs.addEventListener('input', function(){ if (cache[key()]) show(cache[key()]); else qs('.kv', ctl).textContent = rs.value; });
+      function render(){ var c = cache[key()]; if (c) show(c); else { cv(qs('canvas', cp)); cv(qs('canvas', sp)); qs('.sd', sp).innerHTML = '<span class="note">Press Run seeds to run the same model ' + K + ' times with different seeds.</span>'; qs('.kv', ctl).textContent = rs.value; } }
+      return { render: render };
+    } };
+}

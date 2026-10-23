@@ -16,8 +16,8 @@ Nothing to install. Each lesson has a card (goals and words), an options panel, 
 | Lesson | Content |
 |---|---|
 | 01 Data and ML basics | Fitting a line, features, the unseen set, censoring, overfitting, scoring, logD feeding HLM |
-| 02 Tree models | Workbench, one cut, one compound, forest, boosting, features, filtering, a failure test |
-| 03 Neural networks | Weights, one neuron, workbench, learning rate, dropout, filtering, Chemprop, a comparison test |
+| 02 Tree models | Workbench, one cut, one compound, forest, boosting, features, filtering, all three side by side, seeds and ensembles |
+| 03 Neural networks | Weights, one neuron, workbench, learning rate, dropout, filtering, Chemprop, a comparison test, seeds and ensembles |
 | 04 GPT | Tokens, embeddings, the stack, workbench, attention, temperature, RDKit check, filtering, a design test |
 | 05 Pre-trained models | Why pre-train, hiding atoms and groups, GROVER, fixed features, fine-tuning a GPT and Chemprop |
 | 06 Compare | Leaderboard, accuracy against time, discussion |

@@ -343,6 +343,8 @@ L2.add({ short: 'Is it useful', uses: ['endpoint', 'features', 'filters', 'tdept
     return { render: render };
   } });
 
+L2.add(seedStepDef('trees'));
+
 L2.glossary([
   ['Feature', 'A number that describes a compound, such as logP or molecular weight.'],
   ['Decision tree', 'A flowchart of yes or no questions about a compound. The answers send it to a group, and the average of that group is the prediction.'],
@@ -360,4 +362,4 @@ L2.glossary([
 ]);
 
 L2.move('Workbench', 1);
-setUses(L2, [['endpoint', 'features', 'filters', 'tdepth'], null, ['endpoint', 'features', 'filters', 'tdepth'], ['endpoint', 'features', 'filters', 'tntrees', 'tfdepth'], ['endpoint', 'features', 'filters', 'trounds', 'tlr'], ['endpoint', 'features', 'filters'], null, ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr'], null]);
+setUses(L2, [['endpoint', 'features', 'filters', 'tdepth'], null, ['endpoint', 'features', 'filters', 'tdepth'], ['endpoint', 'features', 'filters', 'tntrees', 'tfdepth'], ['endpoint', 'features', 'filters', 'trounds', 'tlr'], ['endpoint', 'features', 'filters'], null, ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr'], null, null]);
