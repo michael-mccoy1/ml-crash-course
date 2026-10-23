@@ -2,12 +2,12 @@
 /* Lesson cards, what to notice in each step, and a pop quiz question with a hidden answer. */
 var GUIDE = {
   intro: {
-    start: { what: 'We predict how fast the liver breaks a molecule down (HLM clearance) and how oily it is (logD).', goals: ['Turn a molecule into numbers.', 'Test a model on compounds it has not seen.', 'Spot three data problems.'], words: ['feature', 'unseen set', 'R2', 'censoring', 'overfitting'], prior: '' },
-    trees: { goals: ['See how a tree predicts from yes or no questions.', 'See what forests and boosting add.', 'See where trees fail.'], words: ['tree', 'depth', 'forest', 'boosting', 'learning rate'], prior: 'Do lesson 01 first.' },
-    nn: { goals: ['Learn what a weight is.', 'See training adjust many weights.', 'See overfitting and dropout.'], words: ['weight', 'neuron', 'layer', 'epoch', 'dropout'], prior: 'Do lesson 01 first.' },
-    gpt: { what: 'A GPT is a model that writes text one piece at a time by guessing the next piece.', goals: ['See a molecule become tokens and numbers.', 'See a GPT learn to guess the next token.', 'Check its output with RDKit, a chemistry toolkit.'], words: ['token', 'embedding', 'attention', 'temperature', 'SMILES'], prior: 'Do lesson 03 first. The model is tiny.' },
-    pre: { goals: ['Learn from molecules with no lab values.', 'Fine-tune with a few labels.', 'Freeze or update a model.'], words: ['pre-training', 'fine-tuning', 'frozen', 'GROVER', 'labelled'], prior: 'Do lessons 03 and 04 first.' },
-    compare: { goals: ['Compare models on accuracy and time.', 'Decide what a fair comparison needs.'], words: ['unseen R2', 'training time'], prior: 'Train a model or two first.' }
+    start: { what: 'We predict how fast the liver breaks a molecule down (HLM clearance) and how oily it is (logD).', goals: ['Turn a molecule into numbers.', 'Test a model on compounds it has not seen.', 'Spot three data problems.'], words: ['feature', 'unseen set', 'R2', 'censoring', 'overfitting'] },
+    trees: { goals: ['See how a tree predicts from yes or no questions.', 'See what forests and boosting add.', 'See where trees fail.'], words: ['tree', 'depth', 'forest', 'boosting', 'learning rate'] },
+    nn: { goals: ['Learn what a weight is.', 'See training adjust many weights.', 'See overfitting and dropout.'], words: ['weight', 'neuron', 'layer', 'epoch', 'dropout'] },
+    gpt: { what: 'A GPT is a model that writes text one piece at a time by guessing the next piece.', goals: ['See a molecule become tokens and numbers.', 'See a GPT learn to guess the next token.', 'Check its output with RDKit, a chemistry toolkit.'], words: ['token', 'embedding', 'attention', 'temperature', 'SMILES'] },
+    pre: { goals: ['Learn from molecules with no lab values.', 'Fine-tune with a few labels.', 'Freeze or update a model.'], words: ['pre-training', 'fine-tuning', 'frozen', 'GROVER', 'labelled'] },
+    compare: { goals: ['Compare models on accuracy and time.', 'Decide what a fair comparison needs.'], words: ['unseen R2', 'training time'] }
   },
   steps: {
     'start/What learning means': { notice: 'The error number falls as the line fits better.', q: 'Can one straight line match every compound?', a: 'No. Compounds scatter around any line. Learning finds the line that misses least.' },

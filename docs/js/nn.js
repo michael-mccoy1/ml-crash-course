@@ -181,7 +181,7 @@ L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filter
 /* ---------- N1: a neuron is a weighted sum ---------- */
 L3.add({ short: 'One neuron', title: 'A neuron adds up its inputs',
   change: 'Drag the sliders in the picture. Press Next compound.',
-  watch: 'A neuron is the basic unit of a network: it takes several inputs and gives one output. Each input is multiplied by its own weight and everything is added with a bias. Then ReLU, a switch that turns any negative total into zero, is applied. Red lines push the total up and grey lines push it down.',
+  watch: 'A neuron is the basic unit of a network: it takes several inputs and gives one output. Each input is multiplied by its own weight, and the results are added with a bias to make a total. Red lines push the total up and grey lines push it down. The neuron then passes the total through a switch called ReLU. A negative total becomes 0. A positive total stays as it is. Without the switch, many layers would still add up to one straight line.',
   build: function(api){
     var cur = 0, feats = [], x = [0, 0, 0], w = [0.9, -0.6, 0.4], bias = 0.2, built = false;
     var svg = api.el('abs', 'left:0;top:0;width:960px;height:540px;pointer-events:none', '<svg viewBox="0 0 960 540" width="960" height="540"></svg>');
@@ -189,7 +189,7 @@ L3.add({ short: 'One neuron', title: 'A neuron adds up its inputs',
     var sl = [0, 1, 2].map(function(k){ var y = 56 + k * 112; return api.el('pn fd', 'left:300px;top:' + y + 'px;width:176px;height:92px', '<h4>Weight</h4><input type="range" min="-2" max="2" step="0.1" value="0" style="width:100%"><div class="wv big" style="font-size:22px;color:' + C.red + '">0</div>'); });
     var bp = api.el('pn fd', 'left:300px;top:394px;width:176px;height:50px', '<h4 style="margin-bottom:2px">Bias <span class="bv" style="float:right;color:' + C.red + '">0.2</span></h4><input type="range" min="-2" max="2" step="0.1" value="0.2" style="width:100%">');
     var sum = api.el('pn fd', 'left:536px;top:176px;width:110px;height:110px;border-radius:55px;text-align:center;padding-top:26px', '<div class="lbl">total</div><div class="zv big" style="font-size:26px">0</div>');
-    var rp = api.el('pn fd', 'left:690px;top:56px;width:242px;height:250px', '<h4>ReLU switch</h4><canvas width="218" height="190"></canvas>');
+    var rp = api.el('pn fd', 'left:690px;top:56px;width:242px;height:250px', '<h4>ReLU: negative becomes 0</h4><canvas width="218" height="190"></canvas>');
     var op = api.el('pn fd', 'left:690px;top:320px;width:242px;height:124px', '<h4>Output of the neuron</h4><div class="av big" style="color:' + C.red + '">0</div><div class="am note" style="font-size:12px;color:#34373F"></div>');
     api.addControl('<button type="button" class="btn sm ghost" data-next>Next compound</button>');
     function stdOf(ft, i){ var v = D.TRAIN.map(function(k){ return D.COL[ft][k]; }), mu = mean(v), sd = Math.sqrt(mean(v.map(function(q){ return (q - mu) * (q - mu); }))) || 1; return clamp((D.COL[ft][i] - mu) / sd, -3, 3); }
