@@ -30,7 +30,7 @@ L3.add({ short: 'One compound', title: 'Follow one compound through the trained 
   } });
 
 /* ---------- N7: inside one neuron ---------- */
-L3.add({ short: 'Inside a neuron', title: 'Open one neuron and read its arithmetic',
+L3.add({ short: 'Inside a neuron', title: 'Inside one neuron',
   change: 'Click a circle in the first hidden layer.',
   watch: 'A neuron is a weighted sum. Click a neuron in the first hidden layer to open it. The table lists each input feature, the weight the network learned for it, what that input adds to the total, and the running total. A positive weight means a larger input raises the total. A negative weight means a larger input lowers it.',
   build: function(api){

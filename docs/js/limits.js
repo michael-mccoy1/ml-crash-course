@@ -36,7 +36,7 @@ var AI_TASKS = [
   { name: 'Explain why a compound is cleared quickly', ml: [0, 'It finds patterns that predict. Feature importance shows what it leaned on, not what the liver does.'], gen: [1, 'It can write a plausible explanation from what it read. Plausible is not tested, so treat it as a hypothesis for an experiment.'] }
 ];
 var AI_VERDICT = [['Does not fit', C.red, '#fff', C.red], ['Fits with checks', C.bg, C.char, C.bg], ['Fits well', C.char, '#fff', C.char]];
-L6.add({ short: 'Predict or generate', title: 'Pick the job, then see which tool fits',
+L6.add({ short: 'Predict or generate', title: 'Which tool fits which job',
   change: 'Click a job to see how well machine learning and generative AI each fit it.',
   watch: 'Machine learning is used to predict: it returns a number for a compound, and that number can be scored against measurements. Generative AI is used to produce: it writes text, code or molecules. Its output has no measurement behind it, so a person must check it. Choose a job and compare the two. A tool that fits well still needs the checks in the last step.',
   build: function(api){
@@ -126,9 +126,9 @@ var AI_FAILS = [
   { name: 'No score', look: 'A generator writes a molecule. It does not say how active it is or how fast the liver clears it.', catch_: 'Pass candidates to a prediction model, then measure the best ones.' },
   { name: 'Frozen knowledge', look: 'A language model knows only its training text, up to a cut-off date, unless it is given documents or search tools.', catch_: 'Give it the documents, or search for recent work yourself.' }
 ];
-L6.add({ short: 'How generative AI goes wrong', title: 'Five ways generative AI fails, and how to catch each',
+L6.add({ short: 'How generative AI goes wrong', title: 'Where generative AI fails',
   change: 'Click a failure to see what it looks like and how to catch it.',
-  watch: 'A prediction model can be scored against measurements. A generative model produces new content, so there is no measured answer to score it against. That is its use and its weakness. It can draft, propose and write quickly. It cannot tell you that what it wrote is right. These five failures are the ones to expect.',
+  watch: 'A prediction model can be scored against measurements. A generative model produces new content, so there is no measured answer to score it against. That is its use and its weakness. It can draft, propose and write quickly. It cannot tell you that what it wrote is right. Five common failures are listed here.',
   build: function(api){
     var pn = api.el('pn', 'left:28px;top:28px;width:904px;height:408px', '<div class="aif"></div>'), cur = 0;
     function draw(){
@@ -180,7 +180,7 @@ var AI_CHECKS = [
   ['Does a simpler method do as well?', 'Put a tree model or a descriptor model next to the AI, on the same split and with its training time.', 'compare', 'Lesson 06, the leaderboard'],
   ['Can a person verify it?', 'Generative output has no score of its own. Open the source, run the code on a known case, or measure the compound. A person decides and answers for the result.', null, '']
 ];
-L6.add({ short: 'Using it in a project', title: 'Five checks before you rely on AI',
+L6.add({ short: 'Using it in a project', title: 'Checks before relying on AI',
   change: 'Read the five checks. Each one has a button that opens the lesson where it was shown.',
   watch: 'AI gives an answer. It does not know whether the answer is right, so a person has to check. AI proposes and ranks. People test, decide and answer for the result. These five checks use what the earlier lessons showed.',
   build: function(api){

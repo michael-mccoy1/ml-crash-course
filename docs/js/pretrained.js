@@ -38,7 +38,7 @@ function pScratch(){
   return (D.cache.pc[key] = pts);
 }
 L6.add({ short: 'Why pre-train', uses: ['endpoint', 'features', 'plabels'],
-  title: 'Labelled data is scarce, unlabelled molecules are plentiful',
+  title: 'Labelled data is scarce',
   watch: 'Labelled compounds, meaning compounds with a lab value, are costly to measure. Molecules without lab values are cheap and plentiful. A model trained from scratch needs many labelled compounds before it scores well, and the curve shows the slow start. Pre-training teaches a model general chemistry from unlabelled molecules first, so it needs fewer labels later.',
   change: 'Drag Labelled compounds below the plot. The dashed line moves along the curve.',
   build: function(api){ mirrorSlider(api, 'plabels', 'Labelled compounds');
@@ -285,7 +285,7 @@ L6.add({ short: 'Fine-tune Chemprop', uses: ['plabels'],
 
 /* ---------- step 6: using it in a project ---------- */
 L6.add({ short: 'Using it in practice', uses: [],
-  title: 'How a pre-trained model is used on your own data',
+  title: 'Using a pre-trained model on your data',
   watch: 'A model like GROVER is trained once by its authors. You take the published weights and add your own labelled data. The four stages below show how, and the cautions list what can go wrong.',
   change: 'Read the four stages.',
   build: function(api){
