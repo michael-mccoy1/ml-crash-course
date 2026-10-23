@@ -15,7 +15,7 @@ function ensureLogdPred(){
 }
 
 var L0 = new Lesson('start', 'Data and ML basics');
-L0.optsHTML = sharedOptions() + optGroup('Data', '<div id="dsinfo" class="hint"></div>');
+L0.optsHTML = function(){ return sharedOptions() + optGroup('Data', '<div id="dsinfo" class="hint"></div>') + filterGroup(); };
 L0.onData = function(){ updateInfo(); };
 L0.onOpts = function(){ updateInfo(); };
 function updateInfo(){ var e = $('dsinfo'); if (!e || !D) return; var c = D.cens ? D.cens.reduce(function(a, b){ return a + b; }, 0) : 0; e.innerHTML = esc(D.full) + '.<br>' + D.N + ' compounds: ' + D.TRAIN.length + ' to study, ' + D.TEST.length + ' held out by scaffold.' + (c ? '<br>' + pct(c, D.N) + '% of values sit at the assay floor.' : ''); }
@@ -23,8 +23,8 @@ function unitWord(){ return D.key === 'HLM' ? 'HLM clearance (log10)' : 'logD'; 
 
 /* ---------- Step 1: structure to prediction ---------- */
 L0.add({ short: 'Structure to prediction', title: 'Machine learning reads chemical structure',
-  change: 'Press Play, then Next compound. Untick features in the options and watch the prediction change.',
-  watch: 'The same compound goes from drawing, to text, to numbers, to a model prediction, and the lab value is shown beside it. Features you untick are greyed out and the model is refitted without them.',
+  change: 'Press Next compound. Untick a feature in the options and the model is refit without it.',
+  watch: 'One compound goes from drawing to SMILES text to numbers to a prediction. The lab value is shown beside it.',
   build: function(api){
     var cur = null;
     var lib = api.el('pn fd', 'left:28px;top:28px;width:300px;height:158px', '<h4>Compound library</h4><div class="lg" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"></div>');
@@ -63,15 +63,14 @@ L0.add({ short: 'Structure to prediction', title: 'Machine learning reads chemic
       for (var k = 0; k < rows.length; k++) { api.checkTok(tok); rows[k].style.opacity = rows[k].dataset.on === '1' ? 1 : 0.35; var b = qs('b', rows[k]), v = +b.dataset.v, f = b.dataset.f, bar = qs('i', rows[k]); bar.style.width = bar.dataset.w + '%'; (function(b, v, f){ animateFree(500, function(t){ b.textContent = (f === 'logP' || f === 'Fsp3') ? (v * t).toFixed(2) : (v * t).toFixed(0); }); })(b, v, f); await api.sleep(260); }
       await api.sleep(1200); mod.classList.add('on'); await api.beat('A model has already learned from many compounds with known answers.', 2400);
       pred.classList.add('on'); api.cap('It predicts a value. The lab measured the same compound, so the two can be compared.'); await api.sleep(500);
-      var ps = qs('.ps', pred); qsa('.pbar i', ps).forEach(function(i){ i.style.width = i.dataset.w + '%'; }); if (ps.dataset.pv !== '') countUp(qs('.pv', ps), +ps.dataset.pv, 2); countUp(qs('.mv', ps), +ps.dataset.mv, 2); await api.sleep(2600);
-      api.key(D.key === 'HLM' ? 'A model can profile clearance before anyone makes the compound.' : 'A model can estimate logD before anyone measures it.'); showFinal();
+      var ps = qs('.ps', pred); qsa('.pbar i', ps).forEach(function(i){ i.style.width = i.dataset.w + '%'; }); if (ps.dataset.pv !== '') countUp(qs('.pv', ps), +ps.dataset.pv, 2); countUp(qs('.mv', ps), +ps.dataset.mv, 2); await api.sleep(2600); showFinal();
     }
     return { render: render, play: play };
   } });
 
 /* ---------- Step 2: descriptors come from the structure ---------- */
 L0.add({ short: 'Where features come from', title: 'Features are sums over the atoms RDKit sees',
-  change: 'Press Play, then Next compound.',
+  change: 'Press Next compound.',
   watch: 'Atoms are shaded by how much each adds to logP, then to polar surface area. The totals are the features.',
   build: function(api){
     var cur = null, mode = 0;
@@ -90,14 +89,14 @@ L0.add({ short: 'Where features come from', title: 'Features are sums over the a
     async function pickCmp(){ await loadStructs(); var arr = (STRUCTS[EP] || []).filter(function(e){ return e.logp; }); if (!arr.length) arr = (STRUCTS.HLM || []).filter(function(e){ return e.logp; }); cur = arr[Math.floor(Math.random() * arr.length)]; layers(); show(0); }
     async function render(){ await pickCmp(); }
     qs('[data-next]', api.sbar).addEventListener('click', async function(){ api.tok++; await pickCmp(); var t = api.tok; api.stepDef.safe(function(){ return play(t); }); });
-    async function play(tok){ if (!cur) await pickCmp(); show(0); await api.beat('RDKit reads the structure: atoms, bonds and rings.', 2200); show(1); await api.beat('For logP, each atom is given a contribution. Red raises logP, blue grey lowers it.', 3200); show(2); await api.beat('For TPSA, only polar nitrogen and oxygen atoms count.', 3000); show(0); api.key('Features are totals over atoms, so every part of a structure leaves a mark on the numbers.'); }
+    async function play(tok){ if (!cur) await pickCmp(); show(0); await api.beat('RDKit reads the structure: atoms, bonds and rings.', 2200); show(1); await api.beat('For logP, each atom is given a contribution. Red raises logP, blue grey lowers it.', 3200); show(2); await api.beat('For TPSA, only polar nitrogen and oxygen atoms count.', 3000); show(0); }
     return { render: render, play: play };
   } });
 
 /* ---------- Step 3: the unseen set ---------- */
 L0.add({ short: 'The unseen set', title: 'Hold compounds back to test a model honestly',
-  change: 'Press Play, or switch between random and scaffold splits with the control below.',
-  watch: 'Which dots are unseen, how many unseen compounds have a training twin, and how similar each is to its closest training compound.',
+  change: 'Switch between a random split and a scaffold split under the stage.',
+  watch: 'Unseen compounds are the ones the model never studied. Compare the two splits by how many unseen compounds have a close relative in the training set.',
   build: function(api){
     var mode = 'rand', a = 0;
     var mapP = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Chemical space map of every compound (RDKit fingerprints, projected to 2D)</h4><canvas width="540" height="352" style="margin-top:4px"></canvas>');
@@ -126,14 +125,16 @@ L0.add({ short: 'The unseen set', title: 'Hold compounds back to test a model ho
       mode = 'scaf'; selEl.value = 'scaf'; await api.anim(1600, function(t){ a = t; drawMap(0); drawHist(0.4 + 0.6 * t); qs('.sv', cnt).textContent = Math.round(lerp(stats().rand.seen, stats().scaf.seen, t) * 100); });
       api.cap('A scaffold split holds out whole ring skeletons, so no unseen compound shares one with the training set.'); await api.sleep(3400);
       var s = stats(); var gap = D.key === 'HLM' ? 'In this Biogen set the compounds come from many vendors, so the two splits give similar scores.' : 'In this AstraZeneca set a random split leaks a lot, so a scaffold split is much stricter.';
-      api.cap(gap); await api.sleep(3400); api.key('Always say how the unseen set was chosen. It changes what the score means.');
+      api.cap(gap); await api.sleep(3400);
     }
     return { render: render, play: play };
   } });
 
+L0.add(targetStepDef());
+L0.add(censorStepDef());
 /* ---------- Step 4: underfitting to overfitting ---------- */
 L0.add({ short: 'Underfitting and overfitting', title: 'A flexible model can memorise noise',
-  change: 'Choose a feature and drag the depth control below, or press Play to sweep depth from 0 to 12. Untick features in the options to change the list.',
+  change: 'Choose a feature and drag Tree depth under the stage. Untick features in the options to change the list.',
   watch: 'The red line is a decision tree on one feature. At small depth it misses the trend. At large depth it chases individual dots and the unseen error rises.',
   build: function(api){
     var G_ = 200, cur = null, lab = null, depthEl, featSel;
@@ -167,15 +168,15 @@ L0.add({ short: 'Underfitting and overfitting', title: 'A flexible model can mem
     async function play(tok){
       fillSel(); prep(); setDepth(0); await api.beat('Depth 0 predicts the same average for every compound.', 2400);
       for (var d = 1; d <= 12; d++) { await go(d); if (d === 1) api.cap('One question splits the compounds in two groups with two averages.'); if (d === 3) api.cap('More questions follow the trend more closely.'); if (d === Math.min(12, lab.best + 1)) api.cap('Around here the unseen error is lowest. This is the right amount of flexibility.'); if (d === 9) api.cap('Now the line chases single dots, including noise.'); await api.sleep(d < 4 ? 900 : 650); }
-      await api.sleep(1200); api.key('The best model is the one that predicts unseen compounds well, not the one that fits the studied ones best.');
+      await api.sleep(1200);
     }
     return { render: render, play: play };
   } });
 
 /* ---------- Step 5: how a model is scored ---------- */
 L0.add({ short: 'Scoring a model', title: 'R2, Spearman and RMSE measure different things',
-  change: 'Drag the quality control below, or press Play.',
-  watch: 'Dots move toward the diagonal as predictions improve. R2 and RMSE respond to the size of errors. Spearman responds to the ranking only.',
+  change: 'Drag Model quality under the stage.',
+  watch: 'Dots move toward the diagonal as predictions improve. R2 and RMSE respond to the size of errors. Spearman responds to ranking only.',
   build: function(api){
     var q = 100, pv = null, ys = null, idx = null, pm = 0;
     var plot = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Predicted against measured, unseen compounds</h4><canvas width="540" height="352" style="margin-top:2px"></canvas>');
@@ -197,14 +198,14 @@ L0.add({ short: 'Scoring a model', title: 'R2, Spearman and RMSE measure differe
     async function play(tok){ prep(); rg.value = 200; draw(200); await api.beat('A perfect model puts every dot on the diagonal. R2 is 1 and the error is 0.', 2800);
       await api.anim(2600, function(t){ q = 200 - 100 * t; rg.value = q; draw(q); }); api.cap('A real decision tree misses by a lot. Vertical lines show each error.'); await api.sleep(3000);
       await api.anim(2600, function(t){ q = 100 - 100 * t; rg.value = q; draw(q); }); api.cap('Predicting the average for everything gives R2 near 0. Every model must beat this.'); await api.sleep(3000);
-      rg.value = 100; draw(100); api.key('Report R2 for error size, Spearman for ranking, and RMSE in the units of the assay.'); }
+      rg.value = 100; draw(100); }
     return { render: render, play: play };
   } });
 
 /* ---------- Step 6: second endpoint, logD feeds HLM ---------- */
-L0.add({ short: 'logD feeds HLM', title: 'A second endpoint can become an input',
-  change: 'Press Play. Switch the endpoint to HLM clearance if it is on logD. Untick descriptors in the options and the comparison reruns.',
-  watch: 'A logD model trained on AstraZeneca data predicts logD for every Biogen compound. The comparison below retrains the HLM model with and without that prediction, and reruns when you change the features.',
+L0.add({ short: 'logD feeds HLM', title: 'One endpoint can feed another',
+  change: 'Switch the endpoint to HLM clearance if it is on logD. Untick descriptors in the options and the comparison reruns.',
+  watch: 'A logD model trained on AstraZeneca data predicts logD for every Biogen compound. The comparison retrains the HLM model with and without that prediction.',
   build: function(api){
     var ab = null;
     var flow = api.el('pn', 'left:28px;top:28px;width:904px;height:130px', '<svg viewBox="0 0 880 100" width="880" height="100"></svg>');
@@ -234,14 +235,14 @@ L0.add({ short: 'logD feeds HLM', title: 'A second endpoint can become an input'
     featListeners.push(function(){ if (L0.built) drawFlow(FSEL.logD_pred && D.key === 'HLM'); });
     async function play(tok){ render(); if (D.key !== 'HLM') { api.cap('Switch the endpoint to HLM clearance to follow logD into the HLM model.'); return; }
       await api.beat('logD measures how lipophilic a compound is at blood pH. AstraZeneca published 4,200 measured values.', 3200); await api.beat('A model learns logD from those compounds, then predicts logD for every Biogen compound.', 3000);
-      api.cap('That prediction is one more feature, logD_pred. Tick it in Features (it is pulsing now) to give it to every model.'); qsa('.featchips label[title]').forEach(function(l){ l.classList.add('pulse'); setTimeout(function(){ l.classList.remove('pulse'); }, 4200); }); await api.sleep(4200); api.key('One model\'s output can be another model\'s input. Tick logD_pred in Features to use it in every lesson.'); }
+      api.cap('That prediction is one more feature, logD_pred. Tick it in Features (it is pulsing now) to give it to every model.'); qsa('.featchips label[title]').forEach(function(l){ l.classList.add('pulse'); setTimeout(function(){ l.classList.remove('pulse'); }, 4200); }); await api.sleep(4200); }
     return { render: render, play: play };
   } });
 
 /* ---------- Step 7: predict your own compound (RDKit in the browser) ---------- */
-L0.add({ short: 'Predict a compound', title: 'Type a structure and let RDKit and the models predict it',
+L0.add({ short: 'Predict a compound', title: 'Predict a compound from its structure',
   change: 'Edit the SMILES and press Predict. The first time, RDKit downloads (about 7 MB).',
-  watch: 'RDKit draws the structure and computes the features in your browser. The logD model runs first, then the HLM model uses its output.',
+  watch: 'RDKit draws the structure and computes the features in your browser. The logD model runs first and the HLM model uses its output.',
   auto: false,
   build: function(api){
     var inp = api.el('pn', 'left:28px;top:28px;width:904px;height:70px', '<h4>SMILES</h4><div style="display:flex;gap:10px"><input type="text" class="si" spellcheck="false" style="font-family:Cascadia Mono,Consolas,monospace"><button type="button" class="btn sm" data-go style="white-space:nowrap">Predict</button></div>');
@@ -288,5 +289,5 @@ L0.glossary([
   ['RDKit', 'Open-source chemistry toolkit used here for structures, descriptors and fingerprints.']
 ]);
 
-setUses(L0, [['endpoint', 'features'], ['endpoint'], ['endpoint', 'features'], ['endpoint', 'features'], ['endpoint', 'features'], ['endpoint', 'features'], []]);
+setUses(L0, [['endpoint', 'features'], ['endpoint'], ['endpoint', 'features'], null, null, ['endpoint', 'features'], ['endpoint', 'features'], ['endpoint', 'features'], []]);
 featListeners.push(function(){ if (L0.built) L0.refresh(); });

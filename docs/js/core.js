@@ -18,7 +18,7 @@ function colorMix(t, a, b){ a = a || [209, 216, 224]; b = b || [225, 36, 42]; t 
 function esc(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 /* ---------- animation control ---------- */
-var ANIM = true, AUTOPLAY = true;
+var ANIM = true, AUTOPLAY = false;
 var tick = function(){ return new Promise(function(r){ setTimeout(r, 0); }); };
 function progress(p){ var b = $('bar'); if (!b) return; b.style.width = (p * 100) + '%'; if (p >= 1) setTimeout(function(){ b.style.width = '0'; }, 400); }
 function Cancel(){ this.cancel = true; }
@@ -57,9 +57,9 @@ function rmse(idx, pred, Y){ Y = Y || D.Y; var a = 0; idx.forEach(function(i){ a
 function ranks(v){ var o = v.map(function(x, i){ return [x, i]; }).sort(function(p, q){ return p[0] - q[0]; }), r = new Array(v.length); for (var k = 0; k < o.length;) { var m = k; while (m + 1 < o.length && o[m + 1][0] === o[k][0]) m++; var avg = (k + m) / 2; for (var t = k; t <= m; t++) r[o[t][1]] = avg; k = m + 1; } return r; }
 function spearman(idx, pred, Y){ Y = Y || D.Y; var a = ranks(idx.map(function(i){ return Y[i]; })), b = ranks(idx.map(function(i){ return pred[i]; })), ma = mean(a), mb = mean(b), n = 0, da = 0, db = 0; for (var i = 0; i < a.length; i++) { n += (a[i] - ma) * (b[i] - mb); da += (a[i] - ma) * (a[i] - ma); db += (b[i] - mb) * (b[i] - mb); } return db === 0 ? 0 : n / Math.sqrt(da * db); }
 
-/* ---------- data filters (Data quality lesson) ---------- */
-var FILT = { cens: 'keep', z: 0, mw: null, lp: null, apply: false };
-function filterOn(){ return FILT.cens !== 'keep' || FILT.z > 0 || FILT.mw || FILT.lp; }
+/* ---------- data filters (shared by every lesson, applied to training only) ---------- */
+var FILT = { cens: 'keep', z: 0, mw: null, lp: null };
+function filterOn(f){ f = f || FILT; return f.cens !== 'keep' || f.z > 0 || !!f.mw || !!f.lp; }
 function passFilter(i, isTest, f){
   f = f || FILT; var d = D;
   if (d.cens && f.cens !== 'keep' && d.cens[i] && (!isTest || f.cens === 'both')) return false;
@@ -69,7 +69,8 @@ function passFilter(i, isTest, f){
   return true;
 }
 function filteredIdx(isTest, f){ return (isTest ? D.TEST : D.TRAIN).filter(function(i){ return passFilter(i, isTest, f); }); }
-function activeTrain(){ return FILT.apply && filterOn() ? filteredIdx(false) : D.TRAIN; }
+function activeTrain(f){ f = f || FILT; return filterOn(f) ? filteredIdx(false, f) : D.TRAIN; }
+function filtKey(f){ f = f || FILT; return filterOn(f) ? JSON.stringify([f.cens, f.z, f.mw, f.lp]) : '0'; }
 
 /* ---------- tree engine ---------- */
 function buildTree(B, feats, target, idx, depth, minLeaf, mtry, rand){
@@ -158,7 +159,7 @@ async function loadExtras(){ if (!EXTRAS) EXTRAS = await loadJSON('extras'); ret
 /* =====================================================================
    Lesson framework
    ===================================================================== */
-var LESSONS = {}, LORDER = ['start', 'quality', 'trees', 'nn', 'gpt', 'compare'], ACTIVE = 'start', featListeners = [];
+var LESSONS = {}, LORDER = ['start', 'trees', 'nn', 'gpt', 'compare'], ACTIVE = 'start', featListeners = [];
 function Lesson(id, title){ this.id = id; this.title = title; this.steps = []; this.gloss = null; this.optsHTML = ''; this.onOpts = null; this.onData = null; LESSONS[id] = this; }
 Lesson.prototype.add = function(def){ this.steps.push(def); return this; };
 Lesson.prototype.glossary = function(items){ this.gloss = items; return this; };
@@ -167,7 +168,7 @@ Lesson.prototype.refresh = function(){ var L = this; L.steps.forEach(function(s)
 function seg(items, cur, attr){ return '<div class="seg" ' + attr + '>' + items.map(function(it){ return '<button type="button" data-v="' + it[0] + '"' + (it[0] === cur ? ' class="on"' : '') + '>' + it[1] + '</button>'; }).join('') + '</div>'; }
 function optGroup(label, html, hint){ return '<div class="og"><div class="ol">' + label + '</div>' + html + (hint ? '<div class="hint">' + hint + '</div>' : '') + '</div>'; }
 function optRange(id, label, min, max, step, val, hint){ return '<div class="og"><label class="row" for="' + id + '">' + label + '<output id="o-' + id + '">' + val + '</output></label><input type="range" id="' + id + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + val + '">' + (hint ? '<div class="hint">' + hint + '</div>' : '') + '</div>'; }
-function sharedOptions(){ return optGroup('Endpoint', seg([['HLM', 'HLM clearance'], ['logD', 'logD']], EP, 'data-ep'), 'HLM is Biogen data. logD is AstraZeneca data.') + optGroup('Features', '<div class="chips featchips"></div>', 'Inputs the models may use. Shared across lessons.'); }
+function sharedOptions(o){ return optGroup('Endpoint', seg([['HLM', 'HLM clearance'], ['logD', 'logD']], EP, 'data-ep'), 'HLM is Biogen data. logD is AstraZeneca data.') + optGroup('Features', '<div class="chips featchips"></div>', 'Shared by every lesson.'); }
 function renderChips(){
   qsa('.featchips').forEach(function(box){ box.innerHTML = D ? D.FEATS.map(function(f){ return '<label' + (f === 'logD_pred' ? ' title="logD predicted by a model trained on AstraZeneca data"' : '') + '><input type="checkbox" data-f="' + f + '"' + (FSEL[f] ? ' checked' : '') + '> ' + f + '</label>'; }).join('') : ''; });
 }
@@ -177,7 +178,7 @@ document.addEventListener('click', function(e){ var b = e.target.closest ? e.tar
 
 async function setEndpoint(key){
   if (key === EP && D) return; EP = key; qsa('.seg[data-ep] button').forEach(function(b){ b.classList.toggle('on', b.dataset.v === key); });
-  progress(0.2); await loadDataset(key); D = DATA[key]; if (!D.ylo) setRange(D); renderChips(); progress(1);
+  progress(0.2); await loadDataset(key); D = DATA[key]; if (!D.ylo) setRange(D); renderChips(); if (window.syncFilterControls) syncFilterControls(true); progress(1);
   if (D.key === 'HLM' && window.ensureLogdPred) ensureLogdPred();
   LORDER.forEach(function(id){ var L = LESSONS[id]; if (L && L.built) { if (L.onData) L.onData(); L.refresh(); } });
 }
@@ -188,28 +189,28 @@ function buildLesson(L){
   qs('.obody', root).innerHTML = typeof L.optsHTML === 'function' ? L.optsHTML() : L.optsHTML; var stepsEl = qs('.steps', root), toc = qs('.toc', root);
   L.steps.forEach(function(s, i){ s.L = L; s.idx = i; buildStep(L, s, i, n, stepsEl); toc.appendChild(tocChip(L.id + '-s' + (i + 1), (i + 1) + '  ' + s.short)); });
   if (L.gloss) { var g = h('section', 'step gloss'); g.id = L.id + '-gl'; g.innerHTML = '<div class="shead"><i class="tick"></i><div><div class="eyebrow">GLOSSARY</div><h2>Terms in this lesson</h2></div></div><dl class="gl">' + L.gloss.map(function(t){ return '<div><dt>' + t[0] + '</dt><dd>' + t[1] + '</dd></div>'; }).join('') + '</dl>'; stepsEl.appendChild(g); toc.appendChild(tocChip(L.id + '-gl', 'Glossary')); }
-  L.built = true; if (L.onOpts) L.onOpts(root); renderChips();
+  L.built = true; if (L.onOpts) L.onOpts(root); renderChips(); if (window.syncFilterControls) syncFilterControls();
 }
 function tocChip(target, label){ var b = h('button', 'tc', esc(label)); b.type = 'button'; b.addEventListener('click', function(){ var t = $(target); if (t) window.scrollTo({ top: t.getBoundingClientRect().top + window.scrollY - 70, behavior: ANIM ? 'smooth' : 'auto' }); }); return b; }
 
 function buildStep(L, s, idx, total, parent){
   var sec = h('section', 'step'); sec.id = L.id + '-s' + (idx + 1); s.sec = sec;
-  sec.innerHTML = '<div class="shead"><i class="tick"></i><div><div class="eyebrow">STEP ' + (idx + 1) + ' OF ' + total + '</div><h2>' + s.title + '</h2></div></div>' +
-    '<div class="ins"><div><b>Change</b><span>' + s.change + '</span></div><div><b>Watch</b><span>' + s.watch + '</span></div></div>' + usesHTML(s) +
-    '<div class="stagewrap"><div class="screen"><div class="inner"></div></div><div class="sbar"><button type="button" class="btn sm" data-play>Play</button><button type="button" class="btn sm ghost" data-reset>Reset</button><span class="sx"></span></div></div>';
+  sec.innerHTML = '<div class="shead"><i class="tick"></i><div><div class="eyebrow">' + (s.bench ? 'WORKBENCH' : 'STEP ' + (idx + 1)) + '</div><h2>' + s.title + '</h2></div></div>' +
+    '<p class="lead">' + s.watch + '</p><p class="try"><b>Try</b> ' + s.change + '</p>' + usesHTML(s) +
+    '<div class="stagewrap"><div class="screen"><div class="inner"></div></div>' + (s.bench ? '' : '<div class="sbar"><button type="button" class="btn sm ghost" data-play>Walk through</button><span class="sx"></span></div>') + '</div>';
   parent.appendChild(sec);
-  var screen = qs('.screen', sec), inner = qs('.inner', sec), sbar = qs('.sbar', sec), sx = qs('.sx', sec);
-  var cap = h('div', 'cap'), key = h('div', 'keybar'), foot = h('div', 'foot'), busy = h('div', 'busy', '<div class="bs"><i></i><span></span></div>'); inner.appendChild(foot); inner.appendChild(cap); inner.appendChild(key); inner.appendChild(busy);
-  var km = /api\.key\(\s*'((?:\\.|[^'\\])*)'/.exec(String(s.build)); if (km) { s.keyText = km[1].replace(/\\'/g, "'"); foot.innerHTML = '<i>KEY POINT</i>' + esc(s.keyText); foot.classList.add('on'); }
-  function footSync(){ if (s.keyText) foot.classList.toggle('on', !cap.classList.contains('on') && !key.classList.contains('on')); }
+  var screen = qs('.screen', sec), inner = qs('.inner', sec), sbar = qs('.sbar', sec) || h('div', 'sbar'), sx = qs('.sx', sec) || h('span', 'sx');
+  var cap = h('div', 'cap'), busy = h('div', 'busy', '<div class="bs"><i></i><span></span></div>'), stale = h('div', 'stalebadge'); inner.appendChild(cap); inner.appendChild(stale); inner.appendChild(busy);
   var api = { sec: sec, inner: inner, sbar: sbar, L: L, tok: 0, stepDef: s };
   api.el = function(cls, style, html){ var e = h('div', cls, html); if (style) e.style.cssText = style; inner.insertBefore(e, cap); return e; };
-  api.cap = function(t){ key.classList.remove('on'); if (t === null || t === undefined) { cap.classList.remove('on'); footSync(); return; } cap.innerHTML = t; cap.classList.add('on'); footSync(); };
-  api.key = function(t){ cap.classList.remove('on'); if (!t) { key.classList.remove('on'); footSync(); return; } key.innerHTML = '<i>KEY POINT</i>' + t; key.classList.add('on'); footSync(); };
-  api.clearTexts = function(){ cap.classList.remove('on'); key.classList.remove('on'); footSync(); };
+  api.cap = function(t){ if (t === null || t === undefined) { cap.classList.remove('on'); return; } cap.innerHTML = t; cap.classList.add('on'); };
+  api.key = function(t){ api.cap(t || null); };
+  api.clearTexts = function(){ cap.classList.remove('on'); };
   api.stat = function(t){ sx.innerHTML = t || ''; };
+  api.stale = function(t){ if (t) { stale.textContent = t; stale.classList.add('on'); } else stale.classList.remove('on'); };
   api.busy = function(t){ qs('span', busy).textContent = t || 'Updating'; busy.classList.add('on'); };
-  api.idle = function(){ busy.classList.remove('on'); };
+  api.gate = function(t){ var sp = qs('span', busy); sp.innerHTML = esc(t) + ' <button type="button" class="btn sm" style="margin-left:10px">Go to workbench</button>'; qs('button', sp).addEventListener('click', function(){ var w = $(L.id + '-s1'); if (w) window.scrollTo({ top: w.getBoundingClientRect().top + window.scrollY - 70, behavior: ANIM ? 'smooth' : 'auto' }); }); busy.classList.add('on', 'gate'); };
+  api.idle = function(){ busy.classList.remove('on', 'gate'); };
   api.sleep = function(ms){ var tok = api.tok; return new Promise(function(res, rej){ setTimeout(function(){ if (api.tok !== tok) rej(new Cancel()); else res(); }, ANIM ? ms : 0); }); };
   api.anim = function(ms, fn){ var tok = api.tok; return new Promise(function(res, rej){ if (!ANIM) { fn(1); return res(); } var t0 = performance.now(); (function f(now){ if (api.tok !== tok) return rej(new Cancel()); var t = clamp((now - t0) / ms, 0, 1); fn(ease(t)); if (t < 1) requestAnimationFrame(f); else res(); })(t0); }); };
   api.beat = async function(text, ms){ api.cap(text); await api.sleep(ms || 2200); };
@@ -220,17 +221,26 @@ function buildStep(L, s, idx, total, parent){
   if (window.ResizeObserver) new ResizeObserver(fit).observe(screen); fit();
   s.safe = function(fn){ try { var r = fn(); if (r && r.catch) r.catch(function(e){ if (!(e instanceof Cancel)) console.error(e); }); return r; } catch (e) { if (!(e instanceof Cancel)) console.error(e); } };
   s.handlers = s.build(api) || {};
-  qs('[data-play]', sec).addEventListener('click', function(){ s.play(); });
-  qs('[data-reset]', sec).addEventListener('click', function(){ api.tok++; api.clearTexts(); if (s.handlers.reset) s.safe(function(){ return s.handlers.reset(); }); else if (s.handlers.render) s.safe(function(){ return s.handlers.render(); }); });
+  var pb = qs('[data-play]', sec); if (pb) { if (!s.handlers.play) pb.style.display = 'none'; else pb.addEventListener('click', function(){ s.play(); }); }
   s.play = function(){ if (!s.handlers.play) return; api.tok++; var tok = api.tok; api.clearTexts(); return s.safe(function(){ return s.handlers.play(tok); }); };
   s.visible = false; s.played = false; s.dirty = true;
   var io = new IntersectionObserver(function(es){ es.forEach(function(en){
     var vis = en.isIntersecting; s.visible = vis; if (!vis || ACTIVE !== L.id) return;
     if (s.dirty && s.handlers.render) { s.dirty = false; s.safe(function(){ return s.handlers.render(); }); }
-    if (!s.played && AUTOPLAY && s.auto !== false && s.handlers.play && en.intersectionRatio > 0.5) { s.played = true; setTimeout(function(){ if (s.visible) s.play(); }, 350); }
   }); }, { threshold: [0, 0.25, 0.5, 0.75] });
   io.observe(sec);
 }
+
+/* ---------- workbench: live preview, Train button, slowed replay ---------- */
+var SPEED = 'slow';
+function speedMul(){ return SPEED === 'slow' ? 1 : (SPEED === 'med' ? 0.3 : 0.04); }
+function benchBar(api, o){
+  o = o || {}; var bar = api.el('bbar', 'left:28px;top:20px;width:904px;height:48px', (o.leftHTML || '') + '<button type="button" class="btn" data-train>Train</button><div class="seg sp3" data-speed><span class="sl">Replay speed</span>' + [['slow', 'Slow'], ['med', 'Medium'], ['fast', 'Fast']].map(function(it){ return '<button type="button" data-v="' + it[0] + '"' + (it[0] === SPEED ? ' class="on"' : '') + '>' + it[1] + '</button>'; }).join('') + '</div><span class="bst"></span>');
+  qsa('[data-speed] button', bar).forEach(function(b){ b.addEventListener('click', function(){ SPEED = b.dataset.v; qsa('[data-speed] button').forEach(function(x){ x.classList.toggle('on', x.dataset.v === SPEED); }); }); });
+  return { bar: bar, btn: qs('[data-train]', bar), st: qs('.bst', bar), say: function(t){ qs('.bst', bar).textContent = t || ''; } };
+}
+function delay(ms){ return new Promise(function(r){ setTimeout(r, ANIM ? ms : 0); }); }
+
 
 /* ---------- tabs ---------- */
 function showLesson(id){
@@ -242,7 +252,6 @@ function showLesson(id){
 function boot(){
   qsa('#tabs button').forEach(function(b){ b.addEventListener('click', function(){ showLesson(b.dataset.tab); }); });
   $('animtoggle').addEventListener('click', function(){ ANIM = !ANIM; document.body.classList.toggle('noanim', !ANIM); this.setAttribute('aria-pressed', ANIM ? 'false' : 'true'); this.textContent = ANIM ? 'Animations on' : 'Animations off'; });
-  $('autotoggle').addEventListener('click', function(){ AUTOPLAY = !AUTOPLAY; this.setAttribute('aria-pressed', AUTOPLAY ? 'false' : 'true'); this.textContent = AUTOPLAY ? 'Autoplay on' : 'Autoplay off'; });
   if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) $('animtoggle').click();
 }
 
@@ -267,13 +276,13 @@ function unitWord(){ return D.key === 'HLM' ? 'HLM clearance (log10)' : 'logD'; 
 
 
 /* ---------- which steps does an option drive? ---------- */
-function setUses(L, arr){ arr.forEach(function(u, i){ if (L.steps[i]) L.steps[i].uses = u; }); }
+function setUses(L, arr){ arr.forEach(function(u, i){ if (u && L.steps[i]) L.steps[i].uses = u; }); }
 function optLabel(id){
-  if (id === 'features') return 'Features'; if (id === 'endpoint') return 'Endpoint'; if (id === 'qcens') return 'Censored values'; if (id === 'qapply') return 'Use in other lessons'; if (id === 'nearly') return 'Keep the best epoch';
+  if (id === 'features') return 'Features'; if (id === 'endpoint') return 'Endpoint'; if (id === 'filters') return 'Filter training data'; if (id === 'nearly') return 'Keep the best epoch';
   var l = document.querySelector('label[for="' + id + '"]'); if (l) return l.childNodes[0].textContent.trim(); return id;
 }
-function usesHTML(s){ if (!s.uses || !s.uses.length) return '<div class="uses">Options used here: none. This step runs on its own.</div>'; return '<div class="uses">Options used here: ' + s.uses.map(function(u){ return '<b>' + esc(optLabel(u)) + '</b>'; }).join(', ') + '</div>'; }
-function optKey(t){ if (!t || !t.closest) return null; if (!t.closest('aside.options')) return null; if (t.closest('.featchips')) return 'features'; if (t.closest('.seg[data-ep]')) return 'endpoint'; if (t.closest('.seg[data-cens]')) return 'qcens'; return t.id || null; }
+function usesHTML(s){ if (!s.uses || !s.uses.length) return ''; return '<div class="uses">Driven by: ' + s.uses.map(function(u){ return '<b>' + esc(optLabel(u)) + '</b>'; }).join(', ') + '</div>'; }
+function optKey(t){ if (!t || !t.closest) return null; if (!t.closest('aside.options')) return null; if (t.closest('.featchips')) return 'features'; if (t.closest('.seg[data-ep]')) return 'endpoint'; if (t.closest('.filtgrp')) return 'filters'; return t.id || null; }
 var affTimer = null;
 function showAffects(key){
   var L = LESSONS[ACTIVE]; if (!L || !L.built || !key) return; var root = $('lesson-' + L.id), box = qs('.aff', root); if (!box) return; var hits = [];
@@ -288,5 +297,5 @@ document.addEventListener('click', function(e){ var b = e.target.closest ? e.tar
 /* ---------- wait for a slider to be released before heavy work ---------- */
 var HOLD = false;
 document.addEventListener('pointerdown', function(e){ if (e.target && e.target.matches && e.target.matches('aside.options input[type=range]')) HOLD = true; }, true);
-['pointerup', 'pointercancel'].forEach(function(ev){ window.addEventListener(ev, function(){ if (HOLD) { HOLD = false; var L = LESSONS[ACTIVE]; if (L && L.built) setTimeout(function(){ L.refresh(); }, 60); } }, true); });
+['pointerup', 'pointercancel'].forEach(function(ev){ window.addEventListener(ev, function(){ if (HOLD) { HOLD = false; var L = LESSONS[ACTIVE]; if (L && L.built) setTimeout(function(){ if (window.FQ && FQ.pending) flushFilter(); else L.refresh(); }, 60); } }, true); });
 function waitRelease(){ return new Promise(function(res){ (function c(){ if (!HOLD) res(); else setTimeout(c, 150); })(); }); }

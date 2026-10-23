@@ -71,10 +71,9 @@ nav.toc + .step{border-top:0;padding-top:14px}
 .tick{width:4px;background:var(--red);border-radius:2px;flex:0 0 4px}
 .eyebrow{font-size:.7rem;letter-spacing:.16em;font-weight:700;color:var(--red);text-transform:uppercase}
 .step h2{font-size:1.55rem;line-height:1.2;font-weight:700;margin-top:2px;text-wrap:balance}
-.ins{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 26px;margin:14px 0 0;max-width:62rem}
-@media(max-width:760px){.ins{grid-template-columns:minmax(0,1fr)}}
-.ins div{border-left:1px solid var(--silver);padding-left:12px;font-size:.92rem;line-height:1.45}
-.ins b{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:2px}
+.lead{margin:12px 0 0;max-width:62rem;font-size:1rem;line-height:1.5;color:#3f4350}
+.try{margin:6px 0 0;max-width:62rem;font-size:.92rem;color:var(--char)}
+.try b{display:inline-block;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:#fff;background:var(--red);border-radius:3px;padding:1px 7px;margin-right:8px;vertical-align:1px}
 .stagewrap{margin-top:16px}
 .screen{position:relative;width:100%;aspect-ratio:16/9;background-color:var(--light);background-image:linear-gradient(#E3E9EB 1px,transparent 1px),linear-gradient(90deg,#E3E9EB 1px,transparent 1px);background-size:24px 24px;border:1px solid var(--silver);border-radius:8px;overflow:hidden}
 .inner{position:absolute;left:0;top:0;width:960px;height:540px;transform-origin:0 0;font-size:13px;line-height:1.4}
@@ -180,3 +179,25 @@ svg text{font-family:var(--sans)}
 
 .chips label.pulse{animation:pulsechip 1.1s ease 4}
 @keyframes pulsechip{0%{box-shadow:0 0 0 0 rgba(225,36,42,.55)}100%{box-shadow:0 0 0 9px rgba(225,36,42,0)}}
+
+.stalebadge{position:absolute;right:28px;top:6px;background:#FDECEC;color:var(--dred);border:1px solid var(--tint);border-radius:5px;padding:3px 10px;font-size:12px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s;z-index:25}
+.stalebadge.on{opacity:1}
+.bbar{display:flex;gap:14px;align-items:center}
+.bbar .btn{padding:9px 26px;font-size:15px}
+.bbar .seg{width:auto}
+.bbar .seg button{flex:0 0 auto;padding:6px 12px;font-size:12.5px}
+.bbar .sl{align-self:center;font-size:11px;color:var(--mid);padding:0 8px 0 8px;letter-spacing:.06em;text-transform:uppercase}
+.bbar .bst{font-size:13px;color:var(--mid);font-variant-numeric:tabular-nums;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.static .tnode,.static .tedge{animation:none;opacity:1}
+details.filtgrp{padding:10px 0;border-top:1px solid var(--silver)}
+details.filtgrp summary{cursor:pointer;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);font-weight:600}
+details.filtgrp[open] summary{margin-bottom:6px}
+details.filtgrp .fr{margin-top:6px}
+.mode{display:inline-flex}
+.dim{opacity:.35;transition:opacity .2s}
+.presets{display:flex;gap:6px;flex-wrap:wrap}
+.presets button{border:1px solid var(--silver);background:#fff;border-radius:999px;padding:4px 12px;font-size:12px;color:var(--char);cursor:pointer}
+.presets button:hover{border-color:var(--red);color:var(--red)}
+.presets button.on{background:var(--char);color:#fff;border-color:var(--char)}
+
+.busy.gate .bs i{display:none}

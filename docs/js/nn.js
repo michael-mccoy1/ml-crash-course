@@ -9,21 +9,20 @@ L3.optsHTML = function(){
     optRange('nlr', 'Learning rate', 0.0005, 0.02, 0.0005, 0.003, 'Size of each weight update.') +
     optRange('nepochs', 'Epochs', 10, 120, 10, 40, 'Passes through the training set.') +
     '<div class="og"><label style="display:flex;gap:8px;align-items:center;font-size:.86rem;font-weight:600"><input type="checkbox" id="nearly" checked style="accent-color:#E1242A"> Keep the best epoch</label><div class="hint">Restore the epoch with the lowest validation loss.</div></div>' +
-    '<div class="og"><div class="ol">Network status</div><div class="status" id="nst">The network trains by itself when a step needs it.</div><div class="rbox" id="nres"></div><button type="button" class="btn ghost wide" id="ntrain" style="margin-top:8px">Watch it train</button></div>';
+    '<div class="og"><div class="ol">Last training</div><div class="rbox" id="nres"><div class="hint">Press Train in the workbench.</div></div></div>' + filterGroup();
 };
 function NP(){ return { layers: +$('nlayers').value, units: +$('nunits').value, drop: +$('ndrop').value, lr: +$('nlr').value, epochs: +$('nepochs').value, early: $('nearly').checked }; }
 var NN = { m: null, params: null, feats: null, prep: null, prepKey: null, hist: null, pred: null, best: 0, secs: null, sel: 0, act: null, r2: null, busy: false, sig: null };
-var NNLIVE = [], NNA = { promise: null };
-function nnSig(){ var p = NP(); return JSON.stringify([p.layers, p.units, p.drop, p.lr, p.epochs, p.early, activeFeats(), EP, filterOn() && FILT.apply ? FILT : 0]); }
+
+function nnSig(){ var p = NP(); return JSON.stringify([p.layers, p.units, p.drop, p.lr, p.epochs, p.early, activeFeats(), EP, filtKey()]); }
 function nnStale(){ return !NN.m || nnSig() !== NN.sig; }
-function nnResultsBox(){ var el = $('nres'); if (!el) return; if (!NN.m) { el.innerHTML = ''; return; } el.innerHTML = '<div class="rrow">Unseen R2<b>' + NN.r2.toFixed(2) + '</b></div><div class="rrow">Best epoch<b>' + NN.best + '</b></div><div class="rrow">Training time<b>' + fmtT(NN.secs) + '</b></div>' + (nnStale() ? '<div class="hint" style="color:#E1242A">Options changed. Retraining when a step needs the network.</div>' : ''); }
+function nnResultsBox(){ var el = $('nres'); if (!el) return; if (!NN.m) { el.innerHTML = '<div class="hint">Press Train in the workbench.</div>'; return; } el.innerHTML = '<div class="rrow">Unseen R2<b>' + NN.r2.toFixed(2) + '</b></div><div class="rrow">Best epoch<b>' + NN.best + '</b></div><div class="rrow">Training time<b>' + fmtT(NN.secs) + '</b></div>' + (nnStale() ? '<div class="hint" style="color:#E1242A">Options changed since this training.</div>' : ''); }
 var nTimer = null;
 L3.onOpts = function(root){
   var fire = function(){ clearTimeout(nTimer); nTimer = setTimeout(function(){ nnResultsBox(); L3.refresh(); }, 250); };
-  ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs'].forEach(function(id){ $(id).addEventListener('input', fire); }); $('nearly').addEventListener('change', fire);
-  $('ntrain').addEventListener('click', function(){ var s = L3.steps[3]; s.sec.scrollIntoView({ behavior: ANIM ? 'smooth' : 'auto', block: 'start' }); setTimeout(function(){ s.play(); }, ANIM ? 500 : 0); });
+  ['nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs'].forEach(function(id){ $(id).addEventListener('input', function(){ if (L3.live) L3.live(); fire(); }); }); $('nearly').addEventListener('change', function(){ if (L3.live) L3.live(); fire(); });
 };
-L3.onData = function(){ NN.m = null; NN.prepKey = null; nnResultsBox(); };
+L3.onData = function(){ NN.m = null; NN.prep = null; NN.pc = null; NN.prepKey = null; nnResultsBox(); };
 featListeners.push(function(){ if (L3.built) { nnResultsBox(); L3.refresh(); } });
 
 /* ---------- engine: a small multilayer perceptron written by hand (fast for these sizes) ---------- */
@@ -41,19 +40,19 @@ function mlpForward(m, X, off, A, masks, drop, r){
 }
 function mlpMSE(m, X, y, n, A){ var F = m.sizes[0], s = 0; for (var k = 0; k < n; k++) { var e = mlpForward(m, X, k * F, A, null, 0, null) - y[k]; s += e * e; } return s / n; }
 function mlpCopy(m){ return { sizes: m.sizes, W: m.W.map(function(w){ return new Float32Array(w); }), b: m.b.map(function(b){ return new Float32Array(b); }) }; }
-function nnPrep(){
-  var feats = activeFeats(), idx = activeTrain(), key = JSON.stringify([EP, feats, idx.length, filterOn() && FILT.apply ? FILT : 0]); if (NN.prepKey === key && NN.prep) return NN.prep;
+function nnPrep(f){
+  var feats = activeFeats(), idx = activeTrain(f), key = JSON.stringify([EP, feats, idx.length, filtKey(f)]); if (NN.prepKey === key && NN.pc) return NN.pc;
   var mu = {}, sd = {}; feats.forEach(function(f){ var v = idx.map(function(i){ return D.COL[f][i]; }); mu[f] = mean(v); sd[f] = Math.sqrt(mean(v.map(function(x){ return (x - mu[f]) * (x - mu[f]); }))) || 1; });
   var ymu = mean(idx.map(function(i){ return D.Y[i]; })), F = feats.length, rowOf = function(i){ return feats.map(function(f){ return clamp((D.COL[f][i] - mu[f]) / sd[f], -5, 5); }); };
   var sh = idx.slice(), r = rng(11); for (var a = sh.length - 1; a > 0; a--) { var j = Math.floor(r() * (a + 1)), t = sh[a]; sh[a] = sh[j]; sh[j] = t; }
   var nv = Math.round(sh.length * 0.15), va = sh.slice(0, nv), tn = sh.slice(nv);
   function pack(ix){ var X = new Float32Array(ix.length * F), y = new Float32Array(ix.length); ix.forEach(function(i, k){ var rw = rowOf(i); for (var q = 0; q < F; q++) X[k * F + q] = rw[q]; y[k] = D.Y[i] - ymu; }); return { X: X, y: y, n: ix.length }; }
   var all = new Float32Array(D.N * F); for (var i = 0; i < D.N; i++) { var rw = rowOf(i); for (var q = 0; q < F; q++) all[i * F + q] = rw[q]; }
-  NN.prep = { feats: feats, mu: mu, sd: sd, ymu: ymu, rowOf: rowOf, tn: tn, va: va, T: pack(tn), V: pack(va), all: all, F: F }; NN.prepKey = key; return NN.prep;
+  NN.pc = { feats: feats, mu: mu, sd: sd, ymu: ymu, rowOf: rowOf, tn: tn, va: va, T: pack(tn), V: pack(va), all: all, F: F }; NN.prepKey = key; return NN.pc;
 }
 function mlpPredictAll(m, P){ var A = mlpBuf(m.sizes), out = new Float64Array(D.N); for (var i = 0; i < D.N; i++) out[i] = mlpForward(m, P.all, i * P.F, A, null, 0, null) + P.ymu; return out; }
 async function nnTrain(o){
-  var P = nnPrep(), p = Object.assign(NP(), o.params || {}), sizes = netSizes(P.F, p.layers, p.units), m = mlpInit(sizes, 7 + p.layers * 13 + p.units), S = sizes, L = S.length - 1, r = rng(5 + p.units), tN = performance.now(), over = 0, sig = nnSig();
+  var P = nnPrep(o.filt), p = Object.assign(NP(), o.params || {}), sizes = netSizes(P.F, p.layers, p.units), m = mlpInit(sizes, 7 + p.layers * 13 + p.units), S = sizes, L = S.length - 1, r = rng(5 + p.units), tN = performance.now(), over = 0, sig = nnSig();
   if (o.keep) NN.busy = true;
   try {
     var A = mlpBuf(S), masks = S.slice(1, -1).map(function(n){ return new Float32Array(n); }), gW = m.W.map(function(w){ return new Float32Array(w.length); }), gB = m.b.map(function(b){ return new Float32Array(b.length); });
@@ -78,29 +77,18 @@ async function nnTrain(o){
       var ltr = mlpMSE(m, P.T.X, P.T.y, P.T.n, A), lva = mlpMSE(m, P.V.X, P.V.y, P.V.n, A); tr.push(ltr); va.push(lva);
       if (lva < bestV) { bestV = lva; bestEp = ep + 1; bestM = mlpCopy(m); }
       var cb0 = performance.now(), sObj = { tr: tr, va: va, best: bestEp, model: m, prep: P, epochs: p.epochs, params: p };
-      if (o.keep) NNLIVE.forEach(function(fn){ try { fn(ep, sObj); } catch (e) { console.error(e); } });
       if (o.onEpoch) await o.onEpoch(ep, sObj); else if (ep % 2 === 1) await tick(); over += performance.now() - cb0;
     }
     var secs = (performance.now() - tN - over) / 1000, fin = p.early && bestM ? bestM : m, pred = mlpPredictAll(fin, P);
     var res = { model: fin, hist: { tr: tr, va: va }, best: bestEp, secs: secs, pred: pred, r2: r2(D.TEST, pred), params: p, prep: P };
-    if (o.keep) { NN.m = fin; NN.hist = res.hist; NN.best = bestEp; NN.secs = secs; NN.pred = pred; NN.r2 = res.r2; NN.params = p; NN.feats = P.feats; NN.sig = sig; var ms = record('Neural network', P.feats, pred, secs); ms.params = p.layers + ' layers of ' + p.units + ', dropout ' + p.drop; NN.act = null; NN.sel = 0; nnResultsBox(); }
+    if (o.keep) { NN.m = fin; NN.prep = P; NN.hist = res.hist; NN.best = bestEp; NN.secs = secs; NN.pred = pred; NN.r2 = res.r2; NN.params = p; NN.feats = P.feats; NN.sig = sig; var ms = record('Neural network', P.feats, pred, secs); ms.params = p.layers + ' layers of ' + p.units + ', dropout ' + p.drop; NN.act = null; NN.sel = 0; nnResultsBox(); }
     return res;
   } finally { if (o.keep) NN.busy = false; }
 }
-function nnRun(){
-  if (NNA.promise) return NNA.promise;
-  NNA.promise = (async function(){
-    var st = $('nst'), waiting = function(){ return L3.steps.filter(function(s){ return s.needsNet && s.visible; }); };
-    try { await waitRelease(); await tick(); await nnTrain({ keep: true, onEpoch: async function(ep, s){ var t = 'Training your network: epoch ' + (ep + 1) + ' of ' + s.epochs; if (st) st.textContent = t; progress((ep + 1) / s.epochs); if (ep % 4 === 0) waiting().forEach(function(x){ x.api.busy(t); }); await new Promise(function(r){ setTimeout(r, ANIM ? 18 : 0); }); } }); if (st) st.textContent = 'Trained. Unseen R2 ' + NN.r2.toFixed(2) + ' in ' + fmtT(NN.secs); progress(1); }
-    finally { NNA.promise = null; }
-  })();
-  return NNA.promise;
-}
 async function nnReady(api){
-  for (var k = 0; k < 3; k++) { if (!nnStale()) { if (api) api.idle(); return true; } if (api) api.busy('Training your network'); await nnRun(); }
-  if (api) api.idle(); return !nnStale();
+  if (NN.m) { if (api) { api.idle(); api.stale(nnStale() ? 'Options changed since the last Train.' : ''); } return true; }
+  if (api) api.gate('Train the network in the workbench first.'); return false;
 }
-async function ensureNet(){ await nnReady(null); return NN; }
 function nnPredictRows(rows){ var m = NN.m, A = mlpBuf(m.sizes), F = m.sizes[0], flat = new Float32Array(rows.length * F); rows.forEach(function(rw, k){ for (var q = 0; q < F; q++) flat[k * F + q] = rw[q]; }); return rows.map(function(_, k){ return mlpForward(m, flat, k * F, A, null, 0, null) + NN.prep.ymu; }); }
 function nnActivations(i){ var m = NN.m, P = NN.prep, A = mlpBuf(m.sizes); mlpForward(m, P.all, i * P.F, A, null, 0, null); return A; }
 
@@ -127,15 +115,64 @@ function drawNetSVG(host, o){
   if (o.onPick) qsa('circle[data-pick]', host).forEach(function(c){ c.addEventListener('click', function(){ o.onPick(+c.dataset.pick); }); });
   return { xs: xs, pos: pos, shown: shown };
 }
-function lossChart(canvas, hist, best, upto){
+function lossChart(canvas, hist, best, upto, xmax){
   var n = upto === undefined ? hist.tr.length : upto, pts1 = [], pts2 = []; for (var i = 0; i < n; i++) { pts1.push([i + 1, hist.tr[i]]); pts2.push([i + 1, hist.va[i]]); }
-  var g = lineChart(canvas, [{ pts: pts1, color: C.char }, { pts: pts2, color: C.red }], { xl: 'epoch', yl: 'loss', y0: 0, x0: 1, x1: Math.max(2, n), xdec: 0, ydec: 2 }); if (best && g.sx && n >= best) { var x = g.x, X = g.sx(best); x.strokeStyle = C.dred; x.setLineDash([4, 4]); x.beginPath(); x.moveTo(X, g.box.t); x.lineTo(X, g.box.b); x.stroke(); x.setLineDash([]); x.fillStyle = C.dred; x.font = '600 11px Aptos, Segoe UI, sans-serif'; x.textAlign = X > g.w / 2 ? 'right' : 'left'; x.fillText('best epoch ' + best, X + (X > g.w / 2 ? -6 : 6), g.box.t + 12); } return g;
+  var g = lineChart(canvas, [{ pts: pts1, color: C.char }, { pts: pts2, color: C.red }], { xl: 'epoch', yl: 'loss', y0: 0, x0: 1, x1: Math.max(2, xmax || n), xdec: 0, ydec: 2 }); if (best && g.sx && n >= best) { var x = g.x, X = g.sx(best); x.strokeStyle = C.dred; x.setLineDash([4, 4]); x.beginPath(); x.moveTo(X, g.box.t); x.lineTo(X, g.box.b); x.stroke(); x.setLineDash([]); x.fillStyle = C.dred; x.font = '600 11px Aptos, Segoe UI, sans-serif'; x.textAlign = X > g.w / 2 ? 'right' : 'left'; x.fillText('best epoch ' + best, X + (X > g.w / 2 ? -6 : 6), g.box.t + 12); } return g;
 }
+
+/* ---------- workbench: set up a network, press Train ---------- */
+L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly'],
+  title: 'Set up a network, press Train, and watch it learn',
+  watch: 'The diagram follows your options as you drag them. Train starts from random weights and replays the training slowly: the weights change on the left while the error curve and the predictions on the right update every epoch.',
+  change: 'Drag the options, then press Train. Slow shows every epoch, Fast skips ahead.',
+  build: function(api){
+    var bb = benchBar(api);
+    var np = api.el('pn', 'left:28px;top:80px;width:456px;height:372px', '<h4>The network</h4><svg viewBox="0 0 432 318" width="432" height="318"></svg>');
+    var lp = api.el('pn', 'left:504px;top:80px;width:428px;height:178px', '<h4>Error per epoch (dark: training, red: validation)</h4><canvas width="404" height="140"></canvas>');
+    var sp = api.el('pn', 'left:504px;top:270px;width:428px;height:182px', '<h4>Predictions on unseen compounds</h4><canvas width="404" height="144"></canvas>');
+    var mn = api.el('pn', 'left:28px;top:462px;width:904px;height:56px;display:flex;align-items:center;font-size:14px;line-height:1.4', '<div class="mn"></div>');
+    var svg = qs('svg', np), running = false;
+    function fresh(){ return !!(NN.m && !nnStale()); }
+    function msg(t){ svg.innerHTML = '<text x="20" y="40" font-size="13" fill="' + C.red + '">' + t + '</text>'; }
+    function emptyCharts(p){ lineChart(qs('canvas', lp), [{ pts: [[1, 0], [Math.max(2, p.epochs), 1]], color: 'rgba(0,0,0,0)', nodot: true }], { xl: 'epoch', yl: 'error', x0: 1, x1: Math.max(2, p.epochs), y0: 0, xdec: 0, ydec: 2 }); scatterPV(qs('canvas', sp), new Float32Array(D.N), [], null); }
+    function picture(){
+      var f = activeFeats(), p = NP(); if (!f.length) { msg('Switch on at least one feature.'); return; }
+      if (fresh()) drawNetSVG(svg, { W: 432, H: 318, model: NN.m, feats: NN.feats, maxShow: 8, padL: 78, padR: 36 });
+      else drawNetSVG(svg, { W: 432, H: 318, sizes: netSizes(f.length, p.layers, p.units), feats: f, drop: p.drop, seed: 3, maxShow: 8, padL: 78, padR: 36 });
+    }
+    function note(){
+      var f = activeFeats(), p = NP(), sizes = netSizes(Math.max(1, f.length), p.layers, p.units), tot = 0; for (var q = 0; q < sizes.length - 1; q++) tot += sizes[q] * sizes[q + 1] + sizes[q + 1];
+      qs('.mn', mn).textContent = p.layers + ' hidden layer' + (p.layers > 1 ? 's' : '') + ' of ' + p.units + ' neurons, ' + tot.toLocaleString() + ' numbers to learn. Each epoch is one pass over the training compounds, nudging every weight by about ' + p.lr + ' per step. Dropout ' + p.drop + ' switches off that share of neurons at each step. ' + (p.early ? 'The best epoch on held-out training compounds is kept.' : 'The last epoch is kept.');
+    }
+    function render(){
+      var p = NP(); picture(); note();
+      if (fresh()) { lossChart(qs('canvas', lp), NN.hist, NN.best, undefined, NN.hist.tr.length); scatterPV(qs('canvas', sp), NN.pred, D.TEST, 'unseen R2 ' + fix(NN.r2, 2), { max: 320 }); api.stale(''); bb.say('Unseen R2 ' + fix(NN.r2, 2) + '. Best epoch ' + NN.best + '. Training took ' + fmtT(NN.secs) + '.'); }
+      else { emptyCharts(p); api.stale(NN.m ? 'Options changed. Press Train.' : ''); bb.say(NN.m ? '' : 'Ready. Press Train.'); }
+    }
+    async function train(){
+      if (running || NN.busy) return; if (!activeFeats().length) { bb.say('Switch on at least one feature.'); return; }
+      running = true; bb.btn.disabled = true; api.tok++; var tok = api.tok, p = NP(), per = 450 * speedMul(); api.stale('');
+      try {
+        api.busy('Preparing data'); await delay(30); nnPrep(); api.idle(); emptyCharts(p);
+        await nnTrain({ keep: true, onEpoch: async function(ep, s){
+          api.checkTok(tok); var pred = mlpPredictAll(s.model, s.prep);
+          drawNetSVG(svg, { W: 432, H: 318, model: s.model, feats: s.prep.feats, training: true, maxShow: 8, padL: 78, padR: 36 });
+          lossChart(qs('canvas', lp), { tr: s.tr, va: s.va }, 0, undefined, p.epochs); scatterPV(qs('canvas', sp), pred, D.TEST, 'epoch ' + (ep + 1) + ', R2 ' + fix(r2(D.TEST, pred), 2), { max: 320 });
+          bb.say('Epoch ' + (ep + 1) + ' of ' + p.epochs + '. Validation error ' + fix(s.va[ep], 3)); progress((ep + 1) / p.epochs);
+          if (per > 1) await api.sleep(per); else if (ep % 2) await tick();
+        } });
+      } catch (e) { if (!(e instanceof Cancel)) console.error(e); }
+      api.idle(); running = false; bb.btn.disabled = false; progress(1); nnResultsBox(); L3.refresh();
+    }
+    bb.btn.addEventListener('click', train);
+    L3.live = function(){ if (running) api.tok++; else render(); };
+    return { render: render };
+  } });
 
 /* ---------- N1: a neuron is a weighted sum ---------- */
 L3.add({ short: 'One neuron', title: 'A neuron is a weighted sum followed by a switch',
-  change: 'Press Play, then drag the weight and bias sliders inside the picture. Untick features in the options to change the inputs.',
-  watch: 'Inputs times weights, added to a bias, then ReLU turns negative totals into zero. Lines are red for positive contributions and grey for negative.',
+  change: 'Drag the weight and bias sliders inside the picture. Untick features in the options to change the inputs. Next compound picks another molecule.',
+  watch: 'Each input is multiplied by a weight, the products and a bias are added, and ReLU turns a negative total into zero. Red lines add to the total, grey lines subtract.',
   build: function(api){
     var cur = 0, feats = [], x = [0, 0, 0], w = [0.9, -0.6, 0.4], bias = 0.2, built = false;
     var svg = api.el('abs', 'left:0;top:0;width:960px;height:540px;pointer-events:none', '<svg viewBox="0 0 960 540" width="960" height="540"></svg>');
@@ -162,21 +199,13 @@ L3.add({ short: 'One neuron', title: 'A neuron is a weighted sum followed by a s
     qs('[data-next]', api.sbar).addEventListener('click', function(){ api.tok++; pickCmp(false); draw(); });
     function show(list, on){ list.forEach(function(e){ e.classList.toggle('on', on); }); }
     function render(){ pickCmp(built); built = true; show(rows, true); show(sl, true); show([bp, sum, rp, op], true); draw(); }
-    async function play(tok){ pickCmp(false); built = true; show(rows.concat(sl, [bp, sum, rp, op]), false); w = [0.9, -0.6, 0.4]; bias = 0.2; draw(); await api.sleep(300);
-      show(rows, true); await api.beat('A neuron receives numbers. Here are three features of one compound, rescaled so they are comparable.', 3400);
-      show(sl, true); await api.beat('Each input has a weight. A positive weight pushes the neuron up. A negative weight pushes it down.', 3400);
-      api.cap('Multiply each input by its weight. The contributions are drawn as lines: red adds, grey subtracts.'); await api.sleep(3400);
-      show([sum, bp], true); await api.beat('Add the contributions and a bias to get the total.', 3000);
-      show([rp, op], true); await api.beat('ReLU is a switch. A positive total passes through. A negative total becomes zero.', 3400);
-      api.cap('Now change a weight and watch the output respond.'); var w0 = w[0]; await api.anim(2400, function(t){ w[0] = lerp(w0, -w0, t); draw(); }); await api.sleep(1200); await api.anim(2000, function(t){ w[0] = lerp(-w0, w0, t); draw(); });
-      api.key('A network is many of these neurons wired together. Training finds good weights for all of them.'); }
-    return { render: render, play: play };
+    return { render: render };
   } });
 
 /* ---------- N2: layers and units ---------- */
-L3.add({ short: 'Layers and neurons', title: 'Layers and neurons set how much the network can learn',
-  change: 'Drag Hidden layers, Neurons per layer and Dropout in the options, or press Play.',
-  watch: 'The diagram follows your settings. The count on the right is every weight and bias the network must learn.',
+L3.add({ short: 'Layers and neurons', title: 'Layers and neurons set how many numbers the network must learn',
+  change: 'Drag Hidden layers, Neurons per layer and Dropout in the options.',
+  watch: 'The diagram follows your settings. The table on the right counts every weight and bias. Dashed circles are neurons switched off by dropout.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<svg viewBox="0 0 620 380" width="620" height="380"></svg>');
     var cp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>Parameters to learn</h4><div class="big pc" style="color:' + C.red + '">0</div><div class="note" style="font-size:12px;color:#6B7280;margin-bottom:8px">weights and biases</div><div class="pl" style="font-size:12px"></div>');
@@ -185,19 +214,13 @@ L3.add({ short: 'Layers and neurons', title: 'Layers and neurons set how much th
       var rows = '', tot = 0; for (var q = 0; q < sizes.length - 1; q++) { var wts = sizes[q] * sizes[q + 1], bs = sizes[q + 1]; tot += wts + bs; rows += '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #D1D8E0;padding:4px 0"><span>' + (q === 0 ? 'inputs' : 'hidden ' + q) + ' to ' + (q === sizes.length - 2 ? 'output' : 'hidden ' + (q + 1)) + '</span><b>' + (wts + bs).toLocaleString() + '</b></div><div style="font-size:11px;color:#6B7280;margin-bottom:4px">' + sizes[q] + ' by ' + sizes[q + 1] + ' weights plus ' + bs + ' biases</div>'; }
       qs('.pl', cp).innerHTML = rows; qs('.pc', cp).textContent = tot.toLocaleString(); }
     function render(){ draw(); }
-    async function play(tok){ var base = NP(); function set(id, v){ $(id).value = v; $('o-' + id).textContent = v; } set('nlayers', 1); set('nunits', 8); set('ndrop', 0); seed = 5; draw(); await api.beat('One hidden layer of 8 neurons: the smallest useful network.', 3000);
-      for (var l = 2; l <= 4; l++) { set('nlayers', l); draw(); api.cap('Hidden layers: ' + l + '. Each added layer can combine the features found by the layer before it.'); await api.sleep(2400); }
-      set('nunits', 32); draw(); api.cap('32 neurons per layer: more neurons let each layer learn more patterns at once, and the parameter count jumps.'); await api.sleep(3200);
-      set('nunits', 128); draw(); api.cap('128 neurons per layer. This is now a large network for a few thousand compounds.'); await api.sleep(3200);
-      set('ndrop', 0.3); draw(); api.cap('Dropout 0.3: dashed neurons are switched off for one training step. Different neurons are dropped each step.'); await api.sleep(3400);
-      set('nlayers', base.layers); set('nunits', base.units); set('ndrop', base.drop); draw(); api.key('More layers and neurons mean more capacity. Capacity needs enough data to constrain it, or the network overfits.'); }
-    return { render: render, play: play };
+    return { render: render };
   } });
 
 /* ---------- N3: learning rate ---------- */
 L3.add({ short: 'Learning rate', title: 'The learning rate sets the size of each step downhill',
-  change: 'Drag Learning rate and Epochs in the options. Epochs is the number of steps taken. Then press Play.',
-  watch: 'The colours show how wrong a one-neuron model is for each pair of weights. Training walks downhill. Three step sizes are compared, and yours is the red path.',
+  change: 'Drag Learning rate and Epochs in the options, or drag Steps taken under the stage to watch the paths grow.',
+  watch: 'Colour shows the error of a one-neuron model for each pair of weights. Training walks downhill. The red path uses your learning rate.',
   build: function(api){
     var mp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Error for every pair of weights, one neuron on one feature</h4><canvas width="540" height="350"></canvas>');
     var sp = api.el('pn', 'left:608px;top:28px;width:324px;height:408px', '<h4>Three step sizes</h4><div class="lr"></div>');
@@ -217,59 +240,32 @@ L3.add({ short: 'Learning rate', title: 'The learning rate sets the size of each
     function draw(upto){ setup(); var g = drawHeat(), x = g.x, opt = toPx(g, heat.opt[0], heat.opt[1]); x.fillStyle = '#fff'; x.strokeStyle = C.char; x.lineWidth = 2.4; x.beginPath(); x.arc(opt[0], opt[1], 7, 0, 6.3); x.fill(); x.stroke(); x.fillStyle = C.char; x.font = '700 12px Aptos, Segoe UI, sans-serif'; x.fillText('best weights', opt[0] + 11, opt[1] + 4); var st0 = toPx(g, -1.9, 1.6); x.fillStyle = C.char; x.beginPath(); x.arc(st0[0], st0[1], 5, 0, 6.3); x.fill(); x.font = '600 11px Aptos, Segoe UI, sans-serif'; x.fillText('start', st0[0] + 8, st0[1] - 6);
       paths.forEach(function(p){ var n = Math.min(upto, p.pts.length - 1); x.strokeStyle = p.s.c; x.lineWidth = 2.6; x.lineJoin = 'round'; x.beginPath(); for (var k = 0; k <= n; k++) { var q = toPx(g, clamp(p.pts[k][0], -4, 4), clamp(p.pts[k][1], -4, 4)); k ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1]); } x.stroke(); var e = toPx(g, clamp(p.pts[n][0], -4, 4), clamp(p.pts[n][1], -4, 4)); x.fillStyle = p.s.c; x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.arc(e[0], e[1], 6, 0, 6.3); x.fill(); x.stroke(); });
       qs('.lr', sp).innerHTML = paths.map(function(p){ var n = Math.min(upto, p.pts.length - 1), L = p.pts[n][2]; return '<div style="margin:12px 0;border-left:4px solid ' + p.s.c + ';padding-left:10px"><b>' + p.s.n + '</b> <span class="note" style="font-size:12px;color:#6B7280">step size ' + p.s.lr.toFixed(2) + (p.s.n === 'Yours' ? ' (learning rate ' + $('nlr').value + ')' : '') + '</span><div style="font-size:12.5px">after ' + n + ' of ' + NSTEP + ' steps, error <b>' + (L > 99 ? 'exploding' : L.toFixed(2)) + '</b></div></div>'; }).join('') + '<p style="font-size:12px;color:#6B7280;margin-top:10px">A simplified picture: one neuron with two weights and plain gradient descent. Real networks have thousands of weights and use Adam, but the step-size trade-off is the same.</p>'; }
-    function render(){ setup(); draw(NSTEP); }
-    async function play(tok){ setup(); draw(0); await api.beat('The network starts with arbitrary weights. Every pair of weights has an error, shown as a colour. White is low error.', 3400);
-      api.cap('Training steps downhill. The step size is the learning rate. The number of steps is the number of epochs.'); await api.anim(ANIM ? 5200 : 1, function(t){ draw(Math.floor(t * NSTEP)); }); draw(NSTEP);
-      api.cap('A small step is safe but slow. Your step lands near the bottom if it is well chosen. A step that is too large overshoots and bounces out.'); await api.sleep(4200); api.key('Too small wastes time. Too large never settles. Change the learning rate and the epochs in the options and watch the paths move.'); }
-    return { render: render, play: play };
-  } });
-
-/* ---------- N4: live training ---------- */
-L3.add({ short: 'Training', title: 'Training repeats: predict, measure the error, nudge every weight',
-  change: 'Change any option and the network retrains here, live. Or press Play for a slower, narrated run.',
-  watch: 'Left: the weights change as the network learns. Top right: error on the studied compounds (dark) and on a validation set (red). Bottom right: predictions on unseen compounds.',
-  auto: false,
-  build: function(api){
-    var np = api.el('pn', 'left:28px;top:28px;width:450px;height:408px', '<svg viewBox="0 0 430 380" width="430" height="380"></svg>');
-    var lp = api.el('pn', 'left:498px;top:28px;width:434px;height:206px', '<h4>Error per epoch</h4><canvas width="412" height="160"></canvas>');
-    var sp = api.el('pn', 'left:498px;top:246px;width:434px;height:190px', '<h4>Unseen compounds</h4><canvas width="412" height="146"></canvas>');
-    var tmp = null, me = L3.steps.length;
-    function draw(model, feats, training){ drawNetSVG(qs('svg', np), { W: 430, H: 380, model: model, feats: feats, training: training, maxShow: 8, padL: 78, padR: 40 }); }
-    NNLIVE.push(function(ep, s){ var st = L3.steps[3]; if (!st || !st.visible) return; if (!tmp || tmp.length !== D.N) tmp = new Float64Array(D.N);
-      if (ep % 2 === 0 || ep === s.epochs - 1) { lossChart(qs('canvas', lp), { tr: s.tr, va: s.va }, 0); tmp = mlpPredictAll(s.model, s.prep); scatterPV(qs('canvas', sp), tmp, D.TEST, 'epoch ' + (ep + 1) + ', R2 ' + r2(D.TEST, tmp).toFixed(2), { max: 200 }); draw(s.model, s.prep.feats, true); } });
-    function showFinal(){ draw(NN.m, NN.feats, false); lossChart(qs('canvas', lp), NN.hist, NN.best); scatterPV(qs('canvas', sp), NN.pred, D.TEST, 'unseen R2 ' + NN.r2.toFixed(2), { max: 200 }); }
-    async function render(){ if (!activeFeats().length) { qs('svg', np).innerHTML = '<text x="20" y="40" font-size="13" fill="' + C.red + '">Switch on at least one feature.</text>'; return; }
-      if (nnStale()) { var st = $('nst'); if (st) st.textContent = 'Training your network'; await nnReady(null); } if (!nnStale()) showFinal(); }
-    async function play(tok){
-      if (NN.busy || NNA.promise) return; var btn = $('ntrain'); btn.disabled = true; var st = $('nst'), p = NP(), f = activeFeats(); if (!f.length) { st.textContent = 'Tick at least one feature.'; btn.disabled = false; return; }
-      try { nnPrep(); api.cap('The network starts with random weights, so its predictions are poor.');
-        var res = await nnTrain({ keep: true, onEpoch: async function(ep, s){ api.checkTok(tok); st.textContent = 'Epoch ' + (ep + 1) + ' of ' + p.epochs; progress((ep + 1) / p.epochs);
-          if (ep === 0) api.cap('Epoch 1: one pass through the studied compounds. The error drops quickly at first.'); if (ep === Math.floor(p.epochs * 0.2)) api.cap('The error curve flattens as the easy patterns are learned.'); if (ep === Math.floor(p.epochs * 0.6)) api.cap('If the red validation curve turns upward while the dark one keeps falling, the network is memorising.'); await new Promise(function(r){ setTimeout(r, ANIM ? 45 : 0); }); } });
-        showFinal(); st.textContent = 'Done. Unseen R2 ' + res.r2.toFixed(2); api.cap('Training stopped. Best epoch ' + res.best + (p.early ? ', and those weights were restored.' : '.')); progress(1); await api.sleep(3200); api.key('Training lowers the error on studied compounds. Only the unseen score tells you whether it generalises.'); L3.refresh(); }
-      catch (e) { if (!(e instanceof Cancel)) { st.textContent = 'Error: ' + e.message; console.error(e); } }
-      btn.disabled = false; }
-    return { render: render, play: play };
+    var sc = api.addControl('Steps taken <input type="range" min="0" max="120" step="1" value="120" style="width:240px"><b class="sv"></b>'), ss = qs('input', sc), atEnd = true;
+    ss.addEventListener('input', function(){ atEnd = +ss.value >= NSTEP; draw(+ss.value); qs('.sv', sc).textContent = ss.value; });
+    function render(){ setup(); ss.max = NSTEP; if (atEnd) ss.value = NSTEP; draw(+ss.value); qs('.sv', sc).textContent = ss.value; }
+    return { render: render };
   } });
 
 /* ---------- N5: dropout and early stopping ---------- */
-L3.add({ short: 'Dropout and early stopping', title: 'Dropout and the best epoch protect against overfitting',
-  change: 'Drag Dropout, Epochs, Neurons per layer or Learning rate in the options. The comparison reruns by itself.',
-  watch: 'Validation error for a network with no dropout and one with your dropout. The dashed line marks the best epoch of each.',
+L3.add({ short: 'Dropout and early stopping', title: 'Dropout and the best epoch guard against overfitting',
+  change: 'Set Dropout and the other options, then press Run comparison under the stage.',
+  watch: 'Two networks train side by side, one without dropout and one with yours. The curves are validation error. Dashed lines mark each network\'s best epoch.',
   auto: false,
   build: function(api){
     var np = api.el('pn', 'left:28px;top:28px;width:360px;height:408px', '<h4>Neurons switched off in each training step</h4><svg viewBox="0 0 340 330" width="340" height="330"></svg><div class="dn note" style="font-size:12px;color:#6B7280"></div>');
     var cp = api.el('pn', 'left:408px;top:28px;width:524px;height:290px', '<h4>Validation error per epoch</h4><canvas width="502" height="240"></canvas>');
     var rp = api.el('pn', 'left:408px;top:330px;width:524px;height:106px', '<div class="cr" style="font-size:13px;color:#4a4f5a">Preparing the comparison.</div>');
-    var ctl = api.addControl('<button type="button" class="btn sm" data-run>Run comparison again</button>'); var cmp = null, running = false, flick = null;
+    var ctl = api.addControl('<button type="button" class="btn sm" data-run>Run comparison</button> <button type="button" class="btn sm ghost" data-mask>New dropout pattern</button>'); var cmp = null, running = false, seedN = 5;
     function sig(){ var p = NP(); return JSON.stringify([p.layers, p.units, p.drop, p.lr, Math.min(p.epochs, 60), activeFeats(), EP]); }
     function maskDraw(seed){ var p = NP(), f = activeFeats(); if (!f.length) return; drawNetSVG(qs('svg', np), { W: 340, H: 330, sizes: netSizes(f.length, p.layers, p.units), feats: f, drop: p.drop, seed: seed, flow: true, maxShow: 8, padL: 70, padR: 30, noLabels: true }); qs('.dn', np).textContent = 'Dropout ' + p.drop + ': about ' + Math.round(p.drop * 100) + '% of hidden neurons are switched off at each step. Dashed circles are off.'; }
     function drawCmp(){ if (!cmp) { cv(qs('canvas', cp)); return; } var a = cmp.a, b = cmp.b, n = Math.max(a.hist.va.length, b.hist.va.length), g = lineChart(qs('canvas', cp), [{ pts: a.hist.va.map(function(v, i){ return [i + 1, v]; }), color: C.char, nodot: true, label: 'no dropout' }, { pts: b.hist.va.map(function(v, i){ return [i + 1, v]; }), color: C.red, nodot: true, label: 'dropout ' + cmp.p.drop }], { xl: 'epoch', yl: 'validation error', x0: 1, x1: n, y0: 0, xdec: 0, ydec: 2 }), x = g.x;
       [[a, C.char], [b, C.red]].forEach(function(r){ var X = g.sx(r[0].best); x.strokeStyle = r[1]; x.setLineDash([4, 4]); x.beginPath(); x.moveTo(X, g.box.t); x.lineTo(X, g.box.b); x.stroke(); x.setLineDash([]); }); }
-    function summary(){ if (!cmp) return; var a = cmp.a, b = cmp.b; qs('.cr', rp).innerHTML = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px"><div><div class="lbl">No dropout</div><div style="font-size:13px">best epoch <b>' + a.best + '</b>, unseen R2 <b>' + a.r2.toFixed(2) + '</b></div></div><div><div class="lbl" style="color:' + C.red + '">Dropout ' + cmp.p.drop + '</div><div style="font-size:13px">best epoch <b>' + b.best + '</b>, unseen R2 <b>' + b.r2.toFixed(2) + '</b></div></div></div><p style="font-size:12px;color:#6B7280;margin-top:6px">Both networks restore their best epoch. Without that, the last epoch would score lower once validation error has turned upward.</p>'; }
+    function summary(){ if (!cmp) { qs('.cr', rp).innerHTML = '<span class="note">Press Run comparison. It trains two networks for up to 60 epochs.</span>'; return; } var a = cmp.a, b = cmp.b; qs('.cr', rp).innerHTML = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px"><div><div class="lbl">No dropout</div><div style="font-size:13px">best epoch <b>' + a.best + '</b>, unseen R2 <b>' + a.r2.toFixed(2) + '</b></div></div><div><div class="lbl" style="color:' + C.red + '">Dropout ' + cmp.p.drop + '</div><div style="font-size:13px">best epoch <b>' + b.best + '</b>, unseen R2 <b>' + b.r2.toFixed(2) + '</b></div></div></div><p style="font-size:12px;color:#6B7280;margin-top:6px">Both networks restore their best epoch. Without that, the last epoch would score lower once validation error has turned upward.</p>'; }
     async function run(){ if (running) return; running = true; var btn = qs('[data-run]', ctl); btn.disabled = true; var p = NP(), st = qs('.cr', rp); if (!activeFeats().length) { st.textContent = 'Tick at least one feature.'; btn.disabled = false; running = false; return; }
-      var want = sig(); p.epochs = Math.min(p.epochs, 60); api.busy('Training a network without dropout'); progress(0.2); await tick(); var a = await nnTrain({ params: Object.assign({}, p, { drop: 0 }) }); api.busy('Training a network with dropout ' + p.drop); progress(0.6); await tick(); var b = await nnTrain({ params: p }); cmp = { a: a, b: b, p: p, sig: want }; api.idle(); progress(1); drawCmp(); summary(); btn.disabled = false; running = false; if (sig() !== want) run(); }
-    qs('[data-run]', ctl).addEventListener('click', function(){ api.tok++; api.clearTexts(); cmp = null; run().then(function(){ api.cap('The dashed lines mark each network\'s best epoch. Dropout usually keeps the validation error lower for longer.'); }); });
-    function render(){ maskDraw(5); drawCmp(); summary(); if (!running && (!cmp || cmp.sig !== sig())) run(); }
-    async function play(tok){ var s = 5; maskDraw(s); api.cap('At each training step a random set of neurons is switched off. The network cannot lean on any single neuron.'); for (var k = 0; k < 7; k++) { s++; maskDraw(s); await api.sleep(900); } api.cap('The comparison below retrains two networks, one without dropout and one with your setting.'); await api.sleep(2200); api.key('Dropout trades some training accuracy for a network that generalises. Keeping the best epoch adds a second safeguard.'); }
-    return { render: render, play: play };
+      var want = sig(); p.epochs = Math.min(p.epochs, 60); api.busy('Training a network without dropout'); progress(0.2); await tick(); var a = await nnTrain({ params: Object.assign({}, p, { drop: 0 }) }); api.busy('Training a network with dropout ' + p.drop); progress(0.6); await tick(); var b = await nnTrain({ params: p }); cmp = { a: a, b: b, p: p, sig: want }; api.idle(); progress(1); drawCmp(); summary(); btn.disabled = false; running = false; render(); }
+    qs('[data-run]', ctl).addEventListener('click', function(){ api.tok++; cmp = null; run(); }); qs('[data-mask]', ctl).addEventListener('click', function(){ seedN++; maskDraw(seedN); });
+    function render(){ maskDraw(seedN); drawCmp(); summary(); api.stale(cmp && cmp.sig !== sig() ? 'Options changed. Run the comparison again.' : ''); }
+    return { render: render };
   } });
+
+L3.add(filterStepDef('nn'));
