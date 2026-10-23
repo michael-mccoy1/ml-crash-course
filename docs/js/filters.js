@@ -111,7 +111,7 @@ function filterStepDef(kind){
   var nn = kind === 'nn', what = nn ? 'a neural network' : 'a gradient boosting model';
   return { short: 'Filtering the data', uses: nn ? ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'nepochs'] : ['endpoint', 'features', 'filters'],
     title: 'Remove compounds, then compare scores',
-    watch: 'Filtering removes compounds from training. Grey bars on the left show which go. The middle chart compares the score without a filter (grey) and with it (red). The right chart shows the new predictions.',
+    watch: 'Filtering means removing some compounds from training before the model learns. You can drop compounds at the assay floor, outliers (values far from the rest, counted in standard deviations, SD) or molecules outside a size range. Grey bars on the left show which compounds are removed. The middle chart compares unseen R2 without a filter (grey) and with it (red). The right chart shows the new predictions.',
     change: 'Click a preset above the charts.',
     build: function(api){
       var pr = presetBar(api, 18);
@@ -144,7 +144,7 @@ function filterStepDef(kind){
 function passRange(d, i, f){ f = f || FILT; if (f.mw && (d.COL.MW[i] < f.mw[0] || d.COL.MW[i] > f.mw[1])) return false; if (f.lp && (d.COL.logP[i] < f.lp[0] || d.COL.logP[i] > f.lp[1])) return false; return true; }
 function gptFilterStep(){
   return { short: 'Filtering the data', uses: ['filters', 'gsteps'], title: 'Filter which molecules the GPT reads',
-    watch: 'The GPT only reads molecules, never lab values, so only the weight and logP ranges apply. Narrow a range and the molecules it writes shift to match.',
+    watch: 'A GPT learns only from the molecule text, never from lab values, so only the molecular weight and logP ranges apply here. Narrow a range, retrain the GPT, and the molecules it writes shift to match what it read. The charts compare the molecules it was shown with the molecules it wrote.',
     change: 'Set Minimum MW or Maximum MW in the options panel, press Train in the GPT workbench, then return here.',
     build: function(api){
       var P1 = api.el('pn', 'left:28px;top:28px;width:288px;height:408px', '<h4>Molecular weight of the corpus</h4><canvas width="264" height="250"></canvas><div class="f1 nums" style="font-size:12.5px;margin-top:8px"></div>');
@@ -171,7 +171,7 @@ function gptFilterStep(){
 /* ---------- data steps for the first lesson ---------- */
 function targetStepDef(){
   return { short: 'The target', uses: ['endpoint', 'filters'], title: 'The values we want to predict',
-    watch: 'Each bar counts compounds with a value in that range. The tall bar at the far left is the assay floor: compounds too stable to measure, all set to the lowest value the test can report.',
+    watch: 'The target is the value we want the model to predict. Each bar counts compounds whose value falls in that range. In HLM clearance, the tall bar at the far left is the assay floor. These compounds are too stable for the test to measure, so all of them are set to the lowest value it can report. They are censored: the lab knows only that the value is below a limit.',
     change: 'Switch the endpoint to logD to compare, then set a filter. Grey bars are the compounds the filter removes.',
     build: function(api){
       var plot = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>Measured values of the training compounds</h4><canvas width="576" height="350"></canvas>');
@@ -189,7 +189,7 @@ function censorStepDef(){
   var OPTS = [['Keep them all', 'One model learns from every training compound, including those at the assay floor.'], ['Drop them from training', 'The model learns only from compounds that were actually measured.'], ['Two models', 'One model guesses whether a compound is at the floor. A second model predicts the value for the rest.']];
   var sel = 0;
   return { short: 'Handling censoring', uses: ['endpoint', 'features'], title: 'Three ways to treat values stuck at the assay floor',
-    watch: 'Compounds at the assay floor have no real value, only "below the limit". They are called censored. Each card trains the model a different way. The unseen set holds compounds with real values and compounds at the floor. Each card scores both: the left bar counts all of them, the right bar only those with a real value.',
+    watch: 'Censored means the lab knew only that a value was below the assay limit, not what it was. About 31% of the HLM compounds are censored. There are three ways to treat them, and each card trains a model one way. The unseen set holds compounds with real values and compounds at the floor. The left bar scores all of them. The right bar scores only the compounds with a real value.',
     change: 'Click a card to see its predictions on the right.',
     build: function(api){
       var cards = api.el('abs', 'left:28px;top:28px;width:540px;height:410px', ''), sp = api.el('pn', 'left:588px;top:28px;width:344px;height:410px', '<h4 class="sh2"></h4><canvas width="320" height="270"></canvas><div class="lg" style="font-size:12px;line-height:1.5;margin-top:6px"></div>');
@@ -257,7 +257,7 @@ function seedStepDef(kind){
   var nn = kind === 'nn', K = nn ? 6 : 8, cache = {};
   return { short: 'Seeds and ensembles', uses: nn ? ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'ndrop', 'nlr'] : ['endpoint', 'features', 'filters', 'tfdepth'],
     title: 'Seeds and ensembles: smoothing out luck',
-    watch: 'A seed is the number that starts a model\'s random choices' + (nn ? ', such as its starting weights' : ', such as which compounds each tree sees') + '. Run the same model with different seeds and the score moves a little. An ensemble averages several runs of the same model, which smooths out that luck. ' + (nn ? 'Each run is a network with your options.' : 'Each run here is a small random forest of 15 trees.'),
+    watch: 'Training uses random choices, such as ' + (nn ? 'the starting weights' : 'which compounds each tree sees') + '. The seed is the number that starts them. Change the seed and the same model gives a slightly different score. An ensemble averages the predictions of several runs of the same model, which smooths out that luck. ' + (nn ? 'Each run is a network with your options.' : 'Each run here is a small random forest of 15 trees.'),
     change: 'Press Run seeds below the plot, then drag Runs averaged.',
     build: function(api){
       var cp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Unseen R2 of each run, and of the average of the first runs</h4><canvas width="536" height="330"></canvas><div class="note" style="font-size:12px;margin-top:4px">Grey bars: single runs. Red line: average of the first runs. Dashed: mean of the single runs.</div>');

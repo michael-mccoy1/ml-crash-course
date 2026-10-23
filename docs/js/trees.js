@@ -68,7 +68,7 @@ function glyphTree(x0, y0, w, h, depth, seed, lit){
 }
 L2.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr'],
   title: 'Build a model, press Train, and watch it fit',
-  watch: 'A tree is a flowchart of yes or no questions. A forest averages many trees. Boosting builds trees one after another, each fixing the last one\'s mistakes.',
+  watch: 'A decision tree is a flowchart of yes or no questions about a compound. A random forest trains many trees, each on a different random draw of the compounds, and averages them. Gradient boosting builds small trees one after another, each fixing the mistakes the earlier ones left. Pick a type, set its options in the options panel, then press Train. The red curve is the score on unseen compounds.',
   change: 'Pick a model type, set its options in the options panel, then press Train.',
   build: function(api){
     var bb = benchBar(api, { leftHTML: '<div class="seg mode" data-mode>' + [['tree', 'Decision tree'], ['forest', 'Random forest'], ['boost', 'Gradient boosting']].map(function(it){ return '<button type="button" data-v="' + it[0] + '"' + (it[0] === TB.mode ? ' class="on"' : '') + '>' + it[1] + '</button>'; }).join('') + '</div>' });
@@ -155,7 +155,7 @@ L2.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filter
 /* ---------- T1: how a tree chooses a question ---------- */
 L2.add({ short: 'Choosing a question', title: 'A tree asks one question to split compounds into two groups',
   change: 'Drag across the plot to move the cut, then press Find the best cut.',
-  watch: 'Each dot is a compound. A tree splits them with one cut. Each side predicts its own average, the short horizontal line. A good cut leaves the dots close to their line.',
+  watch: 'A tree starts with all compounds in one group and asks one question to split them in two, such as "is logP below 2.9?". Each group predicts its own average, the short horizontal line. A good question leaves the dots close to their line. The miss score below measures how far the dots sit from their group\'s line, so lower is better.',
   build: function(api){
     var plot = api.el('pn', 'left:28px;top:28px;width:580px;height:408px', '<h4>Each dot is one training compound</h4><canvas width="556" height="346"></canvas>');
     var tp = api.el('pn', 'left:628px;top:28px;width:304px;height:272px', '<div class="qq" style="font-size:13px;line-height:1.45"></div>');
@@ -196,7 +196,7 @@ L2.add({ short: 'Choosing a question', title: 'A tree asks one question to split
 /* ---------- T3: send a compound down the tree ---------- */
 L2.add({ short: 'One compound', title: 'Follow one compound down the tree',
   change: 'Press Next compound.',
-  watch: 'A compound follows yes or no answers down the tree to a box at the bottom, called a leaf. The leaf\'s average is the prediction.',
+  watch: 'Once a tree is built, a compound is sent down it. At each box it answers one yes or no question and takes the matching branch. It ends in a box at the bottom called a leaf. The prediction is the average lab value of the training compounds that ended up in that leaf.',
   build: function(api){
     var cur = null;
     var sp = api.el('pn', 'left:28px;top:28px;width:236px;height:196px', '<h4>Compound</h4><div class="struct" style="height:156px"></div>');
@@ -222,7 +222,7 @@ function fixFeat(f, v){ return fmtFeat(f, v); }
 /* ---------- T4: forest ---------- */
 L2.add({ short: 'Forest', title: 'A forest averages many trees',
   change: 'Drag Forest: number of trees in the options panel. Press Next compound for another molecule.',
-  watch: 'Each grey dot is one tree\'s guess for the same compound. The red line is their average, the forest\'s answer.',
+  watch: 'A random forest is many trees, each trained on a different random draw of the compounds, so each tree is a little different. To predict, every tree gives its own answer and the forest returns the average. Each grey dot is one tree\'s answer for the same compound. The red line is their average. The charts show how the score changes with more trees and with deeper trees.',
   build: function(api){
     var cur = null;
     var sp = api.el('pn', 'left:28px;top:28px;width:200px;height:230px', '<h4>Compound</h4><div class="struct" style="height:190px"></div>');
@@ -248,7 +248,7 @@ L2.add({ short: 'Forest', title: 'A forest averages many trees',
 /* ---------- T5: boosting ---------- */
 L2.add({ short: 'Boosting', title: 'Boosting fixes mistakes a little at a time',
   change: 'Drag Round below the plot. Change Boosting learning rate in the options panel.',
-  watch: 'Each new tree fixes what the earlier ones got wrong. The dots move toward the diagonal as trees are added.',
+  watch: 'Boosting builds small trees one after another. The first tree makes a rough prediction. Each next tree is trained on the mistakes left so far, and its correction is added with a small weight. The learning rate is that weight: a small one adds corrections slowly and carefully. The dots move toward the diagonal as trees are added.',
   build: function(api){
     var sp = api.el('pn', 'left:28px;top:28px;width:420px;height:408px', '<h4>Predicted against measured, unseen compounds</h4><canvas width="398" height="352"></canvas>');
     var cp = api.el('pn', 'left:468px;top:28px;width:464px;height:300px', '<h4>Unseen R2 against rounds</h4><canvas width="442" height="250"></canvas>');
@@ -265,7 +265,7 @@ L2.add({ short: 'Boosting', title: 'Boosting fixes mistakes a little at a time',
 /* ---------- T6: which features matter ---------- */
 L2.add({ short: 'Which features matter', title: 'Which features the model relies on',
   change: 'Untick a feature in the options panel.',
-  watch: 'Left: how much each feature helped the trees. Right: how much the score drops without it.',
+  watch: 'Feature importance asks which features the model relies on. Left: split gain, how much each feature reduced the miss score across all the questions that used it. Right: ablation, the drop in unseen R2 when the model is trained again without that feature. The two can disagree, because a correlated feature can take over the work of a missing one.',
   build: function(api){
     var lp = api.el('pn', 'left:28px;top:28px;width:440px;height:408px', '<h4>Split gain inside the boosted trees</h4><div class="ib"></div>');
     var rp = api.el('pn', 'left:488px;top:28px;width:444px;height:408px', '<h4>Change in unseen R2 when a feature is removed</h4><div class="ab"></div>');
@@ -282,7 +282,7 @@ L2.add(filterStepDef('trees'));
 /* ---------- results ---------- */
 L2.add({ short: 'Results', title: 'Score and fit time of each tree model',
   change: 'Train a model type in the workbench to replace its card.',
-  watch: 'Score and fit time of the three tree models. Cards start with the current options and are replaced when you train a model.',
+  watch: 'This step compares the three tree models on unseen R2 and on fit time, the seconds taken to train in your browser. Each card starts with the current options and is replaced by your own result when you train that model in the workbench.',
   build: function(api){
     var cards = [0, 1, 2].map(function(k){ return api.el('abs', 'left:' + (28 + k * 307) + 'px;top:28px;width:290px;height:150px', ''); });
     var tp = api.el('pn', 'left:28px;top:196px;width:904px;height:240px', '<h4>Fit time in your browser</h4><div class="tm"></div>');
@@ -302,7 +302,7 @@ L2.add({ short: 'Results', title: 'Score and fit time of each tree model',
 /* ---------- all three tree types side by side ---------- */
 L2.add({ short: 'Is it useful', uses: ['endpoint', 'features', 'filters', 'tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr'],
   title: 'All three side by side',
-  watch: 'Each plot fits one feature with a different model, using the options panel settings. The tree predicts in blocks. The forest smooths them. Boosting follows the dots most closely. Outside the data all three go flat, while the dashed straight line keeps going.',
+  watch: 'Each plot fits one feature on its own, using the options panel settings, and draws the model\'s prediction as a line through the compounds. The tree predicts in blocks. The forest smooths the blocks. Boosting follows the dots most closely. Outside the range of the data all three go flat, while the dashed straight line keeps going.',
   change: 'Click any plot to compare the three predictions at that point. Pick another feature below the plots.',
   build: function(api){
     var KINDS = [['tree', 'Decision tree', 'Quick and readable. Predicts in blocks and only repeats values it has seen.'], ['forest', 'Random forest', 'Steadier than one tree. Smoother, but still flat outside the data.'], ['boost', 'Gradient boosting', 'Usually the most accurate on tables like this. Fits closely, so watch for overfitting.']];

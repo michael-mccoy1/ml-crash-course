@@ -8,7 +8,7 @@ function nnAct(i){
 /* ---------- N6: one compound through the trained network ---------- */
 L3.add({ short: 'One compound', title: 'Follow one compound through the trained network',
   change: 'Press Next compound.',
-  watch: 'Darker red means a neuron is more active.',
+  watch: 'This is a trained network. One compound enters on the left as feature numbers. Each neuron adds up its weighted inputs, then applies ReLU (a negative total becomes 0). Darker red means a neuron is more active. The last circle is the prediction, and the measured lab value is shown for comparison.',
   build: function(api){
     var cur = null, act = null;
     var sp = api.el('pn', 'left:28px;top:28px;width:230px;height:226px', '<h4>Compound</h4><div class="struct" style="height:186px"></div>');
@@ -32,7 +32,7 @@ L3.add({ short: 'One compound', title: 'Follow one compound through the trained 
 /* ---------- N7: inside one neuron ---------- */
 L3.add({ short: 'Inside a neuron', title: 'Open one neuron and read its arithmetic',
   change: 'Click a circle in the first hidden layer.',
-  watch: 'For each input the table shows its learned weight, what it adds, and the running total.',
+  watch: 'A neuron is a weighted sum. Click a neuron in the first hidden layer to open it. The table lists each input feature, the weight the network learned for it, what that input adds to the total, and the running total. A positive weight means a larger input raises the total. A negative weight means a larger input lowers it.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:360px;height:408px', '<h4>Click a neuron in hidden layer 1</h4><svg viewBox="0 0 340 360" width="340" height="360"></svg>');
     var tp = api.el('pn', 'left:408px;top:28px;width:524px;height:408px', '<div class="nt"></div>');
@@ -52,7 +52,7 @@ L3.add({ short: 'Inside a neuron', title: 'Open one neuron and read its arithmet
 /* ---------- N8: what the network learned ---------- */
 L3.add({ short: 'What it learned', title: 'What the network learned about one feature',
   change: 'Choose a feature below the plot.',
-  watch: 'Each grey line is one unseen compound with one feature changed. The red line is the average.',
+  watch: 'This shows what the network learned about one feature. Each grey line is one unseen compound: the prediction is recomputed while only that feature changes and every other feature is held fixed. The red line is the average of the grey lines. A straight red line is a steady effect. A curve means the effect depends on the value, which a single weight cannot express.',
   build: function(api){
     var pp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<h4>Prediction as one feature changes</h4><canvas width="618" height="350"></canvas>');
     var sp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>How to read it</h4><div class="rd" style="font-size:12.5px;color:#34373F"></div>');
@@ -72,7 +72,7 @@ L3.add({ short: 'What it learned', title: 'What the network learned about one fe
 /* ---------- N9: Chemprop and message passing ---------- */
 L3.add({ short: 'Chemprop', title: 'Chemprop reads atoms and bonds',
   change: 'Click an atom. Drag Rounds below the picture.',
-  watch: 'Chemprop is a network that reads a molecule as atoms and bonds. Each round, atoms pass messages to their neighbours. The red zone grows one bond per round.',
+  watch: 'Chemprop is a neural network that reads a molecule as a graph, with atoms as nodes and bonds as links. It works in rounds called message passing. In each round every atom sends what it knows to its neighbours and updates itself. After one round an atom knows about its direct neighbours, after two rounds about atoms two bonds away, and so on. The red zone shows which atoms can affect the chosen atom.',
   build: function(api){
     var G = [], cur = { g: 0, c: 0, k: 0 }, playing = false, EL = { N: C.red, O: C.dred, S: '#450A0A', F: '#450A0A', Cl: '#450A0A', Br: '#450A0A' };
     var gp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<svg viewBox="0 0 540 372" width="540" height="372"></svg>');
@@ -105,7 +105,7 @@ L3.add({ short: 'Chemprop', title: 'Chemprop reads atoms and bonds',
 /* ---------- test it: does a network beat a tree when labelled data are scarce? ---------- */
 L3.add({ short: 'Is it useful', uses: ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'ndrop', 'nlr'],
   title: 'Test it: network or tree?',
-  watch: 'A boosted tree model and a network train on the same compounds, then are scored on unseen ones. Each size runs once, so small gaps are noise.',
+  watch: 'This test compares a boosted tree model with a neural network on the same HLM compounds. Boosted trees are built one after another, each fixing the mistakes the earlier ones left. Both models are trained on a growing number of labelled compounds (compounds with a lab value) and scored by R2 on the same unseen compounds. Each size runs once, so small gaps are noise.',
   change: 'Press Run test below the plot.',
   build: function(api){
     var cp = api.el('pn', 'left:28px;top:28px;width:600px;height:408px', '<h4>Score on unseen compounds, by number of labelled compounds</h4><canvas width="576" height="330"></canvas><div class="note" style="font-size:12px;margin-top:4px">Dark: boosted trees. Red: neural network.</div>');
