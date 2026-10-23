@@ -257,7 +257,7 @@ L3.add({ short: 'Learning rate', title: 'The learning rate is the size of each n
   } });
 
 /* ---------- N5: dropout and early stopping ---------- */
-L3.add({ short: 'Dropout and early stopping', title: 'Dropout and early stopping fight overfitting',
+L3.add({ short: 'Dropout and early stopping', title: 'Dropout and early stopping',
   change: 'Set Dropout in the options panel, then press Run comparison below the plot.',
   watch: 'Overfitting is when a network memorises the training compounds, noise included, and then predicts new compounds worse. Dropout is one defence. In each training step it switches off a random share of the neurons, so the network cannot depend on any one of them. Early stopping is another. It keeps the weights from the epoch with the lowest validation error. Validation error is the error on compounds held back from training to check progress.',
   auto: false,

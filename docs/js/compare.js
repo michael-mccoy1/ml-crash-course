@@ -56,7 +56,7 @@ L5.add({ short: 'Accuracy against time', title: 'Accuracy against training time'
     return { render: render, play: play };
   } });
 
-L5.add({ short: 'Discussion', title: 'Questions to settle before trusting a result',
+L5.add({ short: 'Discussion', title: 'Questions about a result',
   change: 'Pick one question and answer it from your scores.',
   watch: 'Before you trust a score, ask how it was made. These six questions cover the split, the model type, the score itself, censored values, assay noise and the GPT. Pick one and answer it from your own results in the earlier lessons.',
   build: function(api){

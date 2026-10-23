@@ -188,7 +188,7 @@ function targetStepDef(){
 function censorStepDef(){
   var OPTS = [['Keep them all', 'One model learns from every training compound, including those at the assay floor.'], ['Drop them from training', 'The model learns only from compounds that were actually measured.'], ['Two models', 'One model guesses whether a compound is at the floor. A second model predicts the value for the rest.']];
   var sel = 0;
-  return { short: 'Handling censoring', uses: ['endpoint', 'features'], title: 'Three ways to treat values stuck at the assay floor',
+  return { short: 'Handling censoring', uses: ['endpoint', 'features'], title: 'Handling values at the assay floor',
     watch: 'Censored means the lab knew only that a value was below the assay limit, not what it was. About 31% of the HLM compounds are censored. There are three ways to treat them, and each card trains a model one way. The test set holds compounds with real values and compounds at the floor. The left bar scores all of them. The right bar scores only the compounds with a real value.',
     change: 'Click a card to see its predictions on the right.',
     build: function(api){
@@ -256,7 +256,7 @@ function lineStepDef(c){
 function seedStepDef(kind){
   var nn = kind === 'nn', K = nn ? 6 : 8, cache = {};
   return { short: 'Seeds and ensembles', uses: nn ? ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'ndrop', 'nlr'] : ['endpoint', 'features', 'filters', 'tfdepth'],
-    title: 'Seeds and ensembles: smoothing out luck',
+    title: 'Seeds and ensembles',
     watch: 'Training uses random choices, such as ' + (nn ? 'the starting weights' : 'which compounds each tree sees') + '. The seed is the number that starts them. Change the seed and the same model gives a slightly different score. An ensemble averages the predictions of several runs of the same model, which smooths out that luck. ' + (nn ? 'Each run is a network with your options.' : 'Each run here is a small random forest of 15 trees.'),
     change: 'Press Run seeds below the plot, then drag Runs averaged.',
     build: function(api){
