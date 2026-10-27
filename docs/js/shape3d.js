@@ -75,7 +75,9 @@ function shMesh(predict){
 function shAnim(cfg){
   var G = shGeom(), N = G.total, st = { prog: 1, playing: false, yaw: 0.5, pitch: 0.35, drag: false }, alive = true, last = 0, dur = cfg.dur || 14, canvas = cfg.canvas;
   var P = new Float32Array(N * 3), AL = new Float32Array(N), SX = new Float32Array(N), SY = new Float32Array(N), SD = new Float32Array(N), RX = new Float32Array(N), RY = new Float32Array(N), HS = new Float32Array(N), SC = new Float32Array(N * 3), BK = new Uint8Array(N), lx = 0, ly = 0, listeners = [];
-  var rnd = rng(7), b = SH.box, q; for (q = 0; q < N; q++) { HS[q] = rnd(); SC[q * 3] = (rnd() * 2 - 1) * b[0]; SC[q * 3 + 1] = (rnd() * 2 - 1) * b[1]; SC[q * 3 + 2] = (rnd() * 2 - 1) * b[2]; }
+  var rnd = rng(7);
+  /* every node starts in a loose cloud: a random distance out from its place on the true surface, along the normal */
+  G.patches.forEach(function(p){ for (var k = 0; k < p.nu * p.nv; k++) { var gi = p.off + k, s0 = (-0.8 + 3.3 * rnd()) * p.r; HS[gi] = rnd(); SC[gi * 3] = p.S[k * 3] + p.N[k * 3] * s0; SC[gi * 3 + 1] = p.S[k * 3 + 1] + p.N[k * 3 + 1] * s0; SC[gi * 3 + 2] = p.S[k * 3 + 2] + p.N[k * 3 + 2] * s0; } });
   var TP = {};
   /* the training points inside the helix: a third of the training set, at most 6,000 of them drawn */
   function trainIn(n){
@@ -93,7 +95,7 @@ function shAnim(cfg){
         var gi = p.off + k, t0 = c0.t[gi], t1 = c1.t[gi], n0 = isNaN(t0), n1 = isNaN(t1), x0, y0, z0, x1, y1, z1;
         if (n0) { x0 = SC[gi * 3]; y0 = SC[gi * 3 + 1]; z0 = SC[gi * 3 + 2]; } else { x0 = p.S[k * 3] + p.N[k * 3] * t0 * p.r; y0 = p.S[k * 3 + 1] + p.N[k * 3 + 1] * t0 * p.r; z0 = p.S[k * 3 + 2] + p.N[k * 3 + 2] * t0 * p.r; }
         if (n1) { x1 = SC[gi * 3]; y1 = SC[gi * 3 + 1]; z1 = SC[gi * 3 + 2]; } else { x1 = p.S[k * 3] + p.N[k * 3] * t1 * p.r; y1 = p.S[k * 3 + 1] + p.N[k * 3 + 1] * t1 * p.r; z1 = p.S[k * 3 + 2] + p.N[k * 3 + 2] * t1 * p.r; }
-        var ai = clamp(a * 1.6 - 0.6 * HS[gi], 0, 1); P[gi * 3] = x0 + (x1 - x0) * ai; P[gi * 3 + 1] = y0 + (y1 - y0) * ai; P[gi * 3 + 2] = z0 + (z1 - z0) * ai; AL[gi] = (n0 ? 0 : 1) + ((n1 ? 0 : 1) - (n0 ? 0 : 1)) * ai;
+        var ai = a; P[gi * 3] = x0 + (x1 - x0) * ai; P[gi * 3 + 1] = y0 + (y1 - y0) * ai; P[gi * 3 + 2] = z0 + (z1 - z0) * ai; AL[gi] = (n0 ? 0 : 1) + ((n1 ? 0 : 1) - (n0 ? 0 : 1)) * ai;
       }
     });
   }
@@ -104,11 +106,11 @@ function shAnim(cfg){
     if (panel.n) { var tp = trainIn(panel.n), tn = tp.length / 3; x.fillStyle = 'rgba(35,42,52,0.55)'; for (k = 0; k < tn; k++) { var qa = tp[k * 3] * cy - tp[k * 3 + 1] * sy, qb = tp[k * 3] * sy + tp[k * 3 + 1] * cy; x.fillRect(ox + qa * S - 0.6, oy - (qb * sp + tp[k * 3 + 2] * cp) * S - 0.6, 1.2, 1.2); } }
     for (k = 0; k < N; k++) {
       var px2 = P[k * 3], py2 = P[k * 3 + 1], pz2 = P[k * 3 + 2], a2 = px2 * cy - py2 * sy, b2 = px2 * sy + py2 * cy, d = b2 * cp - pz2 * sp, e2 = b2 * sp + pz2 * cp; SX[k] = ox + a2 * S; SY[k] = oy - e2 * S; SD[k] = d;
-      BK[k] = AL[k] < 0.5 ? 4 : clamp(Math.floor((d + 1.2) / 2.4 * 4), 0, 3);
+      BK[k] = clamp(Math.floor((d + 1.2) / 2.4 * 4), 0, 3);
     }
     var rad = Math.max(1.5, S / 40);
-    for (var bk = 0; bk < 5; bk++) {
-      x.fillStyle = bk === 4 ? 'rgba(189,18,10,0.3)' : FILL[bk]; var r2 = bk === 4 ? rad * 0.8 : rad; x.beginPath();
+    for (var bk = 0; bk < 4; bk++) {
+      x.fillStyle = FILL[bk]; var r2 = rad; x.beginPath();
       for (k = 0; k < N; k++) if (BK[k] === bk) { x.moveTo(SX[k] + r2, SY[k]); x.arc(SX[k], SY[k], r2, 0, 6.2832); }
       x.fill();
     }
@@ -128,7 +130,7 @@ function shAnim(cfg){
       var acc = p.ck[ps.i0].acc + (p.ck[ps.i1].acc - p.ck[ps.i0].acc) * ps.a; x.fillStyle = C.char; x.textAlign = 'left'; x.font = '700 13px Aptos, Segoe UI, sans-serif'; x.fillText(p.titleAt(ps.a >= 0.5 ? ps.i1 : ps.i0), i * w + 10, 18);
       var trn = p.ck[ps.i0].tr !== undefined ? p.ck[ps.i0].tr + (p.ck[ps.i1].tr - p.ck[ps.i0].tr) * ps.a : null; x.font = '12px Aptos, Segoe UI, sans-serif'; x.fillStyle = p.color; x.fillText(trn === null ? 'accuracy ' + acc.toFixed(2) : 'test ' + acc.toFixed(2) + ', train ' + trn.toFixed(2), i * w + 10, 35);
     });
-    x.font = '11px Aptos, Segoe UI, sans-serif'; x.textAlign = 'left'; var l1 = 'grey lines: the true helix', l2 = 'red dots: nodes placed on the surface the model has learned', l3 = 'black specks: training points inside the helix'; x.fillStyle = '#6F8196'; x.fillText(l1, 10, g.h - 6); x.fillStyle = '#BD120A'; x.fillText(l2, 24 + x.measureText(l1).width, g.h - 6); x.fillStyle = '#232A34'; x.textAlign = 'right'; x.fillText(l3, g.w - 8, g.h - 6);
+    x.font = '11px Aptos, Segoe UI, sans-serif'; x.textAlign = 'left'; var l1 = 'grey lines: the true helix', l2 = 'red dots: nodes sliding onto the surface the model has learned', l3 = 'black specks: training points inside the helix'; x.fillStyle = '#6F8196'; x.fillText(l1, 10, g.h - 6); x.fillStyle = '#BD120A'; x.fillText(l2, 24 + x.measureText(l1).width, g.h - 6); x.fillStyle = '#232A34'; x.textAlign = 'right'; x.fillText(l3, g.w - 8, g.h - 6);
     drawChart();
   }
   function visible(){ var r = canvas.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight && r.width > 0; }
