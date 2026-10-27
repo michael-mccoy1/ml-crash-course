@@ -25,6 +25,7 @@
 | 07 Role of AI | Machine learning against generative AI, which fits which job, the training range, lab noise, how generative AI fails, can and cannot, five checks |
 | 08 Tree algorithms | Split search, growth limits, bagging, boosting losses, tuning, library designs, fitting a double helix, trees against data |
 | 09 Network algorithms | Gradient descent, backpropagation, initialisation, weight decay, attention, next-token loss, parameter counts, network size against data |
+| 10 Quiz | Ten random questions from a bank of 75, including challenges that train real models |
 
 ### 01 Data and ML basics
 * **Say:** a model is a rule fitted to examples.
@@ -76,6 +77,12 @@
 * **Do:** run the three optimisers on the raw and the centred feature. Step through the backward pass. Move the weight scale in the initialisation step. Drag the attention query. Play the scaling step with 100, 1,000 and 10,000 points and compare the five network sizes.
 * **Ask:** why does a sigmoid network lose its gradient in a deep stack?
 * **Watch for:** the attention and parameter steps use tiny sizes so the numbers can be read. Real models are far larger.
+
+### 10 Quiz
+* **Say:** each round is ten questions chosen at random from 75, so a second round is different from the first.
+* **Do:** run a round as a group, or let people work alone. In the challenge questions the goal counts leaves, the pieces a tree model builds, so a smaller model is a faster one on any computer.
+* **Ask:** which setting did you change first in the challenge, and why?
+* **Watch for:** the data allow a test R2 of only about 0.3 on HLM and 0.36 on logD with these eight descriptors, so the challenge goals are set near those limits.
 
 ## If something goes wrong
 

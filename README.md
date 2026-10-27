@@ -24,6 +24,7 @@ Nothing to install. Each lesson lists its goals, has an options panel, steps wit
 | 07 Role of AI | Machine learning against generative AI, which fits which job, the training range, lab noise, how generative AI fails, a can and cannot sort, five checks |
 | 08 Tree algorithms | Split search, depth and leaf size, bagging, boosting losses, tuning, how the libraries differ, fitting a 3D double helix, tree models against the amount of data |
 | 09 Network algorithms | Gradient descent, backpropagation, initialisation, weight decay, attention, next-token loss, parameter counts, network size against the amount of data |
+| 10 Quiz | A bank of 75 questions, ten drawn at random each round: multiple choice, select all, numbers, ordering, and challenges where you set the parameters of a boosting model, forest or tree and train it against a goal |
 
 ## Notebooks
 

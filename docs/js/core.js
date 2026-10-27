@@ -168,7 +168,7 @@ async function loadExtras(){ if (!EXTRAS) EXTRAS = await loadJSON('extras'); ret
 /* =====================================================================
    Lesson framework
    ===================================================================== */
-var LESSONS = {}, LORDER = ['start', 'trees', 'nn', 'gpt', 'pre', 'compare', 'ai', 'treealgo', 'netalgo'], ACTIVE = 'start', featListeners = [];
+var LESSONS = {}, LORDER = ['start', 'trees', 'nn', 'gpt', 'pre', 'compare', 'ai', 'treealgo', 'netalgo', 'quiz'], ACTIVE = 'start', featListeners = [];
 function Lesson(id, title){ this.id = id; this.title = title; this.steps = []; this.gloss = null; this.optsHTML = ''; this.onOpts = null; this.onData = null; LESSONS[id] = this; }
 Lesson.prototype.add = function(def){ this.steps.push(def); return this; };
 Lesson.prototype.glossary = function(items){ this.gloss = items; return this; };
@@ -194,6 +194,7 @@ async function setEndpoint(key){
 
 function buildLesson(L){
   var root = $('lesson-' + L.id), n = L.steps.length + (L.gloss ? 1 : 0);
+  if (L.custom) { L.custom(root); L.built = true; return; }
   root.innerHTML = '<aside class="options"><div class="otitle">Options</div><div class="obody"></div><div class="aff"><div class="hint">Change an option to see which steps use it.</div></div></aside><div class="steps"><nav class="toc"></nav></div>';
   qs('.obody', root).innerHTML = typeof L.optsHTML === 'function' ? L.optsHTML() : L.optsHTML; var stepsEl = qs('.steps', root), toc = qs('.toc', root);
   var ig = window.GUIDE && GUIDE.intro[L.id]; if (ig) { var card = h('div', 'intro', '<div class="ig"><div><div class="ol">Goals</div><ul>' + ig.goals.map(function(g){ return '<li>' + esc(g) + '</li>'; }).join('') + '</ul></div></div>'); stepsEl.insertBefore(card, toc); }

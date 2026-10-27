@@ -71,35 +71,56 @@ L8.add({ short: 'Backpropagation', title: 'Backpropagation',
   change: 'Switch between Forward and Backward. Press Next compound, then Take one step.',
   watch: 'To change a weight, training needs the slope of the loss with respect to that weight, the gradient. Backpropagation finds all of them with the chain rule. The forward pass computes each neuron in turn, from the inputs to the prediction, and the loss. The backward pass starts at the loss and works toward the inputs, reusing each result: the slope at a neuron is the slope after it times the local slope. A neuron whose ReLU output is zero passes back a zero, so its input weights get no gradient for this compound. The table checks every gradient against a numerical estimate, the loss change when the weight moves a tiny amount in each direction.',
   build: function(api){
-    var lp = api.el('pn', 'left:28px;top:28px;width:470px;height:408px;overflow:auto', '<h4 class="th"></h4><div class="tx" style="font-size:13px;line-height:1.55;color:' + C.char + '"></div>');
+    var lp = api.el('pn', 'left:28px;top:28px;width:470px;height:408px;overflow:hidden', '<h4 class="th"></h4><canvas width="440" height="236" class="nn"></canvas><div class="tx" style="font-size:12.5px;line-height:1.45;color:' + C.char + ';margin-top:2px"></div>');
     var rp = api.el('pn', 'left:518px;top:28px;width:414px;height:408px;overflow:auto', '<h4>Gradient of each weight</h4><div class="tb"></div>');
     var ctl = api.addControl('<span class="seg" data-v><button type="button" data-view="0" class="on">Forward</button><button type="button" data-view="1">Backward</button></span> <button type="button" class="btn sm ghost" data-next>Next compound</button> <button type="button" class="btn sm" data-step>Take one step</button> <button type="button" class="btn sm ghost" data-reset>Reset weights</button>');
     var P = NA_P0.slice(), view = 0, k = 0, SAMPLES = null, note = '', RATE = 0.1;
     function sample(){ if (!SAMPLES) { SAMPLES = []; for (var q = 0; q < 12; q++) SAMPLES.push(D.TRAIN[Math.floor((q + 0.5) * D.TRAIN.length / 12)]); } var i = SAMPLES[k % SAMPLES.length], fa = D.COL.logP, fb = D.COL.TPSA, la = D.TRAIN.map(function(t){ return fa[t]; }), lb = D.TRAIN.map(function(t){ return fb[t]; }), ys = D.TRAIN.map(function(t){ return D.Y[t]; });
       return { x: [(fa[i] - mean(la)) / naSd(la), (fb[i] - mean(lb)) / naSd(lb)], y: (D.Y[i] - mean(ys)) / naSd(ys) }; }
+    var runId = 0, animating = false, cvs = qs('.nn', lp);
+    /* the network drawn as a diagram. t runs 0 to 1: signals sweep forward, or gradients sweep back, and each value appears as the sweep reaches it */
+    function paint(t, s, r){
+      var g = cv(cvs), x = g.x, f = r.f, fwd = view === 0, pin = [[62, 66], [62, 166]], phid = [[220, 66], [220, 166]], pout = [378, 116];
+      function ramp(a, b){ return clamp((t - a) / (b - a), 0, 1); }
+      var w1 = fwd ? ramp(0, 0.45) : ramp(0.55, 1), w2 = fwd ? ramp(0.55, 1) : ramp(0, 0.45), nodeH = ramp(0.4, 0.55), nodeO = fwd ? ramp(0.95, 1) : ramp(0, 0.05);
+      var edges = [[pin[0], phid[0], P[0], r.g[0], 1, 0, 0.5], [pin[0], phid[1], P[1], r.g[1], 1, 1, 0.22], [pin[1], phid[0], P[2], r.g[2], 1, 0, 0.22], [pin[1], phid[1], P[3], r.g[3], 1, 1, 0.5], [phid[0], pout, P[6], r.g[6], 2, 0, 0.45], [phid[1], pout, P[7], r.g[7], 2, 1, 0.45]];
+      var vmax = Math.max.apply(null, edges.map(function(e){ return Math.abs(fwd ? e[2] : e[3]); })) || 1;
+      x.textAlign = 'center';
+      edges.forEach(function(e){
+        var dead = !fwd && e[4] === 1 && f.z[e[5]] <= 0, v = fwd ? e[2] : e[3], col = dead ? '#B8C0CA' : (v >= 0 ? C.red : '#6F8196'), prog = e[4] === 1 ? w1 : w2, a0 = e[0], a1 = e[1], dx = a1[0] - a0[0] - 48;
+        x.strokeStyle = col; x.lineWidth = 1 + 5 * Math.abs(v) / vmax; x.globalAlpha = 0.25 + 0.55 * prog; x.setLineDash(dead ? [4, 4] : []); x.beginPath(); x.moveTo(a0[0] + 24, a0[1]); x.lineTo(a1[0] - 24, a1[1]); x.stroke(); x.setLineDash([]); x.globalAlpha = 1;
+        if (prog > 0 && prog < 1) { var q = fwd ? prog : 1 - prog; x.fillStyle = col; x.beginPath(); x.arc(a0[0] + 24 + dx * q, a0[1] + (a1[1] - a0[1]) * q, 5, 0, 6.3); x.fill(); }
+        if (prog >= 0.6) { var lbl = v.toFixed(2), tw, mx = a0[0] + 24 + dx * e[6], my = a0[1] + (a1[1] - a0[1]) * e[6]; x.font = '600 11px Aptos, "Segoe UI", sans-serif'; tw = x.measureText(lbl).width; x.fillStyle = 'rgba(255,255,255,0.92)'; x.fillRect(mx - tw / 2 - 2, my - 8, tw + 4, 15); x.fillStyle = dead ? '#8A939E' : (v >= 0 ? C.dred : '#4B5A6B'); x.fillText(lbl, mx, my + 3.5); }
+      });
+      function node(c, label, top, sub, on, fill){ x.fillStyle = fill; x.strokeStyle = on ? C.char : '#B8C0CA'; x.lineWidth = on ? 2 : 1.5; x.setLineDash(on ? [] : [4, 3]); x.beginPath(); x.arc(c[0], c[1], 24, 0, 6.3); x.fill(); x.stroke(); x.setLineDash([]); x.fillStyle = C.char; x.font = '700 11px Aptos, "Segoe UI", sans-serif'; x.fillText(label, c[0], c[1] - 29); x.font = '700 13px Aptos, "Segoe UI", sans-serif'; x.fillText(top, c[0], c[1] + 4.5); x.font = '11px Aptos, "Segoe UI", sans-serif'; x.fillStyle = on ? C.char : '#8A939E'; x.fillText(sub, c[0], c[1] + 39); }
+      node(pin[0], 'logP', s.x[0].toFixed(2), 'input', true, '#fff'); node(pin[1], 'TPSA', s.x[1].toFixed(2), 'input', true, '#fff');
+      [0, 1].forEach(function(j){ var on = f.z[j] > 0, show = nodeH >= 1; node(phid[j], 'hidden ' + (j + 1), show ? (fwd ? f.h[j].toFixed(2) : r.dz[j].toFixed(2)) : '', show ? (fwd ? 'z ' + f.z[j].toFixed(2) + (on ? '' : ', off') : (on ? 'dL/dz' : 'off, dL/dz is 0')) : '', on, on ? '#FBE9E9' : '#EEF0F3'); });
+      var oshow = nodeO >= 1; node(pout, 'output', oshow ? (fwd ? f.yh.toFixed(2) : r.dy.toFixed(2)) : '', oshow ? (fwd ? 'ŷ' : 'dL/dŷ') : '', true, '#FBE9E9');
+      x.textAlign = 'left'; x.font = '700 12px Aptos, "Segoe UI", sans-serif'; x.fillStyle = C.char; x.fillText(fwd ? 'Forward: values flow left to right' : 'Backward: gradients flow right to left', 8, 14);
+      x.textAlign = 'right'; x.font = '12px Aptos, "Segoe UI", sans-serif'; x.fillStyle = C.red; x.fillText('target y ' + s.y.toFixed(2) + ', loss ' + f.L.toFixed(3), g.w - 8, 14);
+      x.textAlign = 'left'; x.font = '11px Aptos, "Segoe UI", sans-serif'; x.fillStyle = '#6F8196'; x.fillText(fwd ? 'Numbers on the lines are weights.' : 'Numbers on the lines are the gradients of the weights.', 8, g.h - 6);
+    }
+    function play(){ var s0 = sample(), r0 = naGrad(P, s0.x, s0.y), id = ++runId; if (!ANIM) { animating = false; paint(1, s0, r0); return; } animating = true; animateFree(1800, function(t){ if (id !== runId) return; paint(t, s0, r0); if (t >= 1) animating = false; }); }
     function draw(){
       var s = sample(), r = naGrad(P, s.x, s.y), f = r.f, n2 = function(v){ return (v >= 0 ? '' : '') + v.toFixed(3); };
       qs('.th', lp).textContent = view === 0 ? 'Forward pass, loss ' + f.L.toFixed(3) : 'Backward pass, loss ' + f.L.toFixed(3);
       var t;
-      if (view === 0) t = '<p>Inputs for this compound, centred and scaled: logP <b>' + n2(s.x[0]) + '</b>, TPSA <b>' + n2(s.x[1]) + '</b>. The measured value, centred and scaled, is <b>' + n2(s.y) + '</b>.</p>' +
-        '<p>Hidden 1: z = ' + n2(P[0]) + ' times ' + n2(s.x[0]) + ' + ' + n2(P[2]) + ' times ' + n2(s.x[1]) + ' + ' + n2(P[4]) + ' = <b>' + n2(f.z[0]) + '</b>, so ReLU gives h = <b>' + n2(f.h[0]) + '</b>.</p>' +
-        '<p>Hidden 2: z = ' + n2(P[1]) + ' times ' + n2(s.x[0]) + ' + ' + n2(P[3]) + ' times ' + n2(s.x[1]) + ' + ' + n2(P[5]) + ' = <b>' + n2(f.z[1]) + '</b>, so ReLU gives h = <b>' + n2(f.h[1]) + '</b>.</p>' +
-        '<p>Output: ŷ = ' + n2(P[6]) + ' times ' + n2(f.h[0]) + ' + ' + n2(P[7]) + ' times ' + n2(f.h[1]) + ' + ' + n2(P[8]) + ' = <b>' + n2(f.yh) + '</b>.</p>' +
+      if (view === 0) t = '<p>Inputs for this compound, centred and scaled: logP <b>' + n2(s.x[0]) + '</b>, TPSA <b>' + n2(s.x[1]) + '</b>. Measured value, centred and scaled: <b>' + n2(s.y) + '</b>.</p>' +
+        '<p>Each hidden neuron adds its weighted inputs and its bias to get z. ReLU keeps z if it is above 0 and otherwise gives 0. The output is ŷ = W2 times h + b2.</p>' +
         '<p>Loss = (ŷ - y)² = (' + n2(f.yh) + ' - ' + n2(s.y) + ')² = <b>' + n2(f.L) + '</b>.</p>';
-      else t = '<p>Slope at the output: dL/dŷ = 2(ŷ - y) = <b>' + n2(r.dy) + '</b>.</p>' +
-        '<p>Output weights: dL/dW2 = dL/dŷ times h, so <b>' + n2(r.g[6]) + '</b> and <b>' + n2(r.g[7]) + '</b>. The output bias gets <b>' + n2(r.g[8]) + '</b>.</p>' +
-        '<p>Slope at each hidden output: dL/dh = dL/dŷ times W2, so <b>' + n2(r.dh[0]) + '</b> and <b>' + n2(r.dh[1]) + '</b>.</p>' +
-        '<p>Through ReLU: dL/dz = dL/dh if z is above 0, else 0. That gives <b>' + n2(r.dz[0]) + '</b> and <b>' + n2(r.dz[1]) + '</b>' + (f.z[0] <= 0 || f.z[1] <= 0 ? '. A hidden neuron is switched off for this compound, so it passes back zero.' : '.') + '</p>' +
-        '<p>Hidden weights: dL/dW1 = dL/dz times input, and dL/db1 = dL/dz.</p>';
+      else t = '<p>Start at the loss: dL/dŷ = 2(ŷ - y) = <b>' + n2(r.dy) + '</b>. Each output weight gets dL/dŷ times its h.</p>' +
+        '<p>Each hidden neuron receives dL/dŷ times its output weight. ReLU passes that back only if z is above 0' + (f.z[0] <= 0 || f.z[1] <= 0 ? '. A hidden neuron is switched off for this compound, so it passes back zero and its input weights get no gradient.' : '. Both hidden neurons are on for this compound.') + '</p>' +
+        '<p>Each hidden weight gets dL/dz times its input, and dL/db1 = dL/dz.</p>';
+      if (!animating) paint(1, s, r);
       qs('.tx', lp).innerHTML = t + (note ? '<p style="color:' + C.red + ';font-weight:700">' + note + '</p>' : '');
       var eps = 1e-5, rows = P.map(function(v, i){ var a = P.slice(), b = P.slice(); a[i] += eps; b[i] -= eps; var num = (naNet(a, s.x, s.y).L - naNet(b, s.x, s.y).L) / (2 * eps); return '<tr style="text-align:right;border-top:1px solid ' + C.silver + '"><td style="text-align:left">' + NA_NAMES[i] + '</td><td>' + n2(v) + '</td><td><b>' + n2(r.g[i]) + '</b></td><td>' + n2(num) + '</td></tr>'; }).join('');
       qs('.tb', rp).innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;color:' + C.char + '"><tr style="text-align:right;font-weight:700;line-height:1.15"><td style="text-align:left">Weight</td><td>Value</td><td>Backprop gradient</td><td>Numerical check</td></tr>' + rows + '</table><p class="note" style="font-size:12px;margin-top:6px">The last two columns match. A weight update subtracts the learning rate (0.1 here) times the gradient.</p>';
     }
-    qsa('[data-view]', ctl).forEach(function(b){ b.addEventListener('click', function(){ view = +b.dataset.view; qsa('[data-view]', ctl).forEach(function(x){ x.classList.toggle('on', x === b); }); draw(); }); });
-    qs('[data-next]', ctl).addEventListener('click', function(){ k++; note = ''; draw(); });
-    qs('[data-reset]', ctl).addEventListener('click', function(){ P = NA_P0.slice(); note = ''; draw(); });
-    qs('[data-step]', ctl).addEventListener('click', function(){ var s = sample(), r = naGrad(P, s.x, s.y), before = r.f.L; P = P.map(function(v, i){ return v - RATE * r.g[i]; }); var after = naNet(P, s.x, s.y).L; note = 'One step: loss ' + before.toFixed(3) + ' to ' + after.toFixed(3) + ' on this compound.'; draw(); });
-    return { render: draw };
+    qsa('[data-view]', ctl).forEach(function(b){ b.addEventListener('click', function(){ view = +b.dataset.view; qsa('[data-view]', ctl).forEach(function(x){ x.classList.toggle('on', x === b); }); play(); draw(); }); });
+    qs('[data-next]', ctl).addEventListener('click', function(){ k++; note = ''; play(); draw(); });
+    qs('[data-reset]', ctl).addEventListener('click', function(){ runId++; animating = false; P = NA_P0.slice(); note = ''; draw(); });
+    qs('[data-step]', ctl).addEventListener('click', function(){ runId++; animating = false; var s = sample(), r = naGrad(P, s.x, s.y), before = r.f.L; P = P.map(function(v, i){ return v - RATE * r.g[i]; }); var after = naNet(P, s.x, s.y).L; note = 'One step: loss ' + before.toFixed(3) + ' to ' + after.toFixed(3) + ' on this compound.'; draw(); });
+    return { render: function(){ play(); draw(); } };
   } });
 
 /* ---------- Step 3: initialisation and depth ---------- */

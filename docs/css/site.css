@@ -234,3 +234,51 @@ aside.options::-webkit-scrollbar-thumb,.pn::-webkit-scrollbar-thumb,.tblwrap::-w
 aside.options::-webkit-scrollbar-button{display:none}
 
 .step.bench .stalebadge{top:50px}
+
+/* ---------- tab 10: quiz ---------- */
+#lesson-quiz:not([hidden]){display:block;max-width:880px}
+.qpage{margin:0 auto}
+.qtop{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+.qdots{display:flex;gap:6px;flex-wrap:wrap}
+.qdots i{width:22px;height:6px;border-radius:3px;background:var(--silver)}
+.qdots i.now{background:var(--char)}.qdots i.ok{background:#2E7D4F}.qdots i.no{background:var(--red)}
+.qsc{font-size:.85rem;color:var(--mid);font-weight:600;white-space:nowrap}
+.qcard{border:1px solid var(--silver);border-radius:8px;background:#fff;padding:22px 24px}
+.qtopic{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--red);font-weight:700;margin-bottom:8px}
+.qtext{font-size:1.25rem;line-height:1.35;margin-bottom:16px}
+.qhint{font-size:.85rem;color:var(--mid);margin-bottom:10px}
+.qopt{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--silver);border-radius:6px;padding:10px 12px;margin-bottom:8px;cursor:pointer;background:#fff}
+.qopt:hover{border-color:var(--mid)}
+.qopt input{margin-top:4px;accent-color:var(--red)}
+.qopt.right{border-color:#2E7D4F;background:#EAF5EE}
+.qopt.wrong{border-color:var(--red);background:#FCECEC}
+.qnum{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.qnum input{width:200px}
+.qord{list-style:decimal;padding-left:26px;margin:0}
+.qord li{display:flex;gap:8px;align-items:center;border:1px solid var(--silver);border-radius:6px;padding:8px 10px;margin-bottom:6px;background:#fff}
+.qord li span{flex:1}
+.qfb{margin-top:14px;padding:12px 14px;border-radius:6px;font-size:.94rem}
+.qfb.ok{background:#EAF5EE;border:1px solid #2E7D4F}
+.qfb.no{background:#FCECEC;border:1px solid var(--red)}
+.qact{margin-top:16px;display:flex;gap:10px;flex-wrap:wrap}
+.qgoal{font-weight:600;background:var(--panel);border:1px solid var(--silver);border-radius:6px;padding:10px 12px;margin-bottom:14px}
+.qctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:14px}
+.qctl label{font-size:.88rem;font-weight:600;display:block}
+.qctl output{float:right;color:var(--red);font-weight:500;font-variant-numeric:tabular-nums}
+.qrunrow{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.qrs{font-size:.88rem;color:var(--mid)}
+.qt{width:100%;border-collapse:collapse;font-size:.88rem;font-variant-numeric:tabular-nums}
+.qt th{text-align:left;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);padding:6px 8px;border-bottom:1px solid var(--silver)}
+.qt td{padding:6px 8px;border-bottom:1px solid var(--light)}
+.qt tr.ok td{color:#1E6B40;font-weight:600}
+.qhintbox{margin-top:10px;font-size:.9rem;background:var(--panel);border-radius:6px;padding:8px 12px}
+.qend{text-align:center}
+.qbig{font-family:var(--display);font-size:3rem;font-weight:700;color:var(--char);line-height:1.1;margin:4px 0 8px}
+.qend .qact{justify-content:center}
+.qrev{list-style:none;padding:0;margin:18px 0 0}
+.qrev li{border:1px solid var(--silver);border-left:4px solid var(--silver);border-radius:6px;padding:10px 14px;margin-bottom:8px;font-size:.92rem}
+.qrev li.ok{border-left-color:#2E7D4F}.qrev li.no{border-left-color:var(--red)}
+.qrev li b{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;margin-right:6px}
+.qtp{font-size:.78rem;color:var(--mid)}
+.qwhy{margin-top:4px;color:var(--mid)}
+.qt thead th{background:var(--light);color:var(--char)}
