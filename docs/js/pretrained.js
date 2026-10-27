@@ -151,8 +151,17 @@ async function gptEmbed(d, PP, nl){
   return { rows: rows, E: E };
 }
 var PRE = { key: null, pre: null, rnd: null, curve: null, ckey: null };
+/* the demo GPT's embeddings are shipped as data, so the step is instant. A GPT you train yourself is embedded in the browser. */
+async function preFromFile(){
+  PRE.files = PRE.files || {}; if (PRE.files[EP]) return PRE.files[EP]; PRE.all = PRE.all || await loadJSON('pre_embed'); var j = PRE.all[EP]; if (!j) return null;
+  function dec(t){ var bin = atob(t), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); var q = new Int16Array(u.buffer), f = new Float32Array(q.length); for (var k = 0; k < q.length; k++) f[k] = q[k] * j.scale; return f; }
+  return (PRE.files[EP] = { pre: { rows: j.rows, E: dec(j.pre) }, rnd: { rows: j.rows, E: dec(j.rnd) }, params: j.params });
+}
 async function preEmbeddings(){
-  var key = JSON.stringify([EP, G.sig, G.params]); if (PRE.key === key && PRE.pre) return PRE; var nl = G.NL, PP = gMake(nl);
+  var key = JSON.stringify([EP, G.sig, G.params]); if (PRE.key === key && PRE.pre) return PRE; var nl = G.NL, f = null;
+  if (G.demo) { try { f = await preFromFile(); } catch (e) { f = null; } if (f && f.params !== G.params) f = null; }
+  if (f) { PRE.pre = f.pre; PRE.rnd = f.rnd; PRE.key = key; PRE.curve = null; return PRE; }
+  var PP = gMake(nl);
   try { PRE.pre = await gptEmbed(D, null, nl); PRE.rnd = await gptEmbed(D, PP, nl); } finally { Object.keys(PP).forEach(function(k){ PP[k].dispose(); }); } PRE.key = key; PRE.curve = null; return PRE;
 }
 function preCurve(){
