@@ -1,7 +1,10 @@
 "use strict";
 /* Shared by the 3D shape steps. The shape is a DNA-style double helix: two spiral strands joined by rungs.
    The surface a model has learned is found by walking out from the true shape along its normals until the model's prediction changes sign. */
-var SH = { R: 0.55, r: 0.28, c: 0.32, tm: 4.4, rr: 0.1, rz0: -1.2, rdz: 0.4, nr: 7, box: [0.95, 0.95, 1.65], clip: 0.25, NU: 80, NV: 12 };
+var SH = { R: 0.5, r: 0.16, c: 0.27, tm: 6, rr: 0.07, rz0: -1.5, rdz: 0.2, nr: 16, box: [0.8, 0.8, 1.8], clip: 0.25, NU: 64, NV: 5, tlo: -0.9, tspan: 4.8 };
+/* offsets from shMesh are saved as bytes: 0 to 254 cover tlo to tlo + tspan, 255 means no surface */
+function shQuant(t){ var q = new Uint8Array(t.length); for (var i = 0; i < t.length; i++) q[i] = isNaN(t[i]) ? 255 : Math.round(Math.max(0, Math.min(1, (t[i] - SH.tlo) / SH.tspan)) * 254); return q; }
+function shDecode(b64, n){ var bin = atob(b64), t = new Float32Array(n); for (var i = 0; i < n; i++) { var q = bin.charCodeAt(i); t[i] = q === 255 ? NaN : q / 254 * SH.tspan + SH.tlo; } return t; }
 function shHelixDist(x, y, z, ph){
   var c = SH.c, R = SH.R, th = Math.atan2(y, x) - ph, t = th + 6.28318530718 * Math.round((z / c - th) / 6.28318530718); t = Math.max(-SH.tm, Math.min(SH.tm, t));
   for (var k = 0; k < 4; k++) { var a = t + ph, ca = Math.cos(a), sa = Math.sin(a), g = R * (x * sa - y * ca) - c * z + c * c * t, h = R * (x * ca + y * sa) + c * c; if (h > 0.01) t -= g / h; t = Math.max(-SH.tm, Math.min(SH.tm, t)); }
@@ -14,10 +17,10 @@ function shRungDist(x, y, z){
 }
 /* signed distance to the surface of the whole double helix: negative inside, positive outside */
 function shSD(x, y, z){ return Math.min(shHelixDist(x, y, z, 0) - SH.r, shHelixDist(x, y, z, Math.PI) - SH.r, shRungDist(x, y, z) - SH.rr); }
-/* half of the points anywhere in the box, half within 0.4 of the surface */
+/* a third of the points anywhere in the box, a third inside the helix, a third within 0.3 outside it */
 function shTrain(n, seed){
   var rnd = rng(seed), X = new Float32Array(n * 3), T = new Float32Array(n), k = 0, b = SH.box;
-  while (k < n) { var x = (rnd() * 2 - 1) * b[0], y = (rnd() * 2 - 1) * b[1], z = (rnd() * 2 - 1) * b[2], d = shSD(x, y, z); if (k % 2 === 0 || Math.abs(d) < 0.4) { X[k * 3] = x; X[k * 3 + 1] = y; X[k * 3 + 2] = z; T[k] = clamp(d, -SH.clip, SH.clip); k++; } }
+  while (k < n) { var x = (rnd() * 2 - 1) * b[0], y = (rnd() * 2 - 1) * b[1], z = (rnd() * 2 - 1) * b[2], d = shSD(x, y, z), m3 = k % 3; if (m3 === 0 || (m3 === 1 && d < 0) || (m3 === 2 && d >= 0 && d < 0.3)) { X[k * 3] = x; X[k * 3 + 1] = y; X[k * 3 + 2] = z; T[k] = clamp(d, -SH.clip, SH.clip); k++; } }
   return { X: X, T: T, n: n };
 }
 /* held-out points within 0.25 of the surface, half inside and half outside */
@@ -41,7 +44,7 @@ function shGeom(){
       for (j = 0; j < nv; j++) { var v = j / nv * 6.28318530718, cv_ = Math.cos(v), sv = Math.sin(v), k = (i * nv + j) * 3, ox = cv_ * nx + sv * bx, oy = cv_ * ny + sv * by, oz = cv_ * nz + sv * bz; S[k] = SH.R * ca + SH.r * ox; S[k + 1] = SH.R * sa + SH.r * oy; S[k + 2] = SH.c * t + SH.r * oz; N[k] = ox; N[k + 1] = oy; N[k + 2] = oz; } }
     patches.push({ S: S, N: N, nu: nu, nv: nv, r: SH.r });
   });
-  var ru = 6, rv = 8;
+  var ru = 6, rv = 3;
   for (var q = 0; q < SH.nr; q++) {
     var zk = SH.rz0 + q * SH.rdz, a3 = zk / SH.c, ux = Math.cos(a3), uy = Math.sin(a3), S2 = new Float32Array(ru * rv * 3), N2 = new Float32Array(ru * rv * 3), e1x = -uy, e1y = ux;
     for (i = 0; i < ru; i++) { var s = -(SH.R - SH.r) + 2 * (SH.R - SH.r) * i / (ru - 1);
@@ -57,64 +60,67 @@ function shMesh(predict){
   g.patches.forEach(function(p){
     var n = p.nu * p.nv, r = p.r;
     for (var k = 0; k < n; k++) {
-      var sx = p.S[k * 3], sy = p.S[k * 3 + 1], sz = p.S[k * 3 + 2], nx = p.N[k * 3], ny = p.N[k * 3 + 1], nz = p.N[k * 3 + 2], t0 = -0.75 * r, dt = 0.2 * r;
+      var sx = p.S[k * 3], sy = p.S[k * 3 + 1], sz = p.S[k * 3 + 2], nx = p.N[k * 3], ny = p.N[k * 3 + 1], nz = p.N[k * 3 + 2], t0 = SH.tlo * r, dt = 0.4 * r;
       if (predict(sx + nx * t0, sy + ny * t0, sz + nz * t0) >= 0) { out[p.off + k] = NaN; continue; }
       var found = false;
-      for (var s = 1; s <= 10; s++) { var t2 = t0 + s * dt; if (predict(sx + nx * t2, sy + ny * t2, sz + nz * t2) >= 0) { var lo = t2 - dt, hi = t2; for (var it = 0; it < 5; it++) { var mid = (lo + hi) / 2; if (predict(sx + nx * mid, sy + ny * mid, sz + nz * mid) < 0) lo = mid; else hi = mid; } out[p.off + k] = (lo + hi) / 2 / r; found = true; break; } }
+      for (var s = 1; s <= 12; s++) { var t2 = t0 + s * dt; if (predict(sx + nx * t2, sy + ny * t2, sz + nz * t2) >= 0) { var lo = t2 - dt, hi = t2; for (var it = 0; it < 5; it++) { var mid = (lo + hi) / 2; if (predict(sx + nx * mid, sy + ny * mid, sz + nz * mid) < 0) lo = mid; else hi = mid; } out[p.off + k] = (lo + hi) / 2 / r; found = true; break; } }
       if (!found) out[p.off + k] = NaN;
     }
   });
   return out;
 }
-/* Animated view of several models. cfg: { canvas, chart, panels: [{ short, color, ck: [{ t, acc, x }], titleAt }], x0, x1, xl, dur }.
-   Each ck is a checkpoint: the surface offsets t (see shMesh), the accuracy, and the training time x. prog runs from 0 to 1. */
+/* Animated view of several models drawn as nodes. cfg: { canvas, chart, panels: [{ short, color, ck: [{ t, acc, x }], titleAt }], x0, x1, xl, dur }.
+   Each node starts at a scattered position. At a checkpoint it sits on the model's surface (offset t, see shMesh) or, where the model has no surface yet, stays scattered.
+   The grey dots are the true helix. prog runs from 0 to 1. */
 function shAnim(cfg){
   var G = shGeom(), N = G.total, st = { prog: 1, playing: false, yaw: 0.5, pitch: 0.35, drag: false }, alive = true, last = 0, dur = cfg.dur || 14, canvas = cfg.canvas;
-  var P = new Float32Array(N * 3), V = new Float32Array(N * 3), AL = new Float32Array(N), SX = new Float32Array(N), SY = new Float32Array(N), SD = new Float32Array(N), SH_ = new Float32Array(N), lx = 0, ly = 0, listeners = [], quads = [];
-  G.patches.forEach(function(p){ for (var i = 0; i < p.nu - 1; i++) for (var j = 0; j < p.nv; j++) quads.push([p.off + i * p.nv + j, p.off + (i + 1) * p.nv + j, p.off + (i + 1) * p.nv + (j + 1) % p.nv, p.off + i * p.nv + (j + 1) % p.nv]); });
-  var order = []; for (var q = 0; q < quads.length; q++) order.push(q); var keys = new Float32Array(quads.length);
+  var P = new Float32Array(N * 3), AL = new Float32Array(N), SX = new Float32Array(N), SY = new Float32Array(N), SD = new Float32Array(N), RX = new Float32Array(N), RY = new Float32Array(N), HS = new Float32Array(N), SC = new Float32Array(N * 3), BK = new Uint8Array(N), lx = 0, ly = 0, listeners = [];
+  var rnd = rng(7), b = SH.box, q; for (q = 0; q < N; q++) { HS[q] = rnd(); SC[q * 3] = (rnd() * 2 - 1) * b[0]; SC[q * 3 + 1] = (rnd() * 2 - 1) * b[1]; SC[q * 3 + 2] = (rnd() * 2 - 1) * b[2]; }
   function ease(a){ return a * a * (3 - 2 * a); }
   function at(panel, prog){ var K = panel.ck.length, f = clamp(prog, 0, 1) * (K - 1), i0 = Math.min(K - 1, Math.floor(f)), i1 = Math.min(K - 1, i0 + 1), a = ease(f - i0); return { i0: i0, i1: i1, a: a }; }
   function build(panel, ps){
     var c0 = panel.ck[ps.i0], c1 = panel.ck[ps.i1], a = ps.a;
     G.patches.forEach(function(p){
       var n = p.nu * p.nv, k;
-      for (k = 0; k < n; k++) { var gi = p.off + k, t0 = c0.t[gi], t1 = c1.t[gi], a0 = isNaN(t0) ? 0.25 : 1, a1 = isNaN(t1) ? 0.25 : 1; if (isNaN(t0)) t0 = -0.72; if (isNaN(t1)) t1 = -0.72; var t = (t0 + (t1 - t0) * a) * p.r; AL[gi] = a0 + (a1 - a0) * a; P[gi * 3] = p.S[k * 3] + p.N[k * 3] * t; P[gi * 3 + 1] = p.S[k * 3 + 1] + p.N[k * 3 + 1] * t; P[gi * 3 + 2] = p.S[k * 3 + 2] + p.N[k * 3 + 2] * t; }
-      for (var i = 0; i < p.nu; i++) for (var j = 0; j < p.nv; j++) {
-        var ip = Math.min(p.nu - 1, i + 1), im = Math.max(0, i - 1), jp = (j + 1) % p.nv, jm = (j + p.nv - 1) % p.nv, o = (p.off + i * p.nv + j) * 3, A = (p.off + ip * p.nv + j) * 3, B = (p.off + im * p.nv + j) * 3, C = (p.off + i * p.nv + jp) * 3, D = (p.off + i * p.nv + jm) * 3;
-        var ux = P[A] - P[B], uy = P[A + 1] - P[B + 1], uz = P[A + 2] - P[B + 2], vx = P[C] - P[D], vy = P[C + 1] - P[D + 1], vz = P[C + 2] - P[D + 2];
-        var nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, ln = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1, ox = p.N[(i * p.nv + j) * 3], oy = p.N[(i * p.nv + j) * 3 + 1], oz = p.N[(i * p.nv + j) * 3 + 2], sg = (nx * ox + ny * oy + nz * oz) < 0 ? -1 : 1;
-        V[o] = sg * nx / ln; V[o + 1] = sg * ny / ln; V[o + 2] = sg * nz / ln;
+      for (k = 0; k < n; k++) {
+        var gi = p.off + k, t0 = c0.t[gi], t1 = c1.t[gi], n0 = isNaN(t0), n1 = isNaN(t1), x0, y0, z0, x1, y1, z1;
+        if (n0) { x0 = SC[gi * 3]; y0 = SC[gi * 3 + 1]; z0 = SC[gi * 3 + 2]; } else { x0 = p.S[k * 3] + p.N[k * 3] * t0 * p.r; y0 = p.S[k * 3 + 1] + p.N[k * 3 + 1] * t0 * p.r; z0 = p.S[k * 3 + 2] + p.N[k * 3 + 2] * t0 * p.r; }
+        if (n1) { x1 = SC[gi * 3]; y1 = SC[gi * 3 + 1]; z1 = SC[gi * 3 + 2]; } else { x1 = p.S[k * 3] + p.N[k * 3] * t1 * p.r; y1 = p.S[k * 3 + 1] + p.N[k * 3 + 1] * t1 * p.r; z1 = p.S[k * 3 + 2] + p.N[k * 3 + 2] * t1 * p.r; }
+        var ai = clamp(a * 1.6 - 0.6 * HS[gi], 0, 1); P[gi * 3] = x0 + (x1 - x0) * ai; P[gi * 3 + 1] = y0 + (y1 - y0) * ai; P[gi * 3 + 2] = z0 + (z1 - z0) * ai; AL[gi] = (n0 ? 0 : 1) + ((n1 ? 0 : 1) - (n0 ? 0 : 1)) * ai;
       }
     });
   }
+  var FILL = ['#7A0E08', '#BD120A', '#D9534D', '#EE9993'];
   function drawPanel(x, ox, oy, S, panel, ps){
     build(panel, ps);
     var cy = Math.cos(st.yaw), sy = Math.sin(st.yaw), cp = Math.cos(st.pitch), sp = Math.sin(st.pitch), k;
     for (k = 0; k < N; k++) {
-      var px = P[k * 3], py = P[k * 3 + 1], pz = P[k * 3 + 2], a = px * cy - py * sy, b = px * sy + py * cy, d = b * cp - pz * sp, e = b * sp + pz * cp; SX[k] = ox + a * S; SY[k] = oy - e * S; SD[k] = d;
-      var nx = V[k * 3], ny = V[k * 3 + 1], nz = V[k * 3 + 2], na = nx * cy - ny * sy, nb = nx * sy + ny * cy, nd = nb * cp - nz * sp, ne = nb * sp + nz * cp, lam = Math.abs(na * -0.35 + ne * 0.6 + nd * 0.72); SH_[k] = 0.3 + 0.7 * lam;
+      var px2 = P[k * 3], py2 = P[k * 3 + 1], pz2 = P[k * 3 + 2], a2 = px2 * cy - py2 * sy, b2 = px2 * sy + py2 * cy, d = b2 * cp - pz2 * sp, e2 = b2 * sp + pz2 * cp; SX[k] = ox + a2 * S; SY[k] = oy - e2 * S; SD[k] = d;
+      BK[k] = AL[k] < 0.5 ? 4 : clamp(Math.floor((d + 1.2) / 2.4 * 4), 0, 3);
     }
-    for (var qd = 0; qd < quads.length; qd++) { var qq = quads[qd]; keys[qd] = SD[qq[0]] + SD[qq[1]] + SD[qq[2]] + SD[qq[3]]; }
-    order.sort(function(p1, p2){ return keys[p2] - keys[p1]; });
-    for (var oi = 0; oi < order.length; oi++) {
-      var q4 = quads[order[oi]], v0 = q4[0], v1 = q4[1], v2 = q4[2], v3 = q4[3], sh = (SH_[v0] + SH_[v1] + SH_[v2] + SH_[v3]) / 4, al = (AL[v0] + AL[v1] + AL[v2] + AL[v3]) / 4;
-      var r = Math.round(137 + (247 - 137) * sh * sh), gg = Math.round(21 + (140 - 21) * sh * sh), bb = Math.round(21 + (133 - 21) * sh * sh);
-      x.fillStyle = 'rgba(' + r + ',' + gg + ',' + bb + ',' + al.toFixed(2) + ')'; x.strokeStyle = x.fillStyle; x.lineWidth = 0.7;
-      x.beginPath(); x.moveTo(SX[v0], SY[v0]); x.lineTo(SX[v1], SY[v1]); x.lineTo(SX[v2], SY[v2]); x.lineTo(SX[v3], SY[v3]); x.closePath(); x.fill(); x.stroke();
+    var rad = Math.max(1.5, S / 40);
+    for (var bk = 0; bk < 5; bk++) {
+      x.fillStyle = bk === 4 ? 'rgba(189,18,10,0.3)' : FILL[bk]; var r2 = bk === 4 ? rad * 0.8 : rad; x.beginPath();
+      for (k = 0; k < N; k++) if (BK[k] === bk) { x.moveTo(SX[k] + r2, SY[k]); x.arc(SX[k], SY[k], r2, 0, 6.2832); }
+      x.fill();
     }
+    function pr(X, Y, Z){ var a = X * cy - Y * sy, bb = X * sy + Y * cy; return [ox + a * S, oy - (bb * sp + Z * cp) * S]; }
+    x.strokeStyle = 'rgba(70,86,104,0.85)'; x.lineWidth = 1.6; x.lineJoin = 'round';
+    [0, Math.PI].forEach(function(ph){ x.beginPath(); for (var i = 0; i <= 90; i++) { var t = -SH.tm + 2 * SH.tm * i / 90, q = pr(SH.R * Math.cos(t + ph), SH.R * Math.sin(t + ph), SH.c * t); if (i) x.lineTo(q[0], q[1]); else x.moveTo(q[0], q[1]); } x.stroke(); });
+    x.lineWidth = 1.2; x.beginPath(); for (var rk = 0; rk < SH.nr; rk++) { var zk = SH.rz0 + rk * SH.rdz, ak = zk / SH.c, c1 = Math.cos(ak) * SH.R, s1 = Math.sin(ak) * SH.R, q1 = pr(c1, s1, zk), q2 = pr(-c1, -s1, zk); x.moveTo(q1[0], q1[1]); x.lineTo(q2[0], q2[1]); } x.stroke();
   }
   function drawChart(){
     if (!cfg.chart) return; var series = cfg.panels.map(function(p){ var ps = at(p, st.prog), pts = []; for (var i = 0; i <= ps.i0; i++) pts.push([p.ck[i].x, p.ck[i].acc]); if (ps.a > 0 && ps.i1 !== ps.i0) pts.push([p.ck[ps.i0].x + (p.ck[ps.i1].x - p.ck[ps.i0].x) * ps.a, p.ck[ps.i0].acc + (p.ck[ps.i1].acc - p.ck[ps.i0].acc) * ps.a]); return { pts: pts, color: p.color, w: 2.8, label: p.short }; });
     lineChart(cfg.chart, series, { xl: cfg.xl, yl: 'accuracy', y0: 0.5, y1: 1, x0: cfg.x0, x1: cfg.x1, xticks: cfg.xticks, xdec: cfg.xdec });
   }
   function draw(){
-    var g = cv(canvas), x = g.x, n = cfg.panels.length, w = g.w / n, S = Math.min(w, g.h) / 4.7;
+    var g = cv(canvas), x = g.x, n = cfg.panels.length, w = g.w / n, S = Math.min(w / 1.5, (g.h - 64) / 2 / 1.9);
     cfg.panels.forEach(function(p, i){
-      var ps = at(p, st.prog); x.save(); x.beginPath(); x.rect(i * w, 0, w, g.h); x.clip(); drawPanel(x, i * w + w / 2, g.h / 2 + 30, S, p, ps); x.restore();
+      var ps = at(p, st.prog); x.save(); x.beginPath(); x.rect(i * w, 0, w, g.h); x.clip(); drawPanel(x, i * w + w / 2, g.h / 2 + 12, S, p, ps); x.restore();
       var acc = p.ck[ps.i0].acc + (p.ck[ps.i1].acc - p.ck[ps.i0].acc) * ps.a; x.fillStyle = C.char; x.textAlign = 'left'; x.font = '700 13px Aptos, Segoe UI, sans-serif'; x.fillText(p.titleAt(ps.a >= 0.5 ? ps.i1 : ps.i0), i * w + 10, 18);
       var trn = p.ck[ps.i0].tr !== undefined ? p.ck[ps.i0].tr + (p.ck[ps.i1].tr - p.ck[ps.i0].tr) * ps.a : null; x.font = '12px Aptos, Segoe UI, sans-serif'; x.fillStyle = p.color; x.fillText(trn === null ? 'accuracy ' + acc.toFixed(2) : 'test ' + acc.toFixed(2) + ', train ' + trn.toFixed(2), i * w + 10, 35);
     });
+    x.font = '11px Aptos, Segoe UI, sans-serif'; x.textAlign = 'left'; var l1 = 'grey lines: the true helix', l2 = 'red dots: nodes placed on the surface the model has learned'; x.fillStyle = '#6F8196'; x.fillText(l1, 10, g.h - 6); x.fillStyle = '#BD120A'; x.fillText(l2, 24 + x.measureText(l1).width, g.h - 6);
     drawChart();
   }
   function visible(){ var r = canvas.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight && r.width > 0; }

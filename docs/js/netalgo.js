@@ -255,7 +255,7 @@ L8.add({ short: 'Counting parameters', title: 'Counting parameters',
 /* ---------- Step 8: networks of different sizes and different amounts of data ---------- */
 var NA_SC = { data: null, anim: null, size: '1000', ctl: false, busy: false };
 var NA_SCOL = ['#A1B1C4', '#6F8196', '#F78C85', '#BD120A', C.char];
-function naDecode(b64, n){ var bin = atob(b64), t = new Float32Array(n); for (var i = 0; i < n; i++) { var q = bin.charCodeAt(i); t[i] = q === 255 ? NaN : q / 254 * 2 - 0.75; } return t; }
+function naDecode(b64, n){ return shDecode(b64, n); }
 function naScalePanels(size){
   var J = NA_SC.data, runs = J.runs[size], n = shGeom().total;
   return runs.map(function(rn, i){
@@ -265,11 +265,11 @@ function naScalePanels(size){
 }
 L8.add({ short: 'Scaling networks', title: 'Network size against the amount of data',
   change: 'Choose the amount of training data and press Play. Compare the five networks, then compare the three amounts of data in the chart on the right.',
-  watch: 'The size of a network is its number of parameters. Here five networks, from about 10 to about 100,000 parameters, learn a DNA-style double helix: two spiral strands joined by rungs. Each network sees 100, 1,000 or 10,000 labelled points in 3D, each labelled with its distance to the surface of the helix, and every network gets the same 4,000 updates. The animation shows the surface each network builds. A surface appears only once the network predicts some points as inside. The chart on the right shows the accuracy of each network on 2,000 held-out points at the end, for all three amounts of data. Two things show up. A network needs data to put its parameters to use: with 100 points even the largest networks stay below 0.62 on held-out points while scoring about 0.95 on the points they were given. More parameters also stop helping at some size: with 10,000 points the network with about 10,000 parameters beats the one with about 100,000. These results come from a real run of the code in this lesson, saved so that this step opens at once.',
+  watch: 'The size of a network is its number of parameters. Here five networks, from about 10 to about 100,000 parameters, learn a DNA-style double helix: two spiral strands joined by rungs. Each network sees 100, 1,000 or 10,000 labelled points in 3D, each labelled with its distance to the surface of the helix, and every network gets the same 12,000 updates. The grey lines are the true helix. Each red dot is a node, a point placed on the surface the network has learned. Before a network has learned anything its nodes are scattered at random. As it learns, nodes fly onto its surface. Nodes the network cannot place stay faint and scattered. The chart on the right shows the accuracy of each network on 2,000 held-out points at the end, for all three amounts of data. Two things show up. A network needs data to put its parameters to use: with 100 points every network stays near 0.55 on held-out points while the larger ones score 1.00 on the points they were given. More parameters also stop helping: with 10,000 points the network with about 10,000 parameters scores 0.91 and the one with about 100,000 scores 0.94, for ten times the parameters. These results come from a real run of the code in this lesson, saved so that this step opens at once.',
   build: function(api){
-    var vp = api.el('pn', 'left:28px;top:28px;width:904px;height:214px', '<canvas width="880" height="190"></canvas>');
-    var c1 = api.el('pn', 'left:28px;top:252px;width:446px;height:184px', '<h4>Accuracy during training, held-out points</h4><canvas class="c1" width="420" height="144"></canvas>');
-    var c2 = api.el('pn', 'left:486px;top:252px;width:446px;height:184px', '<h4>Final accuracy against parameters</h4><canvas class="c2" width="420" height="144"></canvas>');
+    var vp = api.el('pn', 'left:28px;top:20px;width:904px;height:300px', '<canvas width="880" height="276"></canvas>');
+    var c1 = api.el('pn', 'left:28px;top:330px;width:446px;height:190px', '<h4>Accuracy during training, held-out points</h4><canvas class="c1" width="420" height="164"></canvas>');
+    var c2 = api.el('pn', 'left:486px;top:330px;width:446px;height:190px', '<h4>Final accuracy against parameters</h4><canvas class="c2" width="420" height="164"></canvas>');
     var ctl = api.addControl('Training data <select class="ds"><option value="100">100 points</option><option value="1000" selected>1,000 points</option><option value="10000">10,000 points</option></select>');
     var ds = qs('.ds', ctl);
     function drawScale(){
