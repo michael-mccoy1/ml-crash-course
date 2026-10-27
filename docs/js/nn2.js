@@ -74,7 +74,7 @@ L3.add({ short: 'Chemprop', title: 'Chemprop reads atoms and bonds',
   change: 'Click an atom. Drag Rounds below the picture.',
   watch: 'Chemprop is a neural network that reads a molecule as a graph, with atoms as nodes and bonds as links. It works in rounds called message passing. In each round every atom sends what it knows to its neighbours and updates itself. After one round an atom knows about its direct neighbours, after two rounds about atoms two bonds away, and so on. The red zone shows which atoms can affect the chosen atom.',
   build: function(api){
-    var G = [], cur = { g: 0, c: 0, k: 0 }, playing = false, EL = { N: C.red, O: C.dred, S: '#450A0A', F: '#450A0A', Cl: '#450A0A', Br: '#450A0A' };
+    var G = [], cur = { g: 0, c: 0, k: 0 }, playing = false, EL = { N: C.red, O: C.dred, S: '#450A0A', F: C.char, Cl: C.char, Br: C.char };
     var gp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<svg viewBox="0 0 540 372" width="540" height="372"></svg>');
     var sp = api.el('pn', 'left:608px;top:28px;width:324px;height:408px', '<div class="cx"></div>');
     var ctl = api.addControl('Molecule <select></select> Rounds <input type="range" min="0" max="5" step="1" value="0" style="width:120px"><b class="kv">0</b>'); var msel = qs('select', ctl), rr = qs('input', ctl);

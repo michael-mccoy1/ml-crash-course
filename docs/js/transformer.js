@@ -49,7 +49,7 @@ function gSample(p){ var r = Math.random(), c = 0; for (var i = 0; i < p.length;
 async function gWrite(prefix, temp, maxTok){ var ids = prefix.slice(); for (var t = ids.length; t < maxTok; t++) { var nx = gSample(gDist(ids, temp)); if (nx === 2) break; ids.push(nx); if (t % 10 === 9) await tick(); } return ids.slice(1).map(function(i){ return G.vocab[i]; }).join(''); }
 function syntaxOk(s){ if (!s) return false; var depth = 0, rings = {}, t = s.match(TOK) || []; for (var i = 0; i < t.length; i++) { var x = t[i]; if (x === '(') depth++; else if (x === ')') { depth--; if (depth < 0) return false; } else if (x[0] === '[') { if (x.slice(-1) !== ']') return false; } else if (/^\d$/.test(x) || /^%\d\d$/.test(x)) rings[x] = (rings[x] || 0) + 1; } if (depth !== 0) return false; for (var k in rings) if (rings[k] % 2) return false; return !/[=#\-(\/\\]/.test(t[t.length - 1]) && !/^[=#)]/.test(t[0]); }
 function tokCat(t){ if (/^[A-Za-z]/.test(t) && t[0] !== '[') return 'atom'; if (t[0] === '[') return 'bracket'; if (/^\d$|^%/.test(t)) return 'ring'; if (t === '(' || t === ')') return 'branch'; if (t === '<pad>' || t === '<bos>' || t === '<eos>') return 'special'; return 'bond'; }
-var CATC = { atom: C.red, ring: C.char, branch: C.bg, bond: C.dred, bracket: '#450A0A', special: C.mid };
+var CATC = { atom: C.red, ring: C.char, branch: C.bg, bond: '#F78C85', bracket: C.dred, special: '#D1D8E0' };
 
 /* training */
 async function gTrain(o){
