@@ -19,7 +19,7 @@ function taRow(label, value, color){ return '<div class="rrow">' + label + '<b' 
 function taDebounce(fn, ms){ var t = null; return function(){ clearTimeout(t); t = setTimeout(fn, ms); }; }
 
 /* ---------- Step 1: split search ---------- */
-L7.add({ short: 'Split search', title: 'How a tree finds its best question',
+L7.add({ short: 'Split search', title: 'Searching for the best split',
   change: 'Choose a feature and a number of bins. Compare the exact search with the binned search.',
   watch: 'A split sends compounds below a threshold to the left and the rest to the right, and each side predicts its own average. The gain of a split is how much it reduces the sum of squared errors (SSE), the total of the squared gaps between each compound and its group average: gain = SSE before the split minus SSE after. The exact search tries a threshold between every pair of neighbouring values. The binned search first sorts the values into bins and tries only the bin edges. Fast libraries such as LightGBM work this way.',
   build: function(api){
@@ -61,7 +61,7 @@ L7.add({ short: 'Split search', title: 'How a tree finds its best question',
   } });
 
 /* ---------- Step 2: growing a tree ---------- */
-L7.add({ short: 'Growing a tree', title: 'Depth and leaf size decide how far a tree grows',
+L7.add({ short: 'Growing a tree', title: 'Depth and leaf size',
   change: 'Drag Maximum depth and Minimum leaf size.',
   watch: 'A tree grows by splitting a group, then splitting each part again. Two settings stop it. Maximum depth limits how many questions in a row a compound can be asked. Minimum leaf size is the fewest compounds a final group, called a leaf, may hold: a split is rejected if either side would fall below it. With no limits a tree keeps splitting until each leaf holds one compound, and it memorises the training set. The left chart varies leaf size at the depth you chose. The right chart varies depth at the leaf size you chose.',
   build: function(api){
@@ -91,7 +91,7 @@ L7.add({ short: 'Growing a tree', title: 'Depth and leaf size decide how far a t
   } });
 
 /* ---------- Step 3: bagging ---------- */
-L7.add({ short: 'Bagging', title: 'Why averaging many trees works, and what random features add',
+L7.add({ short: 'Bagging', title: 'Averaging many trees',
   change: 'Set the number of trees and the features tried per split, then press Fit forest. Compare runs.',
   watch: 'Bagging trains each tree on a bootstrap sample: compounds drawn at random with replacement, so some repeat and about a third are left out. A forest also lets each split see only a random subset of the features. The forest predicts the average of its trees. If each tree has variance σ² and any two trees correlate at ρ, the average of B trees has variance ρσ² + (1 - ρ)σ²/B. More trees shrink the second term. Fewer features per split tends to lower ρ. Out-of-bag R2 scores each training compound using only the trees that never saw it, which gives a test-like score without a test set.',
   build: function(api){
@@ -143,7 +143,7 @@ function taBoostLoss(loss, delta, rounds, lr, depth, sample){
   return { F: F, steps: steps };
 }
 var TA_LOSS = { l2: 'Squared error', l1: 'Absolute error', hu: 'Huber' };
-L7.add({ short: 'Boosting math', title: 'What each boosting round fits, and how the loss changes it',
+L7.add({ short: 'Boosting math', title: 'Boosting and the loss',
   change: 'Choose a loss and a round. The panel on the right compares all three losses over 100 rounds.',
   watch: 'Boosting starts from one number, here the training mean, and adds trees one at a time. A loss measures how bad a prediction is. At each round the next tree is fitted to the gradient: the direction that lowers the loss fastest. For squared error that is just the residual, measured minus predicted. Absolute error uses only the sign of the residual, so a few extreme compounds pull less. Huber loss acts like squared error for small residuals and like absolute error for large ones. The table follows five training compounds through the first rounds. In this simplified version each leaf holds the mean of the gradient. Real libraries add a line search or a second-order step.',
   build: function(api){
@@ -183,7 +183,7 @@ L7.add({ short: 'Boosting math', title: 'What each boosting round fits, and how 
   } });
 
 /* ---------- Step 5: tuning ---------- */
-L7.add({ short: 'Tuning', title: 'Choosing settings without peeking at the test set',
+L7.add({ short: 'Tuning', title: 'Tuning without the test set',
   change: 'Press Run grid. Compare the cell chosen on validation with the cell that is best on test.',
   watch: 'A hyperparameter is a setting you choose before training, such as the learning rate or the depth. To pick one fairly, split the training compounds again. The model learns from 80% and is scored on the other 20%, the validation set. Choose the cell with the best validation score, then report its score on the test set once. If you choose by test score instead, the test set has helped pick the model, and the score you report is too good. This grid fits 100 rounds of boosting for each learning rate and depth.',
   build: function(api){
@@ -222,7 +222,7 @@ var TA_LIBS = [
   { name: 'CatBoost', rows: [['Growth', 'Symmetric trees: every node at a level uses the same split.'], ['Split search', 'Histogram.'], ['Fits each round', 'Gradient with ordered boosting, which fits each compound using a model that has not seen it.'], ['Regularisation', 'Depth, learning rate and L2 penalty. Symmetric trees also limit complexity.'], ['Known for', 'Built-in handling of categorical features, and less leakage from the target.']] },
   { name: 'scikit-learn', rows: [['Growth', 'GradientBoostingRegressor grows level by level. HistGradientBoostingRegressor grows leaf-wise.'], ['Split search', 'Exact for the first, histogram for the second.'], ['Fits each round', 'The gradient, with a line search in the first class.'], ['Regularisation', 'Learning rate, depth or leaf count, minimum samples, L2 in the histogram class.'], ['Known for', 'A common API. The histogram class follows the LightGBM design.']] }
 ];
-L7.add({ short: 'Library designs', title: 'How the common boosting libraries differ',
+L7.add({ short: 'Library designs', title: 'Boosting libraries compared',
   change: 'Click a library to compare how it grows trees, searches splits and regularises.',
   watch: 'Gradient boosting libraries share one idea but differ in how they build each tree. Level-wise growth splits every node at one depth before going deeper. Leaf-wise growth always splits the single best leaf, which reaches a low error with fewer splits but can overfit small data. A second-order method uses the curvature of the loss as well as its slope, so each step is better scaled. Defaults change between versions, so check the documentation of the one you use.',
   build: function(api){
@@ -234,6 +234,48 @@ L7.add({ short: 'Library designs', title: 'How the common boosting libraries dif
       qs('.tlr', pn).innerHTML = '<h4 style="font-size:20px;color:' + C.red + ';margin-bottom:6px">' + esc(L.name) + '</h4>' + L.rows.map(function(r){ return '<div style="display:grid;grid-template-columns:150px 1fr;padding:12px 0;border-top:1px solid ' + C.silver + '"><div class="lbl" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:700;color:' + C.char + '">' + r[0] + '</div><div style="font-size:15px;line-height:1.45;color:' + C.char + '">' + esc(r[1]) + '</div></div>'; }).join('');
     }
     return { render: draw };
+  } });
+
+/* ---------- Step 7: fitting a torus ---------- */
+var TA_SHAPE = { models: null, tr: null, te: null, B: null, st: { yaw: 0.5, pitch: 1.1, pts: [] }, busy: false };
+var TA_FAM = { tree: ['Tree', C.char, 'depth', [2, 4, 6, 8, 10, 12]], forest: ['Forest', '#6F8196', 'trees', [3, 10, 30, 100]], boost: ['Boosting', C.red, 'rounds', [10, 30, 100, 300]] };
+function taTorusPrep(){
+  if (TA_SHAPE.tr) return; var tr = TA_SHAPE.tr = shTrain(4000, 31); TA_SHAPE.te = shTest(2000, 77);
+  var B = { edges: {}, codes: {} }; ['x', 'y', 'z'].forEach(function(f, c){ var v = []; for (var i = 0; i < tr.n; i++) v.push(tr.X[i * 3 + c]); v.sort(function(a, b){ return a - b; }); var e = []; for (var q = 1; q < 32; q++) { var x = v[Math.floor(q / 32 * v.length)]; if (!e.length || x > e[e.length - 1]) e.push(x); } B.edges[f] = e; var codes = new Uint8Array(tr.n); for (var i2 = 0; i2 < tr.n; i2++) { var val = tr.X[i2 * 3 + c], k = 0; while (k < e.length && val > e[k]) k++; codes[i2] = k; } B.codes[f] = codes; });
+  TA_SHAPE.B = B;
+}
+function taTorusFit(kind, size){
+  var tr = TA_SHAPE.tr, B = TA_SHAPE.B, F = ['x', 'y', 'z'], n = tr.n, all = new Int32Array(n), i, vals = { x: 0, y: 0, z: 0 }, t0 = performance.now(), rand = rng(3 + size);
+  for (i = 0; i < n; i++) all[i] = i; var predict, size2;
+  if (kind === 'tree') { var node = buildTree(B, F, tr.T, all, size, 5, 3, rand); size2 = size; predict = function(x, y, z){ vals.x = x; vals.y = y; vals.z = z; return predictVals(node, B, vals); }; }
+  else if (kind === 'forest') { var trees = []; for (var q = 0; q < size; q++) { var boot = new Int32Array(n); for (i = 0; i < n; i++) boot[i] = Math.floor(rand() * n); trees.push(buildTree(B, F, tr.T, boot, 10, 3, 2, rand)); } predict = function(x, y, z){ vals.x = x; vals.y = y; vals.z = z; var s = 0; for (var k = 0; k < trees.length; k++) s += predictVals(trees[k], B, vals); return s / trees.length; }; }
+  else { var Fv = new Float64Array(n), res = new Float32Array(n), bt = [], lr = 0.1; for (var m = 0; m < size; m++) { for (i = 0; i < n; i++) res[i] = tr.T[i] - Fv[i]; var t = buildTree(B, F, res, all, 3, 10, 3, rand); bt.push(t); for (i = 0; i < n; i++) Fv[i] += lr * predictTree(t, B, i); } predict = function(x, y, z){ vals.x = x; vals.y = y; vals.z = z; var s = 0; for (var k = 0; k < bt.length; k++) s += lr * predictVals(bt[k], B, vals); return s; }; }
+  var secs = (performance.now() - t0) / 1000;
+  return { kind: kind, size: size, secs: secs, predict: predict, acc: shAccuracy(TA_SHAPE.te, predict) };
+}
+L7.add({ short: 'Fitting a torus', title: 'Fitting a 3D shape with trees of different sizes',
+  change: 'Press Fit all. Choose a model to see its shape and rotate it.',
+  watch: 'A torus is a donut shape. Each model is given 4,000 points in 3D space, each labelled with its distance to the torus surface, negative inside and positive outside. A point is called inside when the prediction is below zero. A tree can only cut space with flat planes at right angles to the axes, so a single tree builds the donut from boxes. A forest averages many such shapes and a boosted model adds them one after another, which smooths the surface. The lines show accuracy on 2,000 held-out points near the surface, half inside and half outside, so that guessing scores 0.5. Each family is tried at several sizes.',
+  build: function(api){
+    var vp = api.el('pn', 'left:28px;top:28px;width:440px;height:408px', '<h4 class="vt">Shape learned by the model</h4><canvas width="416" height="350" style="cursor:grab"></canvas>');
+    var cp = api.el('pn', 'left:488px;top:28px;width:444px;height:408px;overflow:auto', '<h4>Accuracy against training time</h4><canvas class="c2" width="420" height="214"></canvas><div class="tb" style="margin-top:6px"></div>');
+    var ctl = api.addControl('Show <select class="sm"></select> <button type="button" class="btn sm" data-all>Fit all</button>');
+    var sm = qs('.sm', ctl), canvas = qs('canvas', vp), opts = [];
+    Object.keys(TA_FAM).forEach(function(k){ TA_FAM[k][3].forEach(function(sz){ opts.push(k + ':' + sz); sm.insertAdjacentHTML('beforeend', '<option value="' + k + ':' + sz + '">' + TA_FAM[k][0] + ', ' + TA_FAM[k][2] + ' ' + sz + '</option>'); }); }); sm.value = 'forest:30'; shRotatable(canvas, TA_SHAPE.st);
+    function view(){ var run = TA_SHAPE.models && TA_SHAPE.models[sm.value]; if (run && !run.pts) run.pts = shGridInside(run.predict); TA_SHAPE.st.pts = run ? run.pts : []; qs('.vt', vp).textContent = run ? TA_FAM[run.kind][0] + ', ' + TA_FAM[run.kind][2] + ' ' + run.size + ', accuracy ' + run.acc.toFixed(2) : 'Shape learned by the model'; shDraw(canvas, TA_SHAPE.st); }
+    function chart(){
+      var M = TA_SHAPE.models || {}, series = Object.keys(TA_FAM).map(function(k){ var pts = TA_FAM[k][3].filter(function(sz){ return M[k + ':' + sz]; }).map(function(sz){ var r = M[k + ':' + sz]; return [Math.log10(Math.max(r.secs * 1000, 0.5)), r.acc]; }); return { pts: pts, color: TA_FAM[k][1], label: TA_FAM[k][0], w: 2.6 }; }).filter(function(s){ return s.pts.length; });
+      if (!series.length) { var g0 = cv(qs('.c2', cp)); g0.x.fillStyle = C.char; g0.x.fillText('Press Fit all.', 50, 40); qs('.tb', cp).innerHTML = ''; return; }
+      lineChart(qs('.c2', cp), series, { xl: 'log10 of training time in ms (1 is 10 ms, 2 is 100 ms)', yl: 'accuracy', y0: 0.5, y1: 1, ydec: 2, xdec: 1 });
+      qs('.tb', cp).innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12.5px;color:' + C.char + '"><tr style="text-align:right;font-weight:700"><td style="text-align:left">Model</td><td>Size</td><td>Training time</td><td>Accuracy</td></tr>' + opts.filter(function(o){ return M[o]; }).map(function(o){ var r = M[o]; return '<tr style="text-align:right;border-top:1px solid ' + C.silver + '"><td style="text-align:left"><b style="color:' + TA_FAM[r.kind][1] + '">' + TA_FAM[r.kind][0] + '</b></td><td>' + TA_FAM[r.kind][2] + ' ' + r.size + '</td><td>' + (r.secs * 1000).toFixed(0) + ' ms</td><td><b>' + r.acc.toFixed(3) + '</b></td></tr>'; }).join('') + '</table>';
+    }
+    async function runAll(){
+      if (TA_SHAPE.busy) return; TA_SHAPE.busy = true; TA_SHAPE.models = {}; taTorusPrep(); var done = 0;
+      for (var a = 0; a < opts.length; a++) { var parts = opts[a].split(':'); api.busy('Fitting ' + (a + 1) + ' of ' + opts.length); await tick(); await tick(); TA_SHAPE.models[opts[a]] = taTorusFit(parts[0], +parts[1]); }
+      TA_SHAPE.busy = false; api.idle(); chart(); view();
+    }
+    qs('[data-all]', ctl).addEventListener('click', runAll); sm.addEventListener('change', function(){ chart(); view(); });
+    return { render: async function(){ if (!TA_SHAPE.models) await runAll(); else { chart(); view(); } } };
   } });
 
 L7.glossary([
@@ -251,6 +293,8 @@ L7.glossary([
   ['Hyperparameter', 'A setting chosen before training, such as the learning rate or depth.'],
   ['Validation set', 'Training compounds held back to compare settings. It is not the test set.'],
   ['Level-wise growth', 'Split every node at one depth before going deeper.'],
-  ['Leaf-wise growth', 'Always split the leaf with the largest gain.']
+  ['Leaf-wise growth', 'Always split the leaf with the largest gain.'],
+  ['Torus', 'A donut shape, used here as a 3D shape to fit.'],
+  ['Balanced accuracy', 'The average of the share of inside points called inside and outside points called outside.']
 ]);
-setUses(L7, [['endpoint'], ['endpoint'], ['endpoint'], ['endpoint'], ['endpoint'], []]);
+setUses(L7, [['endpoint'], ['endpoint'], ['endpoint'], ['endpoint'], ['endpoint'], [], []]);

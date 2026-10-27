@@ -9,7 +9,7 @@ L4.optsHTML = function(){
 };
 var TOK = /\[[^\]]+\]|Br|Cl|%\d\d|./g, TLEN = 48, DM = 64, HEADS = 4;
 var G = { P: null, NL: 2, vocab: null, stoi: null, V: 0, seqs: null, trained: false, losses: [], secs: null, steps: 0, params: 0, busy: false, emb0: null, readIds: null, sig: null };
-function GP(){ return { nl: +$('glayers').value, steps: +$('gsteps').value, temp: +$('gtemp').value }; }
+function GP(){ var g = function(id, d){ var e = $(id); return e ? +e.value : d; }; return { nl: g('glayers', 2), steps: g('gsteps', 250), temp: g('gtemp', 0.8) }; }
 function gptCorpusSig(){ return JSON.stringify([FILT.mw, FILT.lp]); }
 function gptSetup(){
   if (G.vocab) return; var d = DATA.HLM, sm = d.smi_all || [], n = sm.length, toks = new Array(n), set = {}, pool = [];
@@ -160,8 +160,8 @@ L4.add({ short: 'Tokens', title: 'A GPT reads a molecule as tokens',
       qs('.tk', kp).innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:4px">' + ['[start]'].concat(toks, ['[end]']).map(function(t, k){ var id = k === 0 ? 1 : (k === toks.length + 1 ? 2 : G.stoi[t]); return '<div class="tkc fl" style="text-align:center"><span class="tok ' + (k === 0 || k === toks.length + 1 ? 's' : '') + '" style="margin:0">' + esc(t) + '</span><div style="font:600 11px Cascadia Mono,Consolas,monospace;color:#34373F;margin-top:3px">' + (id === undefined ? '?' : id) + '</div></div>'; }).join('') + '</div>';
       var used = {}; toks.forEach(function(t){ used[t] = 1; }); qs('.vh', vp).textContent = 'Vocabulary: ' + G.V + ' tokens, learned from ' + G.seqs.length + ' training SMILES'; qs('.vc', vp).innerHTML = G.vocab.map(function(t, i){ return '<span style="display:inline-block;margin:2px 6px 2px 0;font:600 11.5px Cascadia Mono,Consolas,monospace;padding:3px 6px;border-radius:4px;border:1px solid ' + (used[t] ? C.red : C.silver) + ';background:' + (used[t] ? '#fff' : '#EDF2F4') + ';color:' + (used[t] ? C.red : C.mid) + '">' + esc(tokName(i)) + ' ' + i + '</span>'; }).join('');
       [sp, tp, kp, vp].forEach(function(e){ e.classList.remove('on'); }); qsa('.tkc', kp).forEach(function(e){ e.classList.remove('on'); }); }
-    qs('[data-next]', api.sbar).addEventListener('click', async function(){ api.tok++; await setup(true); var t = api.tok; api.stepDef.safe(function(){ return play(t); }); });
     async function render(){ await setup(false); [sp, tp, kp, vp].forEach(function(e){ e.classList.add('on'); }); qs('.smi', tp).textContent = cur.smi; qsa('.tkc', kp).forEach(function(e){ e.classList.add('on'); }); }
+    qs('[data-next]', api.sbar).addEventListener('click', async function(){ api.tok++; await setup(true); await render(); });
     return { render: render };
   } });
 

@@ -240,8 +240,8 @@ L2.add({ short: 'Forest', title: 'A forest averages many trees',
       for (var d = 0; d < upto; d++) { var dd = dots[d], cyp = box.b - rad - dd.h * (rad * 2 + 1), prog = d === upto - 1 ? tt : 1; x.fillStyle = 'rgba(161,177,195,.95)'; x.beginPath(); x.arc(box.l + (dd.b + 0.5) * bw, lerp(box.t, cyp, prog), rad, 0, 6.3); x.fill(); }
       x.strokeStyle = C.char; x.setLineDash([5, 4]); x.lineWidth = 2; x.beginPath(); x.moveTo(sx(my), box.t); x.lineTo(sx(my), box.b); x.stroke(); x.setLineDash([]); x.fillStyle = C.char; x.font = '600 12px Aptos, Segoe UI, sans-serif'; x.textAlign = 'left'; x.fillText('measured ' + my.toFixed(2), clamp(sx(my) + 5, 0, box.r - 90), box.t + 10);
       if (upto) { var m = mean(preds.slice(0, upto)); x.strokeStyle = C.red; x.lineWidth = 3; x.beginPath(); x.moveTo(sx(m), box.t + 18); x.lineTo(sx(m), box.b); x.stroke(); x.fillStyle = C.red; x.fillText('forest ' + m.toFixed(2), clamp(sx(m) + 6, 0, box.r - 90), box.t + 28); } return preds; }
-    qs('[data-next]', api.sbar).addEventListener('click', async function(){ api.tok++; await setup(true); var t = api.tok; api.stepDef.safe(function(){ return play(t); }); });
     async function render(){ await setup(false); var n = tForest().per.length; vote(n, 1); drawCurve(n); drawDepth(); }
+    qs('[data-next]', api.sbar).addEventListener('click', async function(){ api.tok++; await setup(true); await render(); });
     return { render: render };
   } });
 

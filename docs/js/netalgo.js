@@ -10,7 +10,7 @@ function naDebounce(fn, ms){ var t = null; return function(){ clearTimeout(t); t
 function naFmt(v, n){ return !isFinite(v) ? 'diverged' : (Math.abs(v) >= 1e4 ? v.toExponential(1) : v.toFixed(n === undefined ? 3 : n)); }
 
 /* ---------- Step 1: gradient descent on a loss surface ---------- */
-L8.add({ short: 'Gradient descent', title: 'How a model walks down the loss surface',
+L8.add({ short: 'Gradient descent', title: 'Walking down the loss surface',
   change: 'Click the map to set a start. Drag Learning rate and Steps. Switch centring on and off.',
   watch: 'Training searches for the weight and bias with the lowest loss, the average squared miss. The map shows the loss for every pair of weight (across) and bias (up), and darker red is higher. Gradient descent steps downhill. Each step is the learning rate times the slope. Momentum also keeps a running sum of earlier steps. Adam divides each step by the recent size of its gradient. If the feature is not centred, the valley is long and thin: the slope is steep across it and shallow along it. Plain gradient descent must then use a small learning rate to stay stable, and it crawls along the valley. Adam rescales each direction, so it can use a larger rate. Centring and scaling the feature makes the valley round.',
   build: function(api){
@@ -47,8 +47,8 @@ L8.add({ short: 'Gradient descent', title: 'How a model walks down the loss surf
       var cols = { gd: C.char, mom: '#6F8196', adam: C.red }, res = {};
       ['gd', 'mom', 'adam'].forEach(function(o){ var pts = run(o, rate, n); res[o] = pts; x.strokeStyle = cols[o]; x.lineWidth = 2; x.beginPath(); pts.forEach(function(p, i){ i ? x.lineTo(sx(p[0]), sy(p[1])) : x.moveTo(sx(p[0]), sy(p[1])); }); x.stroke(); var e = pts[pts.length - 1]; x.fillStyle = cols[o]; x.beginPath(); x.arc(sx(e[0]), sy(e[1]), 4, 0, 6.3); x.fill(); });
       x.restore(); x.fillStyle = '#fff'; x.strokeStyle = C.char; x.lineWidth = 2; x.beginPath(); x.arc(sx(start[0]), sy(start[1]), 6, 0, 6.3); x.fill(); x.stroke(); x.fillStyle = C.char; x.beginPath(); x.moveTo(sx(S.ws), sy(S.bs) - 8); x.lineTo(sx(S.ws) + 7, sy(S.bs) + 6); x.lineTo(sx(S.ws) - 7, sy(S.bs) + 6); x.closePath(); x.fill();
-      var series = ['gd', 'mom', 'adam'].map(function(o){ return { pts: res[o].map(function(p, i){ return [i, Math.log10(Math.max(p[2] - S.lmin, 1e-9))]; }).filter(function(p){ return isFinite(p[1]) && p[1] < 6; }), color: cols[o], nodot: true, w: 2.2 }; });
-      lineChart(qs('.c2', sp), series, { xl: 'step', yl: 'log10 of the excess loss', x0: 0, x1: Math.max(2, n), y0: -6, y1: 3, ydec: 0, xdec: 0 });
+      var series = ['gd', 'mom', 'adam'].filter(function(o){ var e = res[o][res[o].length - 1]; return isFinite(e[2]) && e[2] < 1e8; }).map(function(o){ return { pts: res[o].map(function(p, i){ return [i, Math.log10(Math.max(p[2] - S.lmin, 1e-9))]; }).filter(function(p){ return isFinite(p[1]) && p[1] < 4; }), color: cols[o], nodot: true, w: 2.2 }; });
+      lineChart(qs('.c2', sp), series, { xl: 'step', yl: 'log10 of the excess loss', x0: 0, x1: Math.max(4, Math.ceil(n / 4) * 4), y0: -8, y1: 4, ydec: 0, xdec: 0 });
       qs('.rd', sp).innerHTML = [['Gradient descent', 'gd'], ['Momentum', 'mom'], ['Adam', 'adam']].map(function(r){ var e = res[r[1]], L = e[e.length - 1][2]; return '<div class="rrow"><span><b style="color:' + cols[r[1]] + '">' + r[0] + '</b></span><b>' + (isFinite(L) && L < 1e8 ? 'excess ' + naFmt(L - S.lmin, 3) : 'diverged') + '</b></div>'; }).join('') + '<p class="note" style="font-size:12px;margin-top:6px">Triangle: the lowest loss. White dot: the start. The excess loss is the loss minus its lowest value.</p>';
     }
     var cvs = qs('canvas', mp); cvs.addEventListener('pointerdown', function(ev){ var r = cvs.getBoundingClientRect(), sc = r.width / cvs.getAttribute('width'), px = (ev.clientX - r.left) / sc, py = (ev.clientY - r.top) / sc, box = { l: 44, r: 596 - 8, t: 8, b: 344 - 36 }; if (px < box.l || px > box.r || py < box.t || py > box.b) return; start = [W0 + (px - box.l) / (box.r - box.l) * (W1 - W0), B0 + (box.b - py) / (box.b - box.t) * (B1 - B0)]; draw(); });
@@ -67,7 +67,7 @@ function naGrad(p, x, y){
   var f = naNet(p, x, y), dy = 2 * (f.yh - y), dh = [dy * p[6], dy * p[7]], dz = [f.z[0] > 0 ? dh[0] : 0, f.z[1] > 0 ? dh[1] : 0];
   return { f: f, dy: dy, dh: dh, dz: dz, g: [dz[0] * x[0], dz[1] * x[0], dz[0] * x[1], dz[1] * x[1], dz[0], dz[1], dy * f.h[0], dy * f.h[1], dy] };
 }
-L8.add({ short: 'Backpropagation', title: 'How a network finds the gradient of every weight',
+L8.add({ short: 'Backpropagation', title: 'Backpropagation',
   change: 'Switch between Forward and Backward. Press Next compound, then Take one step.',
   watch: 'To change a weight, training needs the slope of the loss with respect to that weight, the gradient. Backpropagation finds all of them with the chain rule. The forward pass computes each neuron in turn, from the inputs to the prediction, and the loss. The backward pass starts at the loss and works toward the inputs, reusing each result: the slope at a neuron is the slope after it times the local slope. A neuron whose ReLU output is zero passes back a zero, so its input weights get no gradient for this compound. The table checks every gradient against a numerical estimate, the loss change when the weight moves a tiny amount in each direction.',
   build: function(api){
@@ -124,7 +124,7 @@ function naDeep(act, depth, scale){
   }
   return { fstd: fstd, gn: gn };
 }
-L8.add({ short: 'Initialisation', title: 'Why the starting weights decide whether a deep network can learn',
+L8.add({ short: 'Initialisation', title: 'Starting weights',
   change: 'Choose an activation. Drag Depth and Weight scale and watch the signal and the gradient.',
   watch: 'A network starts from random weights, and their size matters. Each layer multiplies the signal by its weights. If the weights are too small the signal shrinks layer by layer until it is almost zero. If they are too large it grows, or a saturating activation such as tanh or sigmoid flattens. The gradient travels back through the same layers, so it shrinks or grows in the same way. This is the vanishing or exploding gradient. A weight scale of 1 here is the standard choice for the activation: He initialisation for ReLU, which draws weights with variance 2 divided by the number of inputs, and Xavier initialisation for tanh and sigmoid, which uses 1 divided by the number of inputs when a layer has as many outputs as inputs, as here.',
   build: function(api){
@@ -144,7 +144,7 @@ L8.add({ short: 'Initialisation', title: 'Why the starting weights decide whethe
 
 /* ---------- Step 4: weight decay and batch size on the real network ---------- */
 var NA_WD = [0, 0.0001, 0.001, 0.01];
-L8.add({ short: 'Weight decay', title: 'How a penalty on the weights changes what a network learns',
+L8.add({ short: 'Weight decay', title: 'Weight decay',
   change: 'Choose a batch size and press Run comparison.',
   watch: 'Weight decay adds a penalty to the loss for large weights, so training prefers small ones. Small weights give a smoother function that follows noise less. The gradient of an L2 penalty is the strength times the weight, so each step also pulls every weight a little toward zero. The batch size is how many compounds are used for each weight update. Small batches give noisier updates and more of them per epoch. Here the same network is trained four times, with decay of 0, 0.0001, 0.001 and 0.01, for 50 epochs with Adam and no dropout. The lines show the error on compounds held back during training.',
   build: function(api){
@@ -204,7 +204,7 @@ L8.add({ short: 'Attention', title: 'Attention is a weighted lookup',
 
 /* ---------- Step 6: next-token loss ---------- */
 var NA_V6 = ['C', 'N', 'O', '(', ')', '='];
-L8.add({ short: 'Next-token loss', title: 'The number a GPT lowers during training',
+L8.add({ short: 'Next-token loss', title: 'The next-token loss',
   change: 'Drag the scores. Choose the correct token. Press Take one step.',
   watch: 'At each position the model outputs one score, a logit, for every token in its vocabulary. A softmax turns the scores into probabilities that add to 1. The loss is the cross-entropy: minus the natural log of the probability given to the correct token. It is 0 when that probability is 1 and grows as the probability falls. Perplexity is e raised to the loss, the number of equally likely tokens the model is choosing between. The gradient with respect to each score is the probability minus 1 for the correct token and the probability alone for the rest, so training raises the correct score and lowers the others.',
   build: function(api){
@@ -225,7 +225,7 @@ L8.add({ short: 'Next-token loss', title: 'The number a GPT lowers during traini
   } });
 
 /* ---------- Step 7: counting parameters ---------- */
-L8.add({ short: 'Counting parameters', title: 'Where a transformer keeps its parameters',
+L8.add({ short: 'Counting parameters', title: 'Counting parameters',
   change: 'Change the model size. Press Load lesson 04 GPT to load its settings and compare the count.',
   watch: 'A parameter is one learned number. A transformer keeps most of them in two places per layer: the attention weights, which are four square matrices of the model width d, and the feed-forward network, which has two matrices between d and f times d. The count per layer grows with d squared, so doubling the width roughly quadruples it. The embedding table holds one vector of d numbers per token, and a learned position table holds one per position. The output layer maps d back to the vocabulary, and it can share the embedding table. Storing the weights as 32-bit numbers takes 4 bytes each.',
   build: function(api){
@@ -244,6 +244,57 @@ L8.add({ short: 'Counting parameters', title: 'Where a transformer keeps its par
     return { render: draw };
   } });
 
+/* ---------- Step 8: fitting a torus ---------- */
+var NA_SHAPE = { runs: null, tr: null, te: null, st: { yaw: 0.5, pitch: 1.1, pts: [] }, busy: false };
+var NA_W = [2, 4, 8, 16, 32, 64], NA_COL = [C.char, '#6F8196', '#D1D8E0', '#F78C85', '#BD120A', C.red];
+async function naTorusNet(w, tr, te, epochs){
+  var S = [3, w, w, 1], L = 3, m = mlpInit(S, 101 + w), A = mlpBuf(S), A2 = mlpBuf(S), r = rng(5 + w), perm = [], i, BS = 64, step = 0, lr = 0.004, secs = 0, hist = [], buf = new Float32Array(3);
+  var gW = m.W.map(function(a){ return new Float32Array(a.length); }), gB = m.b.map(function(a){ return new Float32Array(a.length); }), mW = gW.map(function(a){ return new Float32Array(a.length); }), vW = gW.map(function(a){ return new Float32Array(a.length); }), mB = gB.map(function(a){ return new Float32Array(a.length); }), vB = gB.map(function(a){ return new Float32Array(a.length); }), delta = S.slice(1).map(function(n){ return new Float32Array(n); });
+  for (i = 0; i < tr.n; i++) perm.push(i);
+  var predict = function(x, y, z){ buf[0] = x; buf[1] = y; buf[2] = z; return mlpForward(m, buf, 0, A2, null, 0, null); };
+  for (var ep = 0; ep < epochs; ep++) {
+    var t0 = performance.now(); for (var a = perm.length - 1; a > 0; a--) { var j = Math.floor(r() * (a + 1)), tt = perm[a]; perm[a] = perm[j]; perm[j] = tt; }
+    for (var s0 = 0; s0 < tr.n; s0 += BS) {
+      var nb = Math.min(BS, tr.n - s0); gW.forEach(function(g){ g.fill(0); }); gB.forEach(function(g){ g.fill(0); });
+      for (var q = 0; q < nb; q++) {
+        var idx = perm[s0 + q], pred = mlpForward(m, tr.X, idx * 3, A, null, 0, null); delta[L - 1][0] = 2 * (pred - tr.T[idx]) / nb;
+        for (var l = L - 1; l >= 0; l--) { var nin = S[l], nout = S[l + 1], inp = A[l], dl = delta[l], gw = gW[l], gb = gB[l], W = m.W[l];
+          for (var jj = 0; jj < nout; jj++) gb[jj] += dl[jj];
+          for (var ii = 0; ii < nin; ii++) { var ai = inp[ii], base = ii * nout; if (ai !== 0) for (var j2 = 0; j2 < nout; j2++) gw[base + j2] += ai * dl[j2]; if (l > 0) { var sacc = 0; if (ai > 0) for (var j3 = 0; j3 < nout; j3++) sacc += W[base + j3] * dl[j3]; delta[l - 1][ii] = sacc; } } }
+      }
+      step++; var c1 = 1 - Math.pow(0.9, step), c2 = 1 - Math.pow(0.999, step);
+      for (var l2 = 0; l2 < L; l2++) { var w2 = m.W[l2], g2 = gW[l2], mw = mW[l2], vw = vW[l2], k; for (k = 0; k < w2.length; k++) { var g = g2[k]; mw[k] = 0.9 * mw[k] + 0.1 * g; vw[k] = 0.999 * vw[k] + 0.001 * g * g; w2[k] -= lr * (mw[k] / c1) / (Math.sqrt(vw[k] / c2) + 1e-8); }
+        var bb = m.b[l2], gb2 = gB[l2], mb = mB[l2], vb = vB[l2]; for (k = 0; k < bb.length; k++) { var g3 = gb2[k]; mb[k] = 0.9 * mb[k] + 0.1 * g3; vb[k] = 0.999 * vb[k] + 0.001 * g3 * g3; bb[k] -= lr * (mb[k] / c1) / (Math.sqrt(vb[k] / c2) + 1e-8); } }
+    }
+    secs += (performance.now() - t0) / 1000;
+    if (ep % 3 === 2 || ep === 0) { hist.push([secs, shAccuracy(te, predict)]); await tick(); }
+  }
+  return { w: w, predict: predict, hist: hist, secs: secs, acc: hist[hist.length - 1][1], params: w * w + 5 * w + 1 };
+}
+L8.add({ short: 'Fitting a torus', title: 'Fitting a 3D shape with networks of different sizes',
+  change: 'Press Train all. Choose a width to see the shape it learned and rotate it.',
+  watch: 'A torus is a donut shape. Each network is given 4,000 points in 3D space, each labelled with its distance to the torus surface, negative inside and positive outside. It learns this distance, and a point is called inside when the prediction is below zero. The width is the number of neurons in each of two hidden layers. A wider network can bend into a more complex shape but takes longer to train. The lines show accuracy on 2,000 held-out points near the surface, half inside and half outside, so that guessing scores 0.5. The 3D view shows grid points the network calls inside, in red, against the true surface in grey.',
+  build: function(api){
+    var vp = api.el('pn', 'left:28px;top:28px;width:440px;height:408px', '<h4 class="vt">Shape learned by the network</h4><canvas width="416" height="350" style="cursor:grab"></canvas>');
+    var cp = api.el('pn', 'left:488px;top:28px;width:444px;height:408px;overflow:auto', '<h4>Accuracy against training time</h4><canvas class="c2" width="420" height="214"></canvas><div class="tb" style="margin-top:6px"></div>');
+    var ctl = api.addControl('Show width <select class="sw">' + NA_W.map(function(v){ return '<option>' + v + '</option>'; }).join('') + '</select> <button type="button" class="btn sm" data-all>Train all</button>');
+    var sw = qs('.sw', ctl), canvas = qs('canvas', vp); sw.value = '16'; shRotatable(canvas, NA_SHAPE.st);
+    function view(){ var run = NA_SHAPE.runs && NA_SHAPE.runs[sw.value]; if (run && !run.pts) run.pts = shGridInside(run.predict); NA_SHAPE.st.pts = run ? run.pts : []; qs('.vt', vp).textContent = run ? 'Width ' + sw.value + ', accuracy ' + run.acc.toFixed(2) : 'Shape learned by the network'; shDraw(canvas, NA_SHAPE.st); }
+    function chart(){
+      var runs = NA_SHAPE.runs || {}, series = NA_W.filter(function(w){ return runs[w]; }).map(function(w, i){ return { pts: runs[w].hist.map(function(p){ return [p[0], p[1]]; }), color: NA_COL[NA_W.indexOf(w)], w: String(w) === sw.value ? 3.4 : 1.8, label: 'width ' + w }; });
+      if (!series.length) { var g0 = cv(qs('.c2', cp)); g0.x.fillStyle = C.char; g0.x.fillText('Press Train all.', 50, 40); qs('.tb', cp).innerHTML = ''; return; }
+      lineChart(qs('.c2', cp), series, { xl: 'training time (s)', yl: 'accuracy', y0: 0.5, y1: 1, x0: 0, ydec: 2, xdec: 1 });
+      qs('.tb', cp).innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12.5px;color:' + C.char + '"><tr style="text-align:right;font-weight:700"><td style="text-align:left">Width</td><td>Parameters</td><td>Training time</td><td>Accuracy</td></tr>' + NA_W.filter(function(w){ return runs[w]; }).map(function(w){ var r = runs[w]; return '<tr style="text-align:right;border-top:1px solid ' + C.silver + '"><td style="text-align:left"><b style="color:' + NA_COL[NA_W.indexOf(w)] + '">' + w + '</b></td><td>' + r.params.toLocaleString() + '</td><td>' + r.secs.toFixed(r.secs < 1 ? 2 : 1) + ' s</td><td><b>' + r.acc.toFixed(3) + '</b></td></tr>'; }).join('') + '</table>';
+    }
+    async function runAll(){
+      if (NA_SHAPE.busy) return; NA_SHAPE.busy = true; NA_SHAPE.runs = {}; if (!NA_SHAPE.tr) { NA_SHAPE.tr = shTrain(4000, 31); NA_SHAPE.te = shTest(2000, 77); }
+      for (var i = 0; i < NA_W.length; i++) { api.busy('Training width ' + NA_W[i] + ', ' + (i + 1) + ' of ' + NA_W.length); await tick(); await tick(); NA_SHAPE.runs[NA_W[i]] = await naTorusNet(NA_W[i], NA_SHAPE.tr, NA_SHAPE.te, 60); chart(); view(); }
+      NA_SHAPE.busy = false; api.idle(); chart(); view();
+    }
+    qs('[data-all]', ctl).addEventListener('click', runAll); sw.addEventListener('change', function(){ chart(); view(); });
+    return { render: async function(){ if (!NA_SHAPE.runs) await runAll(); else { chart(); view(); } } };
+  } });
+
 L8.glossary([
   ['Loss', 'A number that measures how bad a prediction is. Training lowers it.'],
   ['Gradient', 'The slope of the loss with respect to a weight. It points uphill.'],
@@ -260,6 +311,8 @@ L8.glossary([
   ['Softmax', 'A function that turns scores into positive weights that add to 1.'],
   ['Logit', 'The raw score a model gives a token before the softmax.'],
   ['Cross-entropy', 'Minus the natural log of the probability the model gave the correct token.'],
-  ['Perplexity', 'e raised to the loss. The number of equally likely tokens the model is choosing between.']
+  ['Perplexity', 'e raised to the loss. The number of equally likely tokens the model is choosing between.'],
+  ['Torus', 'A donut shape, used here as a 3D shape to fit.'],
+  ['Balanced accuracy', 'The average of the share of inside points called inside and outside points called outside.']
 ]);
-setUses(L8, [[], [], [], [], [], [], []]);
+setUses(L8, [[], [], [], [], [], [], [], []]);
