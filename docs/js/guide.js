@@ -8,6 +8,7 @@ var GUIDE = {
     gpt: { what: 'A GPT is a model that writes text one piece at a time by guessing the next piece.', goals: ['See a molecule become tokens and numbers.', 'See a GPT learn to guess the next token.', 'Check its output with RDKit, a chemistry toolkit.'], words: ['token', 'embedding', 'attention', 'temperature', 'SMILES'] },
     pre: { goals: ['Learn from molecules with no lab values.', 'Fine-tune with a few labels.', 'Freeze or update a model.'], words: ['pre-training', 'fine-tuning', 'frozen', 'GROVER', 'labelled'] },
     ai: { goals: ['Tell machine learning, which predicts, from generative AI, which produces.', 'See where each is useful and where it is not.', 'Know what to check before relying on either.'] },
+    treealgo: { goals: ['See how a tree searches for its best split.', 'See how depth, leaf size, bagging and boosting change the result.', 'Choose settings without using the test set.'] },
     compare: { goals: ['Compare models on accuracy and time.', 'Decide what a fair comparison needs.'], words: ['test R2', 'training time'] }
   },
   steps: {
@@ -73,6 +74,12 @@ var GUIDE = {
     'ai/How generative AI goes wrong': { notice: 'Every failure has a check that needs no AI.', q: 'A generated molecule is valid and new. Is it a good candidate?', a: 'Not yet. Valid and new say nothing about activity or clearance. A prediction model and then an experiment have to answer that.' },
     'ai/Can it or cannot it': { notice: 'Each reason points back to a lesson or to how language models work.', q: 'Which statement surprised you?', a: 'Any answer works. Reread the reason for that statement.' },
     'ai/Using it in a project': { notice: 'Check 5 has no lesson. It is a decision for people.', q: 'Which check would you run first?', a: 'Usually check 1 or 2, since they decide whether the score means anything for your question.' },
+    'treealgo/Split search': { notice: 'The red dots sit on or just under the grey line.', q: 'Why can the binned search never beat the exact search?', a: 'The bin edges are a subset of the thresholds the exact search tries, so its best gain can only match or fall short.' },
+    'treealgo/Growing a tree': { notice: 'Training R2 keeps rising with depth. Test R2 peaks, then falls.', q: 'Why does a smaller minimum leaf size raise the training R2?', a: 'Small leaves can follow individual compounds, noise included, so the tree fits the training set more closely.' },
+    'treealgo/Bagging': { notice: 'One tree scores far below the average of the trees.', q: 'Why can a forest score 0.30 when its average single tree scores about 0.02?', a: 'Each tree overfits in its own way. Averaging cancels much of that noise and keeps the signal the trees share.' },
+    'treealgo/Boosting math': { notice: 'Prediction after in one round is prediction before in the next.', q: 'Why does absolute error pull less on extreme compounds?', a: 'Its gradient is only the sign of the residual, so a huge miss counts the same as a modest one.' },
+    'treealgo/Tuning': { notice: 'The two borders can land on different cells.', q: 'Why report the test score only for the cell chosen on validation?', a: 'The test set must not influence the choice. Otherwise the reported score is too optimistic.' },
+    'treealgo/Library designs': { notice: 'Growth strategy is the first row.', q: 'Why can leaf-wise growth overfit small data?', a: 'It keeps splitting the best leaf, which can create a deep branch around a few compounds.' },
     'compare/Leaderboard': { notice: 'Red bars are yours.', q: 'Why are your scores lower than the reference runs?', a: 'They use thousands of extra features and train longer.' },
     'compare/Accuracy against time': { notice: 'Up is more accurate. Left is faster.', q: 'What if a model is both slower and less accurate?', a: 'There is no reason to choose it.' },
     'compare/Discussion': { notice: 'Answer from your own scores.', q: 'Which result would you least trust?', a: 'Any score from one split or a small test set.' }
