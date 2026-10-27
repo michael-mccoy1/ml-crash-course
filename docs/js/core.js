@@ -159,7 +159,7 @@ async function loadExtras(){ if (!EXTRAS) EXTRAS = await loadJSON('extras'); ret
 /* =====================================================================
    Lesson framework
    ===================================================================== */
-var LESSONS = {}, LORDER = ['start', 'trees', 'nn', 'gpt', 'pre', 'compare', 'ai', 'treealgo'], ACTIVE = 'start', featListeners = [];
+var LESSONS = {}, LORDER = ['start', 'trees', 'nn', 'gpt', 'pre', 'compare', 'ai', 'treealgo', 'netalgo'], ACTIVE = 'start', featListeners = [];
 function Lesson(id, title){ this.id = id; this.title = title; this.steps = []; this.gloss = null; this.optsHTML = ''; this.onOpts = null; this.onData = null; LESSONS[id] = this; }
 Lesson.prototype.add = function(def){ this.steps.push(def); return this; };
 Lesson.prototype.glossary = function(items){ this.gloss = items; return this; };

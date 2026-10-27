@@ -57,7 +57,7 @@ async function nnTrain(o){
   try {
     var A = mlpBuf(S), masks = S.slice(1, -1).map(function(n){ return new Float32Array(n); }), gW = m.W.map(function(w){ return new Float32Array(w.length); }), gB = m.b.map(function(b){ return new Float32Array(b.length); });
     var mW = gW.map(function(w){ return new Float32Array(w.length); }), vW = gW.map(function(w){ return new Float32Array(w.length); }), mB = gB.map(function(b){ return new Float32Array(b.length); }), vB = gB.map(function(b){ return new Float32Array(b.length); });
-    var delta = S.slice(1).map(function(n){ return new Float32Array(n); }), dprev = S.map(function(n){ return new Float32Array(n); }), order = P.T.n, perm = Array.from({ length: order }, function(_, i){ return i; }), BS = 64, tr = [], va = [], bestV = Infinity, bestM = null, bestEp = 0, step = 0, b1 = 0.9, b2 = 0.999, eps = 1e-8, F = P.F;
+    var delta = S.slice(1).map(function(n){ return new Float32Array(n); }), dprev = S.map(function(n){ return new Float32Array(n); }), order = P.T.n, perm = Array.from({ length: order }, function(_, i){ return i; }), BS = o.batch || 64, wd = o.wd || 0, tr = [], va = [], bestV = Infinity, bestM = null, bestEp = 0, step = 0, b1 = 0.9, b2 = 0.999, eps = 1e-8, F = P.F;
     for (var ep = 0; ep < p.epochs; ep++) {
       for (var a = perm.length - 1; a > 0; a--) { var jj = Math.floor(r() * (a + 1)), tt = perm[a]; perm[a] = perm[jj]; perm[jj] = tt; }
       for (var s0 = 0; s0 < order; s0 += BS) {
@@ -71,7 +71,7 @@ async function nnTrain(o){
             if (l > 0) { var dst = delta[l - 1]; for (var i2 = 0; i2 < nin; i2++) dst[i2] = dp[i2]; } }
         }
         step++; var c1 = 1 - Math.pow(b1, step), c2 = 1 - Math.pow(b2, step), lr = p.lr;
-        for (var l2 = 0; l2 < L; l2++) { var w2 = m.W[l2], g2 = gW[l2], mw = mW[l2], vw = vW[l2]; for (var k = 0; k < w2.length; k++) { var g = g2[k]; mw[k] = b1 * mw[k] + (1 - b1) * g; vw[k] = b2 * vw[k] + (1 - b2) * g * g; w2[k] -= lr * (mw[k] / c1) / (Math.sqrt(vw[k] / c2) + eps); }
+        for (var l2 = 0; l2 < L; l2++) { var w2 = m.W[l2], g2 = gW[l2], mw = mW[l2], vw = vW[l2]; for (var k = 0; k < w2.length; k++) { var g = g2[k] + wd * w2[k]; mw[k] = b1 * mw[k] + (1 - b1) * g; vw[k] = b2 * vw[k] + (1 - b2) * g * g; w2[k] -= lr * (mw[k] / c1) / (Math.sqrt(vw[k] / c2) + eps); }
           var bb = m.b[l2], gb2 = gB[l2], mb = mB[l2], vb = vB[l2]; for (var k2 = 0; k2 < bb.length; k2++) { var g3 = gb2[k2]; mb[k2] = b1 * mb[k2] + (1 - b1) * g3; vb[k2] = b2 * vb[k2] + (1 - b2) * g3 * g3; bb[k2] -= lr * (mb[k2] / c1) / (Math.sqrt(vb[k2] / c2) + eps); } }
       }
       var ltr = mlpMSE(m, P.T.X, P.T.y, P.T.n, A), lva = mlpMSE(m, P.V.X, P.V.y, P.V.n, A); tr.push(ltr); va.push(lva);

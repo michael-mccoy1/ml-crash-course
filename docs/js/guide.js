@@ -9,6 +9,7 @@ var GUIDE = {
     pre: { goals: ['Learn from molecules with no lab values.', 'Fine-tune with a few labels.', 'Freeze or update a model.'], words: ['pre-training', 'fine-tuning', 'frozen', 'GROVER', 'labelled'] },
     ai: { goals: ['Tell machine learning, which predicts, from generative AI, which produces.', 'See where each is useful and where it is not.', 'Know what to check before relying on either.'] },
     treealgo: { goals: ['See how a tree searches for its best split.', 'See how depth, leaf size, bagging and boosting change the result.', 'Choose settings without using the test set.'] },
+    netalgo: { goals: ['See how gradient descent, momentum and Adam move through a loss surface.', 'Follow backpropagation and attention with real numbers.', 'See how initialisation, weight decay and width change a network.'] },
     compare: { goals: ['Compare models on accuracy and time.', 'Decide what a fair comparison needs.'], words: ['test R2', 'training time'] }
   },
   steps: {
@@ -80,6 +81,13 @@ var GUIDE = {
     'treealgo/Boosting math': { notice: 'Prediction after in one round is prediction before in the next.', q: 'Why does absolute error pull less on extreme compounds?', a: 'Its gradient is only the sign of the residual, so a huge miss counts the same as a modest one.' },
     'treealgo/Tuning': { notice: 'The two borders can land on different cells.', q: 'Why report the test score only for the cell chosen on validation?', a: 'The test set must not influence the choice. Otherwise the reported score is too optimistic.' },
     'treealgo/Library designs': { notice: 'Growth strategy is the first row.', q: 'Why can leaf-wise growth overfit small data?', a: 'It keeps splitting the best leaf, which can create a deep branch around a few compounds.' },
+    'netalgo/Gradient descent': { notice: 'At a high rate on the raw feature, gradient descent and momentum diverge and Adam does not. Centre it and all three converge.', q: 'Why does centring the feature help gradient descent?', a: 'It makes the loss surface round, so the slope points toward the minimum instead of across a narrow valley.' },
+    'netalgo/Backpropagation': { notice: 'The last two columns match.', q: 'Why does a switched-off ReLU neuron get no gradient on its input weights?', a: 'Its output does not change when the input changes a little, so the slope through it is zero.' },
+    'netalgo/Initialisation': { notice: 'ReLU at scale 1 keeps the signal steady. Sigmoid loses its gradient at any scale.', q: 'What happens to the gradient at the first layer when the weights are too small?', a: 'It shrinks at every layer on the way back and reaches the first layer near zero, so those weights barely learn.' },
+    'netalgo/Weight decay': { notice: 'A stronger decay lowers the sum of squared weights.', q: 'Why can weight decay lower the validation error?', a: 'Small weights give a smoother function that follows noise less, so it generalises better when the network would otherwise overfit.' },
+    'netalgo/Attention': { notice: 'The weights always add up to 1.', q: 'Why are later tokens hidden?', a: 'A GPT is trained to guess the next token, so seeing it would be cheating.' },
+    'netalgo/Next-token loss': { notice: 'The correct token has the only negative gradient.', q: 'What loss does a uniform guess over six tokens give?', a: 'The natural log of 6, about 1.79.' },
+    'netalgo/Counting parameters': { notice: 'Attention and feed-forward hold most of the parameters.', q: 'Doubling the width multiplies the layer parameters by about how much?', a: 'Four, because the matrices grow with the width squared.' },
     'compare/Leaderboard': { notice: 'Red bars are yours.', q: 'Why are your scores lower than the reference runs?', a: 'They use thousands of extra features and train longer.' },
     'compare/Accuracy against time': { notice: 'Up is more accurate. Left is faster.', q: 'What if a model is both slower and less accurate?', a: 'There is no reason to choose it.' },
     'compare/Discussion': { notice: 'Answer from your own scores.', q: 'Which result would you least trust?', a: 'Any score from one split or a small test set.' }
