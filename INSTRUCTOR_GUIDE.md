@@ -23,8 +23,8 @@
 | 05 Pre-trained models | Fill in the blank, GROVER, fine-tuning a GPT and Chemprop |
 | 06 Compare | Leaderboard, discussion |
 | 07 Role of AI | Machine learning against generative AI, which fits which job, the training range, lab noise, how generative AI fails, can and cannot, five checks |
-| 08 Tree algorithms | Split search, growth limits, bagging, boosting losses, tuning, library designs, fitting a torus |
-| 09 Network algorithms | Gradient descent, backpropagation, initialisation, weight decay, attention, next-token loss, parameter counts, fitting a torus |
+| 08 Tree algorithms | Split search, growth limits, bagging, boosting losses, tuning, library designs, fitting a double helix, trees against data |
+| 09 Network algorithms | Gradient descent, backpropagation, initialisation, weight decay, attention, next-token loss, parameter counts, network size against data |
 
 ### 01 Data and ML basics
 * **Say:** a model is a rule fitted to examples.
@@ -67,13 +67,13 @@
 
 ### 08 Tree algorithms
 * **Say:** a split is the threshold with the largest drop in squared error. Everything else, forests, boosting and tuning, is built on that search.
-* **Do:** compare exact and binned search. Raise the depth and watch test R2 peak and fall. Fit forests with 1 and 8 features per split. Run the tuning grid. Fit the torus and rotate the shapes.
+* **Do:** compare exact and binned search. Raise the depth and watch test R2 peak and fall. Fit forests with 1 and 8 features per split. Run the tuning grid. Play the helix fit and rotate it. Play the data step and read the final chart.
 * **Ask:** why must the test set stay out of the choice of settings?
 * **Watch for:** the boosting step is simplified. Real libraries use second-order steps.
 
 ### 09 Network algorithms
 * **Say:** training is gradient descent, and backpropagation is how the gradients are found.
-* **Do:** run the three optimisers on the raw and the centred feature. Step through the backward pass. Move the weight scale in the initialisation step. Drag the attention query. Train the torus networks and compare width, time and accuracy.
+* **Do:** run the three optimisers on the raw and the centred feature. Step through the backward pass. Move the weight scale in the initialisation step. Drag the attention query. Play the scaling step with 100, 1,000 and 10,000 points and compare the five network sizes.
 * **Ask:** why does a sigmoid network lose its gradient in a deep stack?
 * **Watch for:** the attention and parameter steps use tiny sizes so the numbers can be read. Real models are far larger.
 

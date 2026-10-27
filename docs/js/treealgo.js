@@ -242,7 +242,8 @@ function taTorusPrep(){
   var B = { edges: {}, codes: {} }; ['x', 'y', 'z'].forEach(function(f, c){ var v = []; for (var i = 0; i < tr.n; i++) v.push(tr.X[i * 3 + c]); v.sort(function(a, b){ return a - b; }); var e = []; for (var q = 1; q < 64; q++) { var x = v[Math.floor(q / 64 * v.length)]; if (!e.length || x > e[e.length - 1]) e.push(x); } B.edges[f] = e; var codes = new Uint8Array(tr.n); for (var i2 = 0; i2 < tr.n; i2++) { var val = tr.X[i2 * 3 + c], k = 0; while (k < e.length && val > e[k]) k++; codes[i2] = k; } B.codes[f] = codes; });
   TA_SHAPE.B = B;
 }
-function taLog(ms){ return Math.log10(Math.max(ms, 0.5)); }
+function taLog(ms){ return Math.log10(Math.max(ms, 1)); }
+function taTimeTicks(hi){ var o = []; for (var v = 0; v <= hi; v++) o.push({ v: v, t: v < 3 ? Math.pow(10, v) + ' ms' : Math.pow(10, v - 3) + ' s' }); return o; }
 async function taTorusPanels(onProg){
   taTorusPrep(); var tr = TA_SHAPE.tr, te = TA_SHAPE.te, B = TA_SHAPE.B, F = ['x', 'y', 'z'], n = tr.n, all = new Int32Array(n), i, vals = { x: 0, y: 0, z: 0 }, panels = [];
   for (i = 0; i < n; i++) all[i] = i;
@@ -261,20 +262,51 @@ async function taTorusPanels(onProg){
   panels.push({ short: 'boosting', color: C.red, ck: bCk, titleAt: function(k){ return bCk[k].label; } });
   return panels;
 }
-L7.add({ short: 'Fitting a torus', title: 'Fitting a 3D shape with trees of different sizes',
+L7.add({ short: 'Fitting a helix', title: 'Fitting a double helix with three kinds of tree model',
   change: 'Press Play and watch a tree, a forest and a boosted model learn the shape. Drag the picture to rotate it, or drag the progress slider.',
-  watch: 'A torus is a donut shape. Each model is given 16,000 points in 3D space, each labelled with its distance to the torus surface, negative inside and positive outside, and learns to predict that distance. The surface drawn is where the prediction crosses zero, found by walking out from the true torus along its normal. Before the model has an inside, only a faint core shows. The thin grey rings mark the true torus. A tree cuts space with flat planes at right angles to the axes, so a single tree builds the donut from boxes. The first model grows one tree one level deeper at each step. The forest adds one tree at a time and averages them. Boosting adds small trees one after another. The chart tracks accuracy on 2,000 held-out points near the surface, half inside and half outside, so that guessing scores 0.5.',
+  watch: 'A double helix is two spiral strands joined by rungs, like DNA. Each model is given 16,000 points in 3D space, each labelled with its distance to the surface of the helix, negative inside and positive outside, and learns to predict that distance. The surface drawn is where the prediction crosses zero, found by walking out from the true helix along its surface normals. Before the model has an inside, only a faint core shows. A tree cuts space with flat planes at right angles to the axes, so a single tree builds the helix from boxes. The first model grows one tree one level deeper at each step. The forest adds one tree at a time and averages them. Boosting adds small trees one after another. The chart tracks accuracy on 2,000 held-out points near the surface, half inside and half outside, so that guessing scores 0.5.',
   build: function(api){
     var vp = api.el('pn', 'left:28px;top:28px;width:904px;height:228px', '<canvas width="880" height="204"></canvas>');
     var cp = api.el('pn', 'left:28px;top:266px;width:904px;height:170px', '<canvas class="c2" width="880" height="150"></canvas>');
     async function prepare(){ if (TA_SHAPE.panels) return; api.busy('Fitting the three models and building their surfaces'); await tick(); await tick(); TA_SHAPE.panels = await taTorusPanels(function(kind, k){ api.busy('Fitting ' + kind + ', step ' + k); }); api.idle(); }
     async function renderInner(){
       await prepare(); if (TA_SHAPE.anim) { TA_SHAPE.anim.draw(); return; }
-      var xs = []; TA_SHAPE.panels.forEach(function(p){ p.ck.forEach(function(c){ xs.push(c.x); }); });
-      TA_SHAPE.anim = shAnim({ canvas: qs('canvas', vp), chart: qs('.c2', cp), panels: TA_SHAPE.panels, x0: Math.floor(Math.min.apply(null, xs)), x1: Math.ceil(Math.max.apply(null, xs)), xl: 'training time, log10 of milliseconds (1 is 10 ms, 2 is 100 ms)', xdec: 0, dur: 16 });
+      var xs = []; TA_SHAPE.panels.forEach(function(p){ p.ck.forEach(function(c){ xs.push(c.x); }); }); var xhi = Math.ceil(Math.max.apply(null, xs));
+      TA_SHAPE.anim = shAnim({ canvas: qs('canvas', vp), chart: qs('.c2', cp), panels: TA_SHAPE.panels, x0: 0, x1: xhi, xl: 'training time (log scale)', xticks: taTimeTicks(xhi), dur: 16 });
       shControls(api, TA_SHAPE.anim);
     }
     async function render(){ if (TA_SHAPE.busy) return; TA_SHAPE.busy = true; try { await renderInner(); } finally { TA_SHAPE.busy = false; } }
+    return { render: render };
+  } });
+
+/* ---------- Step 8: tree models against the amount of data ---------- */
+var TA_DATA = { j: null, anim: null, busy: false };
+function taDecode(b64, n){ var bin = atob(b64), t = new Float32Array(n); for (var i = 0; i < n; i++) { var q = bin.charCodeAt(i); t[i] = q === 255 ? NaN : q / 254 * 2 - 0.75; } return t; }
+var TA_DCOL = ['#A1B1C4', '#6F8196', '#BD120A', C.char];
+function taDataPanels(){
+  var J = TA_DATA.j, n = shGeom().total;
+  return J.sizes.map(function(sz, i){ var run = J.runs[String(sz)], ck = run.ck.map(function(c){ return { t: c.t || (c.t = taDecode(c.mesh, n)), acc: c.acc, tr: c.tr, x: c.s }; }); return { short: sz.toLocaleString() + ' points', color: TA_DCOL[i], ck: ck, titleAt: function(k){ return sz.toLocaleString() + ' points'; } }; });
+}
+L7.add({ short: 'Trees and data', title: 'Tree models against the amount of data',
+  change: 'Press Play and watch the same boosted model learn the helix from 100, 1,000, 10,000 and 100,000 points. Then read the chart on the right.',
+  watch: 'The same boosted model, 300 rounds of small trees, learns the double helix from four amounts of data: 100, 1,000, 10,000 and 100,000 points, each labelled with its distance to the surface. The animation shows the surface it builds, and a surface appears only once the model predicts some points as inside. The chart on the right gives the accuracy on 2,000 held-out points at the end for three kinds of tree model: one tree, a forest of 100 trees and the boosted model. Tree models need data to put their splits where the surface actually is. With few points there is little to place a split on. More data helps a great deal at first. One tree and the forest stop improving after 10,000 points, while the boosted model keeps gaining, by less with each tenfold increase. These results come from a real run of the code in this lesson, saved so that this step opens at once.',
+  build: function(api){
+    var vp = api.el('pn', 'left:28px;top:28px;width:904px;height:214px', '<canvas width="880" height="190"></canvas>');
+    var c1 = api.el('pn', 'left:28px;top:252px;width:446px;height:184px', '<h4>Accuracy during boosting, held-out points</h4><canvas class="c1" width="420" height="144"></canvas>');
+    var c2 = api.el('pn', 'left:486px;top:252px;width:446px;height:184px', '<h4>Final accuracy against amount of data</h4><canvas class="c2" width="420" height="144"></canvas>');
+    function drawScale(){
+      var J = TA_DATA.j, ser = [['tree', 'one tree', C.char], ['forest', 'forest of 100 trees', '#6F8196'], ['boost', 'boosting, 300 rounds', C.red]].map(function(f){ return { pts: J.sizes.map(function(n){ return [Math.log10(n), J.runs[String(n)][f[0]]]; }), color: f[2], w: 2.8, label: f[1] }; });
+      lineChart(qs('.c2', c2), ser, { xl: 'training points (log scale)', yl: 'accuracy', y0: 0.5, y1: 1, x0: 2, x1: 5.1, xticks: [[2, '100'], [3, '1,000'], [4, '10,000'], [5, '100,000']].map(function(a){ return { v: a[0], t: a[1] }; }) });
+    }
+    async function prepare(){ if (TA_DATA.j) return; api.busy('Loading the saved training runs'); await tick(); TA_DATA.j = await loadJSON('tree_data'); api.idle(); }
+    async function render(){
+      if (TA_DATA.busy) return; TA_DATA.busy = true;
+      try {
+        await prepare(); if (TA_DATA.anim) { TA_DATA.anim.draw(); drawScale(); return; }
+        TA_DATA.anim = shAnim({ canvas: qs('canvas', vp), chart: qs('.c1', c1), panels: taDataPanels(), x0: 0, x1: 300, xl: 'boosting rounds', dur: 14 });
+        shControls(api, TA_DATA.anim); drawScale();
+      } finally { TA_DATA.busy = false; }
+    }
     return { render: render };
   } });
 
@@ -294,7 +326,7 @@ L7.glossary([
   ['Validation set', 'Training compounds held back to compare settings. It is not the test set.'],
   ['Level-wise growth', 'Split every node at one depth before going deeper.'],
   ['Leaf-wise growth', 'Always split the leaf with the largest gain.'],
-  ['Torus', 'A donut shape, used here as a 3D shape to fit.'],
+  ['Double helix', 'Two spiral strands joined by rungs, the shape of DNA. Used here as a 3D shape to fit.'],
   ['Balanced accuracy', 'The average of the share of inside points called inside and outside points called outside.']
 ]);
-setUses(L7, [['endpoint'], ['endpoint'], ['endpoint'], ['endpoint'], ['endpoint'], [], []]);
+setUses(L7, [['endpoint'], ['endpoint'], ['endpoint'], ['endpoint'], ['endpoint'], [], [], []]);

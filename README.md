@@ -22,8 +22,8 @@ Nothing to install. Each lesson lists its goals, has an options panel, steps wit
 | 05 Pre-trained models | Why pre-train, hiding atoms and groups, GROVER, fixed features, fine-tuning a GPT and Chemprop |
 | 06 Compare | Leaderboard, accuracy against time, discussion |
 | 07 Role of AI | Machine learning against generative AI, which fits which job, the training range, lab noise, how generative AI fails, a can and cannot sort, five checks |
-| 08 Tree algorithms | Split search, depth and leaf size, bagging, boosting losses, tuning, how the libraries differ, fitting a 3D torus |
-| 09 Network algorithms | Gradient descent, backpropagation, initialisation, weight decay, attention, next-token loss, parameter counts, fitting a 3D torus |
+| 08 Tree algorithms | Split search, depth and leaf size, bagging, boosting losses, tuning, how the libraries differ, fitting a 3D double helix, tree models against the amount of data |
+| 09 Network algorithms | Gradient descent, backpropagation, initialisation, weight decay, attention, next-token loss, parameter counts, network size against the amount of data |
 
 ## Notebooks
 

@@ -115,19 +115,24 @@ function fmtT(t){ return t === null || t === undefined ? 'n/a' : (t < 10 ? t.toF
 
 /* ---------- canvas helpers ---------- */
 function cv(el){ el = typeof el === 'string' ? $(el) : el; var dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth < 900 ? 1.5 : 2), w = +el.getAttribute('width'), hh = +el.getAttribute('height'); if (!el._s) { el.width = w * dpr; el.height = hh * dpr; el.style.width = w + 'px'; el.style.height = hh + 'px'; el._s = 1; } var x = el.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, hh); x.font = '12px Aptos, "Segoe UI", system-ui, sans-serif'; return { x: x, w: w, h: hh }; }
+function niceStep(span, want){ var raw = span / (want || 5), mag = Math.pow(10, Math.floor(Math.log10(raw))), nm = raw / mag; return (nm < 1.5 ? 1 : (nm < 3.5 ? 2 : (nm < 7.5 ? 5 : 10))) * mag; }
+function niceTicks(lo, hi, want){ if (!(hi > lo)) return { v: [lo], step: 1 }; var step = niceStep(hi - lo, want), out = [], t = Math.ceil(lo / step - 1e-9) * step; for (; t <= hi + step * 1e-6; t += step) out.push(+t.toFixed(10)); return { v: out, step: step }; }
+function tickText(v, step, dec){ if (dec !== undefined) return v.toFixed(dec); var d = step >= 1 ? 0 : Math.min(4, Math.max(0, -Math.floor(Math.log10(step) + 1e-9))); return v.toFixed(d); }
 function axes(g, box, xr, yr, xl, yl, ticks, o){
   o = o || {}; var x = g.x; x.strokeStyle = C.silver; x.fillStyle = C.mid; x.lineWidth = 1; x.textAlign = 'right'; ticks = ticks || 4;
-  var yd = Math.abs(yr[1] - yr[0]) > 6 ? 0 : 1;
-  for (var k = 0; k <= ticks; k++) { var v = yr[0] + (yr[1] - yr[0]) * k / ticks, y = box.t + (1 - k / ticks) * (box.b - box.t); x.beginPath(); x.moveTo(box.l, y); x.lineTo(box.r, y); x.stroke(); x.fillText(v.toFixed(o.ydec !== undefined ? o.ydec : yd), box.l - 6, y + 4); }
-  x.textAlign = 'center'; var xd = Math.abs(xr[1] - xr[0]) > 6 ? 0 : 1;
-  for (var k2 = 0; k2 <= ticks; k2++) { var xv = xr[0] + (xr[1] - xr[0]) * k2 / ticks; var xt = xv.toFixed(o.xdec !== undefined ? o.xdec : xd), xp = box.l + (box.r - box.l) * k2 / ticks, tw = x.measureText(xt).width; xp = Math.min(xp, g.w - 2 - tw / 2); x.fillText(xt, xp, box.b + 16); }
+  var yt = o.yticks || (function(){ var n = niceTicks(yr[0], yr[1], ticks + 1); return n.v.map(function(v){ return { v: v, t: tickText(v, n.step, o.ydec) }; }); })();
+  yt.forEach(function(k){ var y = box.b - (k.v - yr[0]) / (yr[1] - yr[0]) * (box.b - box.t); x.beginPath(); x.moveTo(box.l, y); x.lineTo(box.r, y); x.stroke(); x.fillText(k.t, box.l - 6, y + 4); });
+  x.textAlign = 'center';
+  var xt = o.xticks || (function(){ var n = niceTicks(xr[0], xr[1], ticks + 1); return n.v.map(function(v){ return { v: v, t: tickText(v, n.step, o.xdec) }; }); })();
+  xt.forEach(function(k){ var tw = x.measureText(k.t).width, xp = box.l + (k.v - xr[0]) / (xr[1] - xr[0]) * (box.r - box.l); xp = Math.max(tw / 2 + 1, Math.min(xp, g.w - 2 - tw / 2)); x.fillText(k.t, xp, box.b + 16); });
   x.fillStyle = C.char; x.font = '600 12px Aptos, "Segoe UI", sans-serif'; x.fillText(xl, (box.l + box.r) / 2, box.b + 33); x.save(); x.translate(13, (box.t + box.b) / 2); x.rotate(-Math.PI / 2); x.fillText(yl, 0, 0); x.restore(); x.font = '12px Aptos, "Segoe UI", sans-serif';
 }
 function lineChart(el, series, o){
   var g = cv(el), xs = [], ys = [], labelled = series.filter(function(s){ return s.label && s.pts.length; }), rows = 0, rowAt = [];
   if (labelled.length) { g.x.font = '600 11px Aptos, "Segoe UI", sans-serif'; var cx0 = 48, rr = 0; labelled.forEach(function(s){ var w = g.x.measureText(s.label).width + 30; if (cx0 + w > g.w - 10 && cx0 > 48) { cx0 = 48; rr++; } rowAt.push([cx0, rr]); cx0 += w; }); rows = rr + 1; }
   var box = { l: 48, r: g.w - 14, t: rows ? 10 + rows * 16 : 14, b: g.h - 40 }; series.forEach(function(s){ s.pts.forEach(function(p){ xs.push(p[0]); ys.push(p[1]); }); });
-  if (!xs.length) return g; var x0 = o.x0 !== undefined ? o.x0 : Math.min.apply(null, xs), x1 = o.x1 !== undefined ? o.x1 : Math.max.apply(null, xs), y0 = o.y0 !== undefined ? o.y0 : Math.min.apply(null, ys), y1 = o.y1 !== undefined ? o.y1 : Math.max.apply(null, ys); if (x1 === x0) x1 = x0 + 1; if (y1 === y0) y1 = y0 + 1;
+  if (!xs.length) return g; var xmn = Math.min.apply(null, xs), xmx = Math.max.apply(null, xs), ymn = Math.min.apply(null, ys), ymx = Math.max.apply(null, ys), ratio = /^accuracy/i.test(o.yl || '');
+  var x0 = o.x0 !== undefined ? o.x0 : Math.min(0, xmn), x1 = o.x1 !== undefined ? o.x1 : xmx, y0 = o.y0 !== undefined ? o.y0 : (ymn >= 0 ? 0 : -niceStep(Math.max(ymx - ymn, 1e-9), 4) * Math.ceil(-ymn / niceStep(Math.max(ymx - ymn, 1e-9), 4))), y1 = o.y1 !== undefined ? o.y1 : (ratio ? 1 : (function(){ var st = niceStep(Math.max(ymx - y0, 1e-9), 4); return Math.ceil(ymx / st - 1e-9) * st; })()); if (x1 === x0) x1 = x0 + 1; if (y1 === y0) y1 = y0 + 1;
   axes(g, box, [x0, x1], [y0, y1], o.xl || '', o.yl || '', 4, o); var sx = function(v){ return box.l + (v - x0) / (x1 - x0) * (box.r - box.l); }, sy = function(v){ return box.b - (v - y0) / (y1 - y0) * (box.b - box.t); };
   series.forEach(function(s){ var x = g.x; x.strokeStyle = s.color; x.lineWidth = s.w || 2.6; x.lineJoin = 'round'; x.setLineDash(s.dash || []); x.beginPath(); s.pts.forEach(function(p, i){ i ? x.lineTo(sx(p[0]), sy(p[1])) : x.moveTo(sx(p[0]), sy(p[1])); }); x.stroke(); x.setLineDash([]);
     if (!s.nodot && s.pts.length) { var q = s.pts[s.pts.length - 1]; x.fillStyle = s.color; x.beginPath(); x.arc(sx(q[0]), sy(q[1]), 4.5, 0, 6.3); x.fill(); } });

@@ -226,71 +226,70 @@ L8.add({ short: 'Next-token loss', title: 'The next-token loss',
 
 /* ---------- Step 7: counting parameters ---------- */
 L8.add({ short: 'Counting parameters', title: 'Counting parameters',
-  change: 'Change the model size. Press Load lesson 04 GPT to load its settings and compare the count.',
+  change: 'Change the model size. The lesson 04 GPT is loaded for you, and its real parameter count sits beside the formula.',
   watch: 'A parameter is one learned number. A transformer keeps most of them in two places per layer: the attention weights, which are four square matrices of the model width d, and the feed-forward network, which has two matrices between d and f times d. The count per layer grows with d squared, so doubling the width roughly quadruples it. The embedding table holds one vector of d numbers per token, and a learned position table holds one per position. The output layer maps d back to the vocabulary, and it can share the embedding table. Storing the weights as 32-bit numbers takes 4 bytes each.',
   build: function(api){
     var lp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Parameters by part</h4><div class="bk"></div>');
     var rp = api.el('pn', 'left:608px;top:28px;width:324px;height:408px;overflow:auto', '<h4>Totals</h4><div class="tt"></div>');
-    var ctl = api.addControl('Vocab <select class="vo"><option>50</option><option>1000</option><option>32000</option></select> Width <select class="dm"><option>32</option><option selected>64</option><option>128</option><option>256</option><option>512</option><option>1024</option><option>4096</option></select> Layers <input class="ly" type="range" min="1" max="48" step="1" value="2" style="width:100px"><b class="lv">2</b> Feed-forward <select class="ff"><option>2</option><option selected>4</option><option>8</option></select> Context <select class="cx"><option selected>48</option><option>512</option><option>2048</option></select> <label><input class="tie" type="checkbox"> Share output weights</label> <button type="button" class="btn sm ghost" data-gpt style="white-space:nowrap">Load lesson 04 GPT</button>');
+    var ctl = api.addControl('Vocab <select class="vo"><option>50</option><option>1000</option><option>32000</option></select> Width <select class="dm"><option>32</option><option selected>64</option><option>128</option><option>256</option><option>512</option><option>1024</option><option>4096</option></select> Layers <input class="ly" type="range" min="1" max="48" step="1" value="2" style="width:100px"><b class="lv">2</b> Feed-forward <select class="ff"><option>2</option><option selected>4</option><option>8</option></select> Context <select class="cx"><option selected>48</option><option>512</option><option>2048</option></select> <label><input class="tie" type="checkbox"> Share output weights</label> <button type="button" class="btn sm ghost" data-gpt style="white-space:nowrap">Reset to the lesson 04 GPT</button>');
     var vo = qs('.vo', ctl), dm = qs('.dm', ctl), ly = qs('.ly', ctl), lv = qs('.lv', ctl), ff = qs('.ff', ctl), cx = qs('.cx', ctl), tie = qs('.tie', ctl);
     function count(){ var V = +vo.value, d = +dm.value, L = +ly.value, f = +ff.value, T = +cx.value, emb = V * d, pos = T * d, att = L * (4 * d * d + 4 * d), fn = L * (2 * f * d * d + (f + 1) * d), ln = L * 4 * d + 2 * d, out = tie.checked ? 0 : d * V; return { emb: emb, pos: pos, att: att, fn: fn, ln: ln, out: out, total: emb + pos + att + fn + ln + out }; }
     function draw(){
       lv.textContent = ly.value; var c = count(), parts = [['Token embeddings', c.emb], ['Position embeddings', c.pos], ['Attention', c.att], ['Feed-forward', c.fn], ['Layer norms', c.ln], ['Output layer', c.out]], mx = Math.max.apply(null, parts.map(function(p){ return p[1]; })) || 1;
-      qs('.bk', lp).innerHTML = parts.map(function(p){ return '<div style="display:grid;grid-template-columns:160px 1fr 110px;gap:10px;align-items:center;margin:11px 0;font-size:14px;color:' + C.char + '"><span>' + p[0] + '</span><div class="pbar" style="height:14px;margin:0"><i style="background:' + C.red + ';width:' + (p[1] / mx * 100).toFixed(1) + '%;transition:none"></i></div><b style="text-align:right">' + p[1].toLocaleString() + '</b></div>'; }).join('') + '<p class="note" style="font-size:12.5px;margin-top:12px">Per layer: attention 4d² + 4d, feed-forward 2fd² + (f + 1)d, two layer norms 4d. Embeddings V times d, positions T times d, output d times V.</p><div id="chk" style="font-size:13px;margin-top:6px"></div>';
-      var mb = c.total * 4 / 1048576; qs('.tt', rp).innerHTML = '<div class="big" style="color:' + C.red + '">' + c.total.toLocaleString() + '</div><div class="note" style="font-size:12px;color:' + C.char + ';margin-bottom:10px">parameters</div>' + naRow('Weights in 32-bit floats', mb < 1 ? (mb * 1024).toFixed(0) + ' KB' : (mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : mb.toFixed(1) + ' MB')) + naRow('Share in attention and feed-forward', Math.round((c.att + c.fn) / c.total * 100) + '%') + naRow('Attention score table per layer', (+cx.value * +cx.value).toLocaleString() + ' entries per head');
+      qs('.bk', lp).innerHTML = parts.map(function(p){ return '<div style="display:grid;grid-template-columns:160px 1fr 110px;gap:10px;align-items:center;margin:11px 0;font-size:14px;color:' + C.char + '"><span>' + p[0] + '</span><div class="pbar" style="height:14px;margin:0"><i style="background:' + C.red + ';width:' + (p[1] / mx * 100).toFixed(1) + '%;transition:none"></i></div><b style="text-align:right">' + p[1].toLocaleString() + '</b></div>'; }).join('') + '<p class="note" style="font-size:12.5px;margin-top:12px">Per layer: attention 4d² + 4d, feed-forward 2fd² + (f + 1)d, two layer norms 4d. Embeddings V times d, positions T times d, output d times V.</p>';
+      var mb = c.total * 4 / 1048576; qs('.tt', rp).innerHTML = '<div class="big" style="color:' + C.red + '">' + c.total.toLocaleString() + '</div><div class="note" style="font-size:12px;color:' + C.char + ';margin-bottom:10px">parameters</div>' + naRow('Weights in 32-bit floats', mb < 1 ? (mb * 1024).toFixed(0) + ' KB' : (mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : mb.toFixed(1) + ' MB')) + naRow('Share in attention and feed-forward', Math.round((c.att + c.fn) / c.total * 100) + '%') + naRow('Attention score table per layer', (+cx.value * +cx.value).toLocaleString() + ' entries per head') + '<div class="rf" style="margin-top:12px"></div>';
+      ref();
     }
-    qs('[data-gpt]', ctl).addEventListener('click', function(){ var gv = String(G.V || 50); if (![].slice.call(vo.options).some(function(o){ return o.value === gv; })) { var op = document.createElement('option'); op.textContent = gv; vo.insertBefore(op, vo.firstChild); } vo.value = gv; dm.value = String(DM); ly.value = G.NL || 2; ff.value = '4'; cx.value = String(TLEN); tie.checked = false; draw(); var c = count(), V = G.V || 0, d = DM, L = G.NL || 2, T = TLEN, exp = V * d + T * d + L * (12 * d * d + 13 * d) + 2 * d + d * V; var el = qs('#chk', lp); if (el && G.params) el.innerHTML = 'This course\'s GPT in lesson 04 has <b>' + G.params.toLocaleString() + '</b> parameters with vocabulary ' + V + ', width ' + d + ', ' + L + ' layers and context ' + T + '. The formula gives <b>' + exp.toLocaleString() + '</b>' + (exp === G.params ? ', an exact match.' : '.'); else if (el) el.innerHTML = 'Open lesson 04 and train or load the GPT to compare with its real count.'; });
+    function ref(){
+      var el = qs('.rf', rp); if (!el) return; if (!G.params) { el.innerHTML = '<p class="note" style="font-size:12px">Loading the lesson 04 GPT.</p>'; return; }
+      var V = G.V, d = DM, L = G.NL || 2, T = TLEN, exp = V * d + T * d + L * (12 * d * d + 13 * d) + 2 * d + d * V;
+      el.innerHTML = '<div style="font-size:12.5px;font-weight:700;color:' + C.char + ';margin-bottom:4px">The lesson 04 GPT</div>' + naRow('Its real parameter count', G.params.toLocaleString(), C.red) + naRow('The formula for its settings', exp.toLocaleString()) + '<p class="note" style="font-size:12px">Vocabulary ' + V + ', width ' + d + ', ' + L + ' layers, context ' + T + '. ' + (exp === G.params ? 'The formula matches the real count exactly.' : 'The formula and the real count differ.') + '</p>';
+    }
+    function applyGPT(){ var gv = String(G.V || 50); if (![].slice.call(vo.options).some(function(o){ return o.value === gv; })) { var op = document.createElement('option'); op.textContent = gv; vo.insertBefore(op, vo.firstChild); } vo.value = gv; dm.value = String(DM); ly.value = G.NL || 2; ff.value = '4'; cx.value = String(TLEN); tie.checked = false; draw(); }
+    qs('[data-gpt]', ctl).addEventListener('click', async function(){ if (!G.params && typeof gptLoadDemo === 'function') await gptLoadDemo(); applyGPT(); });
     [vo, dm, ff, cx, tie].forEach(function(e){ e.addEventListener('change', draw); }); ly.addEventListener('input', draw);
-    return { render: draw };
+    var first = true;
+    return { render: async function(){ draw(); if (first) { first = false; try { if (!G.params && typeof gptLoadDemo === 'function' && typeof tf !== 'undefined') await gptLoadDemo(); } catch (e) { console.error(e); } if (G.params) applyGPT(); } else draw(); } };
   } });
 
-/* ---------- Step 8: fitting a torus ---------- */
-var NA_SHAPE = { tr: null, te: null, anim: null, busy: false, panels: null };
-var NA_W = [4, 16, 64], NA_COL = ['#6F8196', '#BD120A', C.char];
-async function naTorusNet(w, tr, te, epochs, onProg){
-  var S = [3, w, w, 1], L = 3, m = mlpInit(S, 101 + w), A = mlpBuf(S), A2 = mlpBuf(S), r = rng(5 + w), perm = [], i, BS = 64, step = 0, lr = 0.004, secs = 0, buf = new Float32Array(3), ck = [];
-  var gW = m.W.map(function(a){ return new Float32Array(a.length); }), gB = m.b.map(function(a){ return new Float32Array(a.length); }), mW = gW.map(function(a){ return new Float32Array(a.length); }), vW = gW.map(function(a){ return new Float32Array(a.length); }), mB = gB.map(function(a){ return new Float32Array(a.length); }), vB = gB.map(function(a){ return new Float32Array(a.length); }), delta = S.slice(1).map(function(n){ return new Float32Array(n); });
-  for (i = 0; i < tr.n; i++) perm.push(i);
-  var predict = function(x, y, z){ buf[0] = x; buf[1] = y; buf[2] = z; return mlpForward(m, buf, 0, A2, null, 0, null); };
-  function snap(ep){ ck.push({ t: shMesh(predict), acc: shAccuracy(te, predict), x: secs, ep: ep }); }
-  snap(0); await tick();
-  for (var ep = 0; ep < epochs; ep++) {
-    var t0 = performance.now(); for (var a = perm.length - 1; a > 0; a--) { var j = Math.floor(r() * (a + 1)), tt = perm[a]; perm[a] = perm[j]; perm[j] = tt; }
-    for (var s0 = 0; s0 < tr.n; s0 += BS) {
-      var nb = Math.min(BS, tr.n - s0); gW.forEach(function(g){ g.fill(0); }); gB.forEach(function(g){ g.fill(0); });
-      for (var q = 0; q < nb; q++) {
-        var idx = perm[s0 + q], pred = mlpForward(m, tr.X, idx * 3, A, null, 0, null); delta[L - 1][0] = 2 * (pred - tr.T[idx]) / nb;
-        for (var l = L - 1; l >= 0; l--) { var nin = S[l], nout = S[l + 1], inp = A[l], dl = delta[l], gw = gW[l], gb = gB[l], W = m.W[l];
-          for (var jj = 0; jj < nout; jj++) gb[jj] += dl[jj];
-          for (var ii = 0; ii < nin; ii++) { var ai = inp[ii], base = ii * nout; if (ai !== 0) for (var j2 = 0; j2 < nout; j2++) gw[base + j2] += ai * dl[j2]; if (l > 0) { var sacc = 0; if (ai > 0) for (var j3 = 0; j3 < nout; j3++) sacc += W[base + j3] * dl[j3]; delta[l - 1][ii] = sacc; } } }
-      }
-      step++; var c1 = 1 - Math.pow(0.9, step), c2 = 1 - Math.pow(0.999, step);
-      for (var l2 = 0; l2 < L; l2++) { var w2 = m.W[l2], g2 = gW[l2], mw = mW[l2], vw = vW[l2], k; for (k = 0; k < w2.length; k++) { var g = g2[k]; mw[k] = 0.9 * mw[k] + 0.1 * g; vw[k] = 0.999 * vw[k] + 0.001 * g * g; w2[k] -= lr * (mw[k] / c1) / (Math.sqrt(vw[k] / c2) + 1e-8); }
-        var bb = m.b[l2], gb2 = gB[l2], mb = mB[l2], vb = vB[l2]; for (k = 0; k < bb.length; k++) { var g3 = gb2[k]; mb[k] = 0.9 * mb[k] + 0.1 * g3; vb[k] = 0.999 * vb[k] + 0.001 * g3 * g3; bb[k] -= lr * (mb[k] / c1) / (Math.sqrt(vb[k] / c2) + 1e-8); } }
-    }
-    secs += (performance.now() - t0) / 1000;
-    if (ep % 2 === 1) { snap(ep + 1); if (onProg) onProg(ep + 1); await tick(); }
-  }
-  return { w: w, ck: ck, secs: secs, params: w * w + 5 * w + 1 };
+/* ---------- Step 8: networks of different sizes and different amounts of data ---------- */
+var NA_SC = { data: null, anim: null, size: '1000', ctl: false, busy: false };
+var NA_SCOL = ['#A1B1C4', '#6F8196', '#F78C85', '#BD120A', C.char];
+function naDecode(b64, n){ var bin = atob(b64), t = new Float32Array(n); for (var i = 0; i < n; i++) { var q = bin.charCodeAt(i); t[i] = q === 255 ? NaN : q / 254 * 2 - 0.75; } return t; }
+function naScalePanels(size){
+  var J = NA_SC.data, runs = J.runs[size], n = shGeom().total;
+  return runs.map(function(rn, i){
+    var ck = rn.ck.map(function(c){ return { t: c.t || (c.t = naDecode(c.mesh, n)), acc: c.acc, tr: c.tr, x: c.s }; });
+    return { short: rn.params.toLocaleString() + ' parameters', color: NA_SCOL[i], ck: ck, titleAt: function(k){ return rn.params.toLocaleString() + ' parameters'; } };
+  });
 }
-L8.add({ short: 'Fitting a torus', title: 'Fitting a 3D shape with networks of different sizes',
-  change: 'Press Play and watch three networks learn the shape. Drag the picture to rotate it, or drag the progress slider.',
-  watch: 'A torus is a donut shape. Each network is given 4,000 points in 3D space, each labelled with its distance to the torus surface, negative inside and positive outside, and learns to predict that distance. The surface drawn is where the prediction crosses zero, found by walking out from the true torus along its normal. Before training there is no inside, so only a faint core shows. The thin grey rings mark the true torus. The width is the number of neurons in each of two hidden layers, so a wider network can bend into a more complex shape but takes longer to train. The chart tracks accuracy on 2,000 held-out points near the surface, half inside and half outside, so that guessing scores 0.5.',
+L8.add({ short: 'Scaling networks', title: 'Network size against the amount of data',
+  change: 'Choose the amount of training data and press Play. Compare the five networks, then compare the three amounts of data in the chart on the right.',
+  watch: 'The size of a network is its number of parameters. Here five networks, from about 10 to about 100,000 parameters, learn a DNA-style double helix: two spiral strands joined by rungs. Each network sees 100, 1,000 or 10,000 labelled points in 3D, each labelled with its distance to the surface of the helix, and every network gets the same 4,000 updates. The animation shows the surface each network builds. A surface appears only once the network predicts some points as inside. The chart on the right shows the accuracy of each network on 2,000 held-out points at the end, for all three amounts of data. Two things show up. A network needs data to put its parameters to use: with 100 points even the largest networks stay below 0.62 on held-out points while scoring about 0.95 on the points they were given. More parameters also stop helping at some size: with 10,000 points the network with about 10,000 parameters beats the one with about 100,000. These results come from a real run of the code in this lesson, saved so that this step opens at once.',
   build: function(api){
-    var vp = api.el('pn', 'left:28px;top:28px;width:904px;height:228px', '<canvas width="880" height="204"></canvas>');
-    var cp = api.el('pn', 'left:28px;top:266px;width:904px;height:170px', '<canvas class="c2" width="880" height="150"></canvas>');
-    async function prepare(){
-      if (NA_SHAPE.panels) return; NA_SHAPE.tr = shTrain(4000, 31); NA_SHAPE.te = shTest(2000, 77); var panels = [];
-      for (var i = 0; i < NA_W.length; i++) { api.busy('Training width ' + NA_W[i] + ' and building its surface, ' + (i + 1) + ' of ' + NA_W.length); await tick(); await tick(); var run = await naTorusNet(NA_W[i], NA_SHAPE.tr, NA_SHAPE.te, 60); var w = NA_W[i]; panels.push({ w: w, short: 'width ' + w + ' (' + run.params.toLocaleString() + ' parameters)', color: NA_COL[i], ck: run.ck, secs: run.secs, titleAt: (function(rn){ return function(k){ return 'Width ' + rn.w + ', epoch ' + rn.ck[k].ep; }; })(run) }); }
-      NA_SHAPE.panels = panels; api.idle();
+    var vp = api.el('pn', 'left:28px;top:28px;width:904px;height:214px', '<canvas width="880" height="190"></canvas>');
+    var c1 = api.el('pn', 'left:28px;top:252px;width:446px;height:184px', '<h4>Accuracy during training, held-out points</h4><canvas class="c1" width="420" height="144"></canvas>');
+    var c2 = api.el('pn', 'left:486px;top:252px;width:446px;height:184px', '<h4>Final accuracy against parameters</h4><canvas class="c2" width="420" height="144"></canvas>');
+    var ctl = api.addControl('Training data <select class="ds"><option value="100">100 points</option><option value="1000" selected>1,000 points</option><option value="10000">10,000 points</option></select>');
+    var ds = qs('.ds', ctl);
+    function drawScale(){
+      var J = NA_SC.data, sel = ds.value, series = [], labels = { '100': '100 points', '1000': '1,000 points', '10000': '10,000 points' }, cols = { '100': '#6F8196', '1000': '#F78C85', '10000': C.red };
+      J.data.forEach(function(n){ var runs = J.runs[String(n)]; series.push({ pts: runs.map(function(r){ return [Math.log10(r.params), r.ck[r.ck.length - 1].acc]; }), color: cols[String(n)], w: String(n) === sel ? 3.4 : 1.6, label: labels[String(n)] + ', test' }); });
+      var rs = J.runs[sel]; series.push({ pts: rs.map(function(r){ return [Math.log10(r.params), r.ck[r.ck.length - 1].tr]; }), color: C.char, dash: [5, 4], w: 1.8, nodot: true, label: 'training, ' + labels[sel] });
+      lineChart(qs('.c2', c2), series, { xl: 'parameters (log scale)', yl: 'accuracy', y0: 0.5, y1: 1, x0: 1, x1: 5.1, xticks: [[1, '10'], [2, '100'], [3, '1,000'], [4, '10,000'], [5, '100,000']].map(function(a){ return { v: a[0], t: a[1] }; }) });
     }
-    async function renderInner(){
-      await prepare(); if (NA_SHAPE.anim) { NA_SHAPE.anim.draw(); return; }
-      var xmax = Math.max.apply(null, NA_SHAPE.panels.map(function(p){ return p.secs; }));
-      NA_SHAPE.anim = shAnim({ canvas: qs('canvas', vp), chart: qs('.c2', cp), panels: NA_SHAPE.panels, x0: 0, x1: xmax * 1.02, xl: 'training time (s)', xdec: 1, dur: 16 });
-      shControls(api, NA_SHAPE.anim);
+    async function prepare(){ if (NA_SC.data) return; api.busy('Loading the saved training runs'); await tick(); NA_SC.data = await loadJSON('scaling'); api.idle(); }
+    function setSize(){ var panels = naScalePanels(ds.value), xmax = NA_SC.data.steps[NA_SC.data.steps.length - 1]; if (NA_SC.anim) NA_SC.anim.setPanels(panels, 0, xmax); drawScale(); }
+    ds.addEventListener('change', setSize);
+    async function render(){
+      if (NA_SC.busy) return; NA_SC.busy = true;
+      try {
+        await prepare(); if (NA_SC.anim) { NA_SC.anim.draw(); drawScale(); return; }
+        var xmax = NA_SC.data.steps[NA_SC.data.steps.length - 1];
+        NA_SC.anim = shAnim({ canvas: qs('canvas', vp), chart: qs('.c1', c1), panels: naScalePanels(ds.value), x0: 0, x1: xmax, xl: 'training updates', dur: 14 });
+        shControls(api, NA_SC.anim); drawScale();
+      } finally { NA_SC.busy = false; }
     }
-    async function render(){ if (NA_SHAPE.busy) return; NA_SHAPE.busy = true; try { await renderInner(); } finally { NA_SHAPE.busy = false; } }
     return { render: render };
   } });
 
@@ -311,7 +310,9 @@ L8.glossary([
   ['Logit', 'The raw score a model gives a token before the softmax.'],
   ['Cross-entropy', 'Minus the natural log of the probability the model gave the correct token.'],
   ['Perplexity', 'e raised to the loss. The number of equally likely tokens the model is choosing between.'],
-  ['Torus', 'A donut shape, used here as a 3D shape to fit.'],
+  ['Double helix', 'Two spiral strands joined by rungs, the shape of DNA. Used here as a 3D shape to fit.'],
+  ['Parameter', 'One number a model learns. A network\'s size is its number of parameters.'],
+  ['Memorising', 'Fitting the training points so closely, noise included, that held-out points are predicted worse.'],
   ['Balanced accuracy', 'The average of the share of inside points called inside and outside points called outside.']
 ]);
 setUses(L8, [[], [], [], [], [], [], [], []]);
