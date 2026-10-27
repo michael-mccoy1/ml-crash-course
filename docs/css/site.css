@@ -1,4 +1,4 @@
-/* Palette: red, charcoal, dark red, blue grey, silver, light grey. White page, light grey grid stages. */
+/* Palette: red, maroon, dark grey, blue, light blue, light grey. White page, light grey grid stages. */
 :root{
   --red:#E1242A; --dred:#891515; --char:#34373F; --bg:#A1B1C4; --silver:#D1D8E0; --light:#EDF2F4; --tint:#F78C85; --mid:#34373F; --panel:#EDF2F4;
   --display:"Aptos Display",Aptos,"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
