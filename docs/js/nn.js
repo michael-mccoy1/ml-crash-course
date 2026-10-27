@@ -98,7 +98,7 @@ function nnActivations(i){ var m = NN.m, P = NN.prep, A = mlpBuf(m.sizes); mlpFo
 
 /* ---------- network drawing (real weights, activations, selectable neurons) ---------- */
 function drawNetSVG(host, o){
-  var sizes = o.model ? o.model.sizes : o.sizes, W = o.W, H = o.H, shown = sizes.map(function(s, i){ return Math.min(s, i === sizes.length - 1 ? 1 : (o.maxShow || 9)); }), padL = o.padL === undefined ? 86 : o.padL, padR = o.padR === undefined ? 60 : o.padR;
+  var sizes = o.model ? o.model.sizes : o.sizes, W = o.W, H = o.H, shown = sizes.map(function(s, i){ return Math.min(s, i === sizes.length - 1 ? 1 : (o.maxShow || 9)); }), padL = o.padL === undefined ? 96 : o.padL, padR = o.padR === undefined ? 60 : o.padR;
   var xs = shown.map(function(_, i){ return padL + i * (W - padL - padR) / (shown.length - 1); }), pos = shown.map(function(n){ return Array.from({ length: n }, function(_, k){ return 30 + (k + 0.5) * (H - 60) / n; }); }), svg = '', ST = o.act ? (o.stage === undefined ? 99 : o.stage) : -1;
   var getW; if (o.model) { getW = function(l, a, b){ return o.model.W[l][a * o.model.sizes[l + 1] + b]; }; } else { var rnd = rng(o.seed || 3), memo = {}; getW = function(l, a, b){ var k = l + '_' + a + '_' + b; if (!(k in memo)) memo[k] = rnd() + rnd() + rnd() - 1.5; return memo[k]; }; }
   for (var l = 0; l < sizes.length - 1; l++) { var mx = 1e-6; for (var a = 0; a < shown[l]; a++) for (var b = 0; b < shown[l + 1]; b++) mx = Math.max(mx, Math.abs(getW(l, a, b)));
@@ -113,7 +113,7 @@ function drawNetSVG(host, o){
       svg += '<circle ' + (o.onPick && i === 1 && !out ? 'data-pick="' + k + '" style="cursor:pointer" ' : '') + 'cx="' + xs[i].toFixed(1) + '" cy="' + pos[i][k].toFixed(1) + '" r="' + (out ? 14 : 9) + '" fill="' + fill + '" fill-opacity="' + fo + '" stroke="' + (sel ? C.red : (out ? C.dred : C.char)) + '" stroke-width="' + (sel ? 4 : 2) + '"' + (dropped ? ' stroke-dasharray="3 3" opacity=".3"' : '') + '/>';
       if (i === 0 && o.feats) svg += '<text x="' + (xs[0] - 15) + '" y="' + (pos[0][k] + 4).toFixed(1) + '" text-anchor="end" font-size="11.5" fill="' + C.char + '">' + esc(o.feats[k]) + (o.act ? ' ' + fmtFeat(o.feats[k], o.act.raw[k]) : '') + '</text>'; }
     if (!o.noLabels) svg += '<text x="' + xs[i].toFixed(1) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="12" font-weight="700" fill="' + C.char + '">' + (i === 0 ? 'inputs' : (out ? 'prediction' : 'hidden ' + i)) + '</text>';
-    if (i > 0 && !out && sizes[i] > shown[i]) svg += '<text x="' + xs[i].toFixed(1) + '" y="14" text-anchor="middle" font-size="10.5" fill="' + C.mid + '">' + sizes[i] + ' neurons, ' + shown[i] + ' drawn</text>'; else if (i > 0 && !out && !o.noLabels) svg += '<text x="' + xs[i].toFixed(1) + '" y="14" text-anchor="middle" font-size="10.5" fill="' + C.mid + '">' + sizes[i] + ' neurons</text>'; }
+    if (i > 0 && !out && sizes[i] > shown[i]) svg += '<text x="' + xs[i].toFixed(1) + '" y="14" text-anchor="middle" font-size="10.5" fill="' + C.mid + '">' + sizes[i] + ' neurons' + ((xs[1] - xs[0]) < 110 ? '' : ', ' + shown[i] + ' drawn') + '</text>'; else if (i > 0 && !out && !o.noLabels) svg += '<text x="' + xs[i].toFixed(1) + '" y="14" text-anchor="middle" font-size="10.5" fill="' + C.mid + '">' + sizes[i] + ' neurons</text>'; }
   if (o.act && ST >= sizes.length - 1) svg += '<text x="' + xs[xs.length - 1].toFixed(1) + '" y="' + (pos[pos.length - 1][0] - 24) + '" text-anchor="middle" font-size="13" font-weight="700" fill="' + C.red + '">' + o.act.pred.toFixed(2) + '</text>';
   host.innerHTML = svg;
   if (o.onPick) qsa('circle[data-pick]', host).forEach(function(c){ c.addEventListener('click', function(){ o.onPick(+c.dataset.pick); }); });
@@ -148,7 +148,7 @@ L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filter
       if (fresh()) drawNetSVG(svg, { W: 432, H: 292, model: NN.m, feats: NN.feats, maxShow: 8, padL: 78, padR: 36 });
       else drawNetSVG(svg, { W: 432, H: 292, sizes: netSizes(f.length, p.layers, p.units), feats: f, drop: p.drop, seed: 3, maxShow: 8, padL: 78, padR: 36 });
     }
-    function legend(){ svg.insertAdjacentHTML('beforeend', '<text x="0" y="312" font-size="11" fill="' + C.mid + '">Circle: neuron. Line: weight (hover for its value). Red pushes the prediction up, grey pushes it down, thicker is stronger.</text>'); }
+    function legend(){ svg.insertAdjacentHTML('beforeend', '<text x="0" y="312" font-size="11" fill="' + C.mid + '">Circle: neuron. Line: weight. Red pushes up, grey pushes down.</text>'); }
     function note(){
       var f = activeFeats(), p = NP(), sizes = netSizes(Math.max(1, f.length), p.layers, p.units), tot = 0; for (var q = 0; q < sizes.length - 1; q++) tot += sizes[q] * sizes[q + 1] + sizes[q + 1];
       qs('.mn', mn).textContent = p.layers + ' hidden layer' + (p.layers > 1 ? 's' : '') + ' of ' + p.units + ' neurons: ' + tot.toLocaleString() + ' numbers to learn. Dropout ' + p.drop + ' switches off that share of neurons at each step.';

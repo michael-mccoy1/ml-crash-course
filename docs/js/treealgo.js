@@ -65,7 +65,7 @@ L7.add({ short: 'Growing a tree', title: 'Depth and leaf size',
   change: 'Drag Maximum depth and Minimum leaf size.',
   watch: 'A tree grows by splitting a group, then splitting each part again. Two settings stop it. Maximum depth limits how many questions in a row a compound can be asked. Minimum leaf size is the fewest compounds a final group, called a leaf, may hold: a split is rejected if either side would fall below it. With no limits a tree keeps splitting until each leaf holds one compound, and it memorises the training set. The left chart varies leaf size at the depth you chose. The right chart varies depth at the leaf size you chose.',
   build: function(api){
-    var p1 = api.el('pn', 'left:28px;top:28px;width:446px;height:268px', '<h4>R2 by minimum leaf size</h4><canvas width="420" height="214"></canvas>');
+    var p1 = api.el('pn', 'left:28px;top:28px;width:446px;height:268px', '<h4>R2 by minimum leaf size (dark training, red test)</h4><canvas width="420" height="214"></canvas>');
     var p2 = api.el('pn', 'left:486px;top:28px;width:446px;height:268px', '<h4>R2 by maximum depth</h4><canvas width="420" height="214"></canvas>');
     var p3 = api.el('pn', 'left:28px;top:308px;width:904px;height:128px', '<h4>The tree you chose</h4><div class="st" style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px"></div>');
     var ctl = api.addControl('Maximum depth <input class="dp" type="range" min="1" max="14" step="1" value="6" style="width:150px"><b class="dv">6</b> Minimum leaf size <input class="ml" type="range" min="1" max="60" step="1" value="5" style="width:150px"><b class="mv">5</b>');
@@ -78,8 +78,7 @@ L7.add({ short: 'Growing a tree', title: 'Depth and leaf size',
       var bw = (box.r - box.l) / LEAFS.length, sy = function(v){ return box.b - (v - lo) / (hi - lo) * (box.b - box.t); }, base = sy(0);
       bars.forEach(function(b, i){ var x0 = box.l + i * bw + 6, w = (bw - 12) / 2; x.fillStyle = C.char; x.fillRect(x0, Math.min(base, sy(b.tr)), w, Math.abs(sy(b.tr) - base)); x.fillStyle = C.red; x.fillRect(x0 + w, Math.min(base, sy(b.te)), w, Math.abs(sy(b.te) - base));
         x.fillStyle = C.char; x.textAlign = 'center'; x.font = (LEAFS[i] === m ? '700 ' : '') + '12px Aptos, Segoe UI, sans-serif'; x.fillText(LEAFS[i], box.l + i * bw + bw / 2, box.b + 16); });
-      x.font = '600 11px Aptos, Segoe UI, sans-serif'; x.fillStyle = C.char; x.textAlign = 'left'; x.fillText('dark: training R2', box.l + 6, box.t + 12); x.fillStyle = C.red; x.fillText('red: test R2', box.l + 120, box.t + 12);
-      x.fillStyle = C.char; x.textAlign = 'center'; x.fillText('minimum leaf size', (box.l + box.r) / 2, g1.h - 6);
+      x.font = '600 11px Aptos, Segoe UI, sans-serif'; x.fillStyle = C.char; x.textAlign = 'center'; x.fillText('minimum leaf size', (box.l + box.r) / 2, g1.h - 6);
       var tr = [], te = []; for (var q = 1; q <= 12; q++) { var e2 = ev(q, m); tr.push([q, e2.tr]); te.push([q, e2.te]); }
       var g2 = lineChart(qs('canvas', p2), [{ pts: tr, color: C.char, label: 'training' }, { pts: te, color: C.red, label: 'test' }], { xl: 'maximum depth', yl: 'R2', y0: Math.min(0, Math.min.apply(null, te.map(function(p){ return p[1]; }))), y1: 1, x0: 1, x1: 12, ydec: 1, xdec: 0 });
       if (g2.sx && d <= 12) { var xx = g2.x; xx.setLineDash([5, 4]); xx.strokeStyle = C.char; xx.lineWidth = 1.2; xx.beginPath(); xx.moveTo(g2.sx(d), g2.box.t); xx.lineTo(g2.sx(d), g2.box.b); xx.stroke(); xx.setLineDash([]); }
@@ -114,7 +113,7 @@ L7.add({ short: 'Bagging', title: 'Averaging many trees',
     }
     function draw(){
       var H = taStore().hist, series = [];
-      H.slice(-3).forEach(function(h, i, arr){ var latest = i === arr.length - 1; series.push({ pts: h.curve, color: latest ? C.red : (i === 0 && arr.length === 3 ? C.bg : C.char), w: latest ? 3 : 1.8, label: h.m + ' of 8', nodot: !latest }); });
+      H.slice(-3).forEach(function(h, i, arr){ var latest = i === arr.length - 1; series.push({ pts: h.curve, color: latest ? C.red : (i === 0 && arr.length === 3 ? C.bg : C.char), w: latest ? 3 : 1.8, label: h.n + ' trees, ' + h.m + ' of 8 features', nodot: !latest }); });
       if (!series.length) { var g0 = cv(qs('canvas', plot)); g0.x.fillStyle = C.char; g0.x.fillText('Press Fit forest.', 60, 40); qs('.sd', side).innerHTML = '<p class="note">No run yet.</p>'; return; }
       lineChart(qs('canvas', plot), series, { xl: 'number of trees', yl: 'test R2', ydec: 2, xdec: 0, x0: 1 });
       var L = H[H.length - 1];
@@ -237,45 +236,46 @@ L7.add({ short: 'Library designs', title: 'Boosting libraries compared',
   } });
 
 /* ---------- Step 7: fitting a torus ---------- */
-var TA_SHAPE = { models: null, tr: null, te: null, B: null, st: { yaw: 0.5, pitch: 1.1, pts: [] }, busy: false };
-var TA_FAM = { tree: ['Tree', C.char, 'depth', [2, 4, 6, 8, 10, 12]], forest: ['Forest', '#6F8196', 'trees', [3, 10, 30, 100]], boost: ['Boosting', C.red, 'rounds', [10, 30, 100, 300]] };
+var TA_SHAPE = { tr: null, te: null, B: null, anim: null, busy: false, panels: null };
 function taTorusPrep(){
-  if (TA_SHAPE.tr) return; var tr = TA_SHAPE.tr = shTrain(4000, 31); TA_SHAPE.te = shTest(2000, 77);
-  var B = { edges: {}, codes: {} }; ['x', 'y', 'z'].forEach(function(f, c){ var v = []; for (var i = 0; i < tr.n; i++) v.push(tr.X[i * 3 + c]); v.sort(function(a, b){ return a - b; }); var e = []; for (var q = 1; q < 32; q++) { var x = v[Math.floor(q / 32 * v.length)]; if (!e.length || x > e[e.length - 1]) e.push(x); } B.edges[f] = e; var codes = new Uint8Array(tr.n); for (var i2 = 0; i2 < tr.n; i2++) { var val = tr.X[i2 * 3 + c], k = 0; while (k < e.length && val > e[k]) k++; codes[i2] = k; } B.codes[f] = codes; });
+  if (TA_SHAPE.tr) return; var tr = TA_SHAPE.tr = shTrain(16000, 31); TA_SHAPE.te = shTest(2000, 77);
+  var B = { edges: {}, codes: {} }; ['x', 'y', 'z'].forEach(function(f, c){ var v = []; for (var i = 0; i < tr.n; i++) v.push(tr.X[i * 3 + c]); v.sort(function(a, b){ return a - b; }); var e = []; for (var q = 1; q < 64; q++) { var x = v[Math.floor(q / 64 * v.length)]; if (!e.length || x > e[e.length - 1]) e.push(x); } B.edges[f] = e; var codes = new Uint8Array(tr.n); for (var i2 = 0; i2 < tr.n; i2++) { var val = tr.X[i2 * 3 + c], k = 0; while (k < e.length && val > e[k]) k++; codes[i2] = k; } B.codes[f] = codes; });
   TA_SHAPE.B = B;
 }
-function taTorusFit(kind, size){
-  var tr = TA_SHAPE.tr, B = TA_SHAPE.B, F = ['x', 'y', 'z'], n = tr.n, all = new Int32Array(n), i, vals = { x: 0, y: 0, z: 0 }, t0 = performance.now(), rand = rng(3 + size);
-  for (i = 0; i < n; i++) all[i] = i; var predict, size2;
-  if (kind === 'tree') { var node = buildTree(B, F, tr.T, all, size, 5, 3, rand); size2 = size; predict = function(x, y, z){ vals.x = x; vals.y = y; vals.z = z; return predictVals(node, B, vals); }; }
-  else if (kind === 'forest') { var trees = []; for (var q = 0; q < size; q++) { var boot = new Int32Array(n); for (i = 0; i < n; i++) boot[i] = Math.floor(rand() * n); trees.push(buildTree(B, F, tr.T, boot, 10, 3, 2, rand)); } predict = function(x, y, z){ vals.x = x; vals.y = y; vals.z = z; var s = 0; for (var k = 0; k < trees.length; k++) s += predictVals(trees[k], B, vals); return s / trees.length; }; }
-  else { var Fv = new Float64Array(n), res = new Float32Array(n), bt = [], lr = 0.1; for (var m = 0; m < size; m++) { for (i = 0; i < n; i++) res[i] = tr.T[i] - Fv[i]; var t = buildTree(B, F, res, all, 3, 10, 3, rand); bt.push(t); for (i = 0; i < n; i++) Fv[i] += lr * predictTree(t, B, i); } predict = function(x, y, z){ vals.x = x; vals.y = y; vals.z = z; var s = 0; for (var k = 0; k < bt.length; k++) s += lr * predictVals(bt[k], B, vals); return s; }; }
-  var secs = (performance.now() - t0) / 1000;
-  return { kind: kind, size: size, secs: secs, predict: predict, acc: shAccuracy(TA_SHAPE.te, predict) };
+function taLog(ms){ return Math.log10(Math.max(ms, 0.5)); }
+async function taTorusPanels(onProg){
+  taTorusPrep(); var tr = TA_SHAPE.tr, te = TA_SHAPE.te, B = TA_SHAPE.B, F = ['x', 'y', 'z'], n = tr.n, all = new Int32Array(n), i, vals = { x: 0, y: 0, z: 0 }, panels = [];
+  for (i = 0; i < n; i++) all[i] = i;
+  function ckOf(predict, ms, label){ return { t: shMesh(predict), acc: shAccuracy(te, predict), x: taLog(ms), label: label }; }
+  /* a single tree, grown one level deeper each checkpoint */
+  var treeCk = []; for (var d = 1; d <= 14; d++) { var t0 = performance.now(), node = buildTree(B, F, tr.T, all, d, 3, 3, rng(1)), ms = performance.now() - t0; treeCk.push(ckOf((function(nd){ return function(x, y, z){ vals.x = x; vals.y = y; vals.z = z; return predictVals(nd, B, vals); }; })(node), ms, 'Tree, depth ' + d)); if (onProg) onProg('tree', d); await tick(); }
+  panels.push({ short: 'one tree', color: C.char, ck: treeCk, titleAt: function(k){ return treeCk[k].label; } });
+  /* a forest, one tree added at a time */
+  var rand = rng(9), trees = [], fKs = [1, 2, 3, 5, 8, 12, 18, 26, 36, 50, 70, 100], fCk = [], fTime = 0;
+  for (var q = 0; q < 100; q++) { var tS = performance.now(), boot = new Int32Array(n); for (i = 0; i < n; i++) boot[i] = Math.floor(rand() * n); trees.push(buildTree(B, F, tr.T, boot, 12, 2, 2, rand)); fTime += performance.now() - tS; if (fKs.indexOf(q + 1) >= 0) { var cnt = q + 1; fCk.push(ckOf((function(c){ return function(x, y, z){ vals.x = x; vals.y = y; vals.z = z; var s = 0; for (var k = 0; k < c; k++) s += predictVals(trees[k], B, vals); return s / c; }; })(cnt), fTime, 'Forest, ' + cnt + (cnt === 1 ? ' tree' : ' trees'))); if (onProg) onProg('forest', cnt); await tick(); } }
+  panels.push({ short: 'forest', color: '#6F8196', ck: fCk, titleAt: function(k){ return fCk[k].label; } });
+  /* boosting, one round at a time */
+  var Fv = new Float64Array(n), res = new Float32Array(n), bt = [], lr = 0.15, bKs = [1, 2, 3, 5, 8, 12, 18, 26, 40, 60, 90, 140, 210, 300], bCk = [], bTime = 0, randB = rng(4);
+  for (var m = 0; m < 300; m++) { var tB = performance.now(); for (i = 0; i < n; i++) res[i] = tr.T[i] - Fv[i]; var tb = buildTree(B, F, res, all, 5, 5, 3, randB); bt.push(tb); for (i = 0; i < n; i++) Fv[i] += lr * predictTree(tb, B, i); bTime += performance.now() - tB;
+    if (bKs.indexOf(m + 1) >= 0) { var cm = m + 1; bCk.push(ckOf((function(c){ return function(x, y, z){ vals.x = x; vals.y = y; vals.z = z; var s = 0; for (var k = 0; k < c; k++) s += lr * predictVals(bt[k], B, vals); return s; }; })(cm), bTime, 'Boosting, ' + cm + (cm === 1 ? ' round' : ' rounds'))); if (onProg) onProg('boost', cm); await tick(); } }
+  panels.push({ short: 'boosting', color: C.red, ck: bCk, titleAt: function(k){ return bCk[k].label; } });
+  return panels;
 }
 L7.add({ short: 'Fitting a torus', title: 'Fitting a 3D shape with trees of different sizes',
-  change: 'Press Fit all. Choose a model to see its shape and rotate it.',
-  watch: 'A torus is a donut shape. Each model is given 4,000 points in 3D space, each labelled with its distance to the torus surface, negative inside and positive outside. A point is called inside when the prediction is below zero. A tree can only cut space with flat planes at right angles to the axes, so a single tree builds the donut from boxes. A forest averages many such shapes and a boosted model adds them one after another, which smooths the surface. The lines show accuracy on 2,000 held-out points near the surface, half inside and half outside, so that guessing scores 0.5. Each family is tried at several sizes.',
+  change: 'Press Play and watch a tree, a forest and a boosted model learn the shape. Drag the picture to rotate it, or drag the progress slider.',
+  watch: 'A torus is a donut shape. Each model is given 16,000 points in 3D space, each labelled with its distance to the torus surface, negative inside and positive outside, and learns to predict that distance. The surface drawn is where the prediction crosses zero, found by walking out from the true torus along its normal. Before the model has an inside, only a faint core shows. The thin grey rings mark the true torus. A tree cuts space with flat planes at right angles to the axes, so a single tree builds the donut from boxes. The first model grows one tree one level deeper at each step. The forest adds one tree at a time and averages them. Boosting adds small trees one after another. The chart tracks accuracy on 2,000 held-out points near the surface, half inside and half outside, so that guessing scores 0.5.',
   build: function(api){
-    var vp = api.el('pn', 'left:28px;top:28px;width:440px;height:408px', '<h4 class="vt">Shape learned by the model</h4><canvas width="416" height="350" style="cursor:grab"></canvas>');
-    var cp = api.el('pn', 'left:488px;top:28px;width:444px;height:408px;overflow:auto', '<h4>Accuracy against training time</h4><canvas class="c2" width="420" height="214"></canvas><div class="tb" style="margin-top:6px"></div>');
-    var ctl = api.addControl('Show <select class="sm"></select> <button type="button" class="btn sm" data-all>Fit all</button>');
-    var sm = qs('.sm', ctl), canvas = qs('canvas', vp), opts = [];
-    Object.keys(TA_FAM).forEach(function(k){ TA_FAM[k][3].forEach(function(sz){ opts.push(k + ':' + sz); sm.insertAdjacentHTML('beforeend', '<option value="' + k + ':' + sz + '">' + TA_FAM[k][0] + ', ' + TA_FAM[k][2] + ' ' + sz + '</option>'); }); }); sm.value = 'forest:30'; shRotatable(canvas, TA_SHAPE.st);
-    function view(){ var run = TA_SHAPE.models && TA_SHAPE.models[sm.value]; if (run && !run.pts) run.pts = shGridInside(run.predict); TA_SHAPE.st.pts = run ? run.pts : []; qs('.vt', vp).textContent = run ? TA_FAM[run.kind][0] + ', ' + TA_FAM[run.kind][2] + ' ' + run.size + ', accuracy ' + run.acc.toFixed(2) : 'Shape learned by the model'; shDraw(canvas, TA_SHAPE.st); }
-    function chart(){
-      var M = TA_SHAPE.models || {}, series = Object.keys(TA_FAM).map(function(k){ var pts = TA_FAM[k][3].filter(function(sz){ return M[k + ':' + sz]; }).map(function(sz){ var r = M[k + ':' + sz]; return [Math.log10(Math.max(r.secs * 1000, 0.5)), r.acc]; }); return { pts: pts, color: TA_FAM[k][1], label: TA_FAM[k][0], w: 2.6 }; }).filter(function(s){ return s.pts.length; });
-      if (!series.length) { var g0 = cv(qs('.c2', cp)); g0.x.fillStyle = C.char; g0.x.fillText('Press Fit all.', 50, 40); qs('.tb', cp).innerHTML = ''; return; }
-      lineChart(qs('.c2', cp), series, { xl: 'log10 of training time in ms (1 is 10 ms, 2 is 100 ms)', yl: 'accuracy', y0: 0.5, y1: 1, ydec: 2, xdec: 1 });
-      qs('.tb', cp).innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12.5px;color:' + C.char + '"><tr style="text-align:right;font-weight:700"><td style="text-align:left">Model</td><td>Size</td><td>Training time</td><td>Accuracy</td></tr>' + opts.filter(function(o){ return M[o]; }).map(function(o){ var r = M[o]; return '<tr style="text-align:right;border-top:1px solid ' + C.silver + '"><td style="text-align:left"><b style="color:' + TA_FAM[r.kind][1] + '">' + TA_FAM[r.kind][0] + '</b></td><td>' + TA_FAM[r.kind][2] + ' ' + r.size + '</td><td>' + (r.secs * 1000).toFixed(0) + ' ms</td><td><b>' + r.acc.toFixed(3) + '</b></td></tr>'; }).join('') + '</table>';
+    var vp = api.el('pn', 'left:28px;top:28px;width:904px;height:228px', '<canvas width="880" height="204"></canvas>');
+    var cp = api.el('pn', 'left:28px;top:266px;width:904px;height:170px', '<canvas class="c2" width="880" height="150"></canvas>');
+    async function prepare(){ if (TA_SHAPE.panels) return; api.busy('Fitting the three models and building their surfaces'); await tick(); await tick(); TA_SHAPE.panels = await taTorusPanels(function(kind, k){ api.busy('Fitting ' + kind + ', step ' + k); }); api.idle(); }
+    async function renderInner(){
+      await prepare(); if (TA_SHAPE.anim) { TA_SHAPE.anim.draw(); return; }
+      var xs = []; TA_SHAPE.panels.forEach(function(p){ p.ck.forEach(function(c){ xs.push(c.x); }); });
+      TA_SHAPE.anim = shAnim({ canvas: qs('canvas', vp), chart: qs('.c2', cp), panels: TA_SHAPE.panels, x0: Math.floor(Math.min.apply(null, xs)), x1: Math.ceil(Math.max.apply(null, xs)), xl: 'training time, log10 of milliseconds (1 is 10 ms, 2 is 100 ms)', xdec: 0, dur: 16 });
+      shControls(api, TA_SHAPE.anim);
     }
-    async function runAll(){
-      if (TA_SHAPE.busy) return; TA_SHAPE.busy = true; TA_SHAPE.models = {}; taTorusPrep(); var done = 0;
-      for (var a = 0; a < opts.length; a++) { var parts = opts[a].split(':'); api.busy('Fitting ' + (a + 1) + ' of ' + opts.length); await tick(); await tick(); TA_SHAPE.models[opts[a]] = taTorusFit(parts[0], +parts[1]); }
-      TA_SHAPE.busy = false; api.idle(); chart(); view();
-    }
-    qs('[data-all]', ctl).addEventListener('click', runAll); sm.addEventListener('change', function(){ chart(); view(); });
-    return { render: async function(){ if (!TA_SHAPE.models) await runAll(); else { chart(); view(); } } };
+    async function render(){ if (TA_SHAPE.busy) return; TA_SHAPE.busy = true; try { await renderInner(); } finally { TA_SHAPE.busy = false; } }
+    return { render: render };
   } });
 
 L7.glossary([

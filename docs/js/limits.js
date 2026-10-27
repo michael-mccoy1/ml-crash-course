@@ -57,7 +57,7 @@ L6.add({ short: 'Outside the training range', title: 'A prediction model is reli
   watch: 'A machine learning model has only its examples to go on. This demonstration uses a tree model on our compounds. It is trained on compounds whose feature value is below a cut-off, shown as a dashed line, and then scored on test compounds on each side of the line. A test R2 of 0 means no better than guessing the average, and below 0 means worse. The range is the span of feature values the model saw.',
   build: function(api){
     var G_ = 200, st = null;
-    var plot = api.el('pn', 'left:28px;top:28px;width:620px;height:408px', '<h4 class="pt"></h4><canvas width="600" height="334" style="margin-top:2px"></canvas><div class="note" style="font-size:12px;margin-top:4px">Blue dots: trained on. Dark rings: test compounds inside the range. Red rings: test compounds outside. Shaded: outside the range.</div>');
+    var plot = api.el('pn', 'left:28px;top:28px;width:620px;height:408px', '<h4 class="pt"></h4><canvas width="600" height="334" style="margin-top:2px"></canvas><div class="note" style="font-size:12px;margin-top:4px">Blue: trained on. Dark rings: test inside. Red rings: test outside.</div>');
     var side = api.el('pn', 'left:668px;top:28px;width:264px;height:408px', '<h4>Test R2 on each side of the line</h4><div class="sd"></div>');
     var ctl = api.addControl('Feature <select></select> Train on the lowest <input type="range" min="20" max="90" step="5" value="60" style="width:170px"><b class="dv">60</b>% of values');
     var sel = qs('select', ctl), sl = qs('input', ctl), dv = qs('.dv', ctl);

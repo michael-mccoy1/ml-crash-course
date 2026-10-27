@@ -232,3 +232,5 @@ aside.options,.pn,.tblwrap,.stagewrap,nav.tabs .in{scrollbar-width:thin;scrollba
 aside.options::-webkit-scrollbar,.pn::-webkit-scrollbar,.tblwrap::-webkit-scrollbar,.stagewrap::-webkit-scrollbar,nav.tabs .in::-webkit-scrollbar{width:6px;height:6px}
 aside.options::-webkit-scrollbar-thumb,.pn::-webkit-scrollbar-thumb,.tblwrap::-webkit-scrollbar-thumb,.stagewrap::-webkit-scrollbar-thumb,nav.tabs .in::-webkit-scrollbar-thumb{background:var(--silver);border-radius:3px}
 aside.options::-webkit-scrollbar-button{display:none}
+
+.step.bench .stalebadge{top:50px}

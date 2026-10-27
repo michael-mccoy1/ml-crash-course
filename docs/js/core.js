@@ -120,15 +120,19 @@ function axes(g, box, xr, yr, xl, yl, ticks, o){
   var yd = Math.abs(yr[1] - yr[0]) > 6 ? 0 : 1;
   for (var k = 0; k <= ticks; k++) { var v = yr[0] + (yr[1] - yr[0]) * k / ticks, y = box.t + (1 - k / ticks) * (box.b - box.t); x.beginPath(); x.moveTo(box.l, y); x.lineTo(box.r, y); x.stroke(); x.fillText(v.toFixed(o.ydec !== undefined ? o.ydec : yd), box.l - 6, y + 4); }
   x.textAlign = 'center'; var xd = Math.abs(xr[1] - xr[0]) > 6 ? 0 : 1;
-  for (var k2 = 0; k2 <= ticks; k2++) { var xv = xr[0] + (xr[1] - xr[0]) * k2 / ticks; x.fillText(xv.toFixed(o.xdec !== undefined ? o.xdec : xd), box.l + (box.r - box.l) * k2 / ticks, box.b + 16); }
+  for (var k2 = 0; k2 <= ticks; k2++) { var xv = xr[0] + (xr[1] - xr[0]) * k2 / ticks; var xt = xv.toFixed(o.xdec !== undefined ? o.xdec : xd), xp = box.l + (box.r - box.l) * k2 / ticks, tw = x.measureText(xt).width; xp = Math.min(xp, g.w - 2 - tw / 2); x.fillText(xt, xp, box.b + 16); }
   x.fillStyle = C.char; x.font = '600 12px Aptos, "Segoe UI", sans-serif'; x.fillText(xl, (box.l + box.r) / 2, box.b + 33); x.save(); x.translate(13, (box.t + box.b) / 2); x.rotate(-Math.PI / 2); x.fillText(yl, 0, 0); x.restore(); x.font = '12px Aptos, "Segoe UI", sans-serif';
 }
 function lineChart(el, series, o){
-  var g = cv(el), box = { l: 48, r: g.w - 14, t: 14, b: g.h - 40 }, xs = [], ys = []; series.forEach(function(s){ s.pts.forEach(function(p){ xs.push(p[0]); ys.push(p[1]); }); });
+  var g = cv(el), xs = [], ys = [], labelled = series.filter(function(s){ return s.label && s.pts.length; }), rows = 0, rowAt = [];
+  if (labelled.length) { g.x.font = '600 11px Aptos, "Segoe UI", sans-serif'; var cx0 = 48, rr = 0; labelled.forEach(function(s){ var w = g.x.measureText(s.label).width + 30; if (cx0 + w > g.w - 10 && cx0 > 48) { cx0 = 48; rr++; } rowAt.push([cx0, rr]); cx0 += w; }); rows = rr + 1; }
+  var box = { l: 48, r: g.w - 14, t: rows ? 10 + rows * 16 : 14, b: g.h - 40 }; series.forEach(function(s){ s.pts.forEach(function(p){ xs.push(p[0]); ys.push(p[1]); }); });
   if (!xs.length) return g; var x0 = o.x0 !== undefined ? o.x0 : Math.min.apply(null, xs), x1 = o.x1 !== undefined ? o.x1 : Math.max.apply(null, xs), y0 = o.y0 !== undefined ? o.y0 : Math.min.apply(null, ys), y1 = o.y1 !== undefined ? o.y1 : Math.max.apply(null, ys); if (x1 === x0) x1 = x0 + 1; if (y1 === y0) y1 = y0 + 1;
   axes(g, box, [x0, x1], [y0, y1], o.xl || '', o.yl || '', 4, o); var sx = function(v){ return box.l + (v - x0) / (x1 - x0) * (box.r - box.l); }, sy = function(v){ return box.b - (v - y0) / (y1 - y0) * (box.b - box.t); };
   series.forEach(function(s){ var x = g.x; x.strokeStyle = s.color; x.lineWidth = s.w || 2.6; x.lineJoin = 'round'; x.setLineDash(s.dash || []); x.beginPath(); s.pts.forEach(function(p, i){ i ? x.lineTo(sx(p[0]), sy(p[1])) : x.moveTo(sx(p[0]), sy(p[1])); }); x.stroke(); x.setLineDash([]);
-    if (!s.nodot && s.pts.length) { var q = s.pts[s.pts.length - 1]; x.fillStyle = s.color; x.beginPath(); x.arc(sx(q[0]), sy(q[1]), 4.5, 0, 6.3); x.fill(); } if (s.label && s.pts.length) { var e = s.pts[s.pts.length - 1]; x.fillStyle = s.color; x.font = '600 11px Aptos, "Segoe UI", sans-serif'; x.textAlign = 'left'; x.fillText(s.label, Math.min(sx(e[0]) + 6, box.r - 60), sy(e[1]) - 6); x.font = '12px Aptos, "Segoe UI", sans-serif'; } });
+    if (!s.nodot && s.pts.length) { var q = s.pts[s.pts.length - 1]; x.fillStyle = s.color; x.beginPath(); x.arc(sx(q[0]), sy(q[1]), 4.5, 0, 6.3); x.fill(); } });
+  /* legend above the plot, so labels never sit on a line */
+  labelled.forEach(function(s, i){ var x = g.x, px = rowAt[i][0], py = 8 + rowAt[i][1] * 16 + 6; x.strokeStyle = s.color; x.lineWidth = 3; x.setLineDash([]); x.beginPath(); x.moveTo(px, py); x.lineTo(px + 16, py); x.stroke(); x.fillStyle = C.char; x.font = '600 11px Aptos, "Segoe UI", sans-serif'; x.textAlign = 'left'; x.fillText(s.label, px + 21, py + 4); });
   g.sx = sx; g.sy = sy; g.box = box; return g;
 }
 function scatterPV(el, pred, idx, label, o){
@@ -195,7 +199,7 @@ function buildLesson(L){
 function tocChip(target, label){ var b = h('button', 'tc', esc(label)); b.type = 'button'; b.addEventListener('click', function(){ var t = $(target); if (t) window.scrollTo({ top: t.getBoundingClientRect().top + window.scrollY - 70, behavior: ANIM ? 'smooth' : 'auto' }); }); return b; }
 
 function buildStep(L, s, idx, total, parent){
-  var sec = h('section', 'step'); sec.id = L.id + '-s' + (idx + 1); s.sec = sec;
+  var sec = h('section', 'step' + (s.bench ? ' bench' : '')); sec.id = L.id + '-s' + (idx + 1); s.sec = sec;
   sec.innerHTML = '<div class="shead"><i class="tick"></i><div><div class="eyebrow">' + (s.bench ? 'WORKBENCH' : 'STEP ' + (idx + 1)) + '</div><h2>' + s.title + '</h2></div></div>' +
     '<p class="lead">' + s.watch + '</p><p class="try"><b>Try</b> ' + s.change + '</p>' +
     '<div class="stagewrap"><div class="screen"><div class="inner"></div></div>' + (s.bench ? '' : '<div class="sbar"><button type="button" class="btn sm ghost" data-play>Walk through</button><span class="sx"></span></div>') + '</div>';

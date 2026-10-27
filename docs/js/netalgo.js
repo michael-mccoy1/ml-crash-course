@@ -215,7 +215,7 @@ L8.add({ short: 'Next-token loss', title: 'The next-token loss',
     function draw(){
       var c = +ct.value, p = probs(), L = -Math.log(p[c]), host = qs('.nl', pn);
       if (!qs('.nlr', pn)) { host.innerHTML = '<div style="display:grid;grid-template-columns:1fr 250px;gap:26px"><div class="nlr"></div><div class="nlq"></div></div>'; }
-      qs('.nlr', pn).innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:14px;color:' + C.char + '"><tr style="font-weight:700;text-align:right;line-height:1.2"><td style="text-align:left;width:90px">Token</td><td style="text-align:left;width:230px">Score (logit)</td><td>Probability</td><td style="width:160px"></td><td>Gradient</td></tr>' + NA_V6.map(function(t, i){ var g = p[i] - (i === c ? 1 : 0); return '<tr style="border-top:1px solid ' + C.silver + ';text-align:right"><td style="text-align:left;padding:8px 0"><b>' + esc(t) + '</b>' + (i === c ? ' <span style="color:' + C.red + ';font-size:12px">correct</span>' : '') + '</td><td style="text-align:left"><input class="lg" data-i="' + i + '" type="range" min="-5" max="5" step="0.1" value="' + logits[i] + '" style="width:150px"> <b>' + logits[i].toFixed(1) + '</b></td><td>' + p[i].toFixed(3) + '</td><td><div class="pbar" style="height:10px;margin:0"><i style="background:' + (i === c ? C.red : C.char) + ';width:' + (p[i] * 100).toFixed(0) + '%;transition:none"></i></div></td><td style="color:' + (g < 0 ? C.red : C.char) + '">' + (g >= 0 ? '+' : '') + g.toFixed(3) + '</td></tr>'; }).join('') + '</table>';
+      qs('.nlr', pn).innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:14px;color:' + C.char + '"><tr style="font-weight:700;text-align:right;line-height:1.2"><td style="text-align:left;width:90px">Token</td><td style="text-align:left;width:230px">Score (logit)</td><td>Probability</td><td style="width:160px"></td><td>Gradient</td></tr>' + NA_V6.map(function(t, i){ var g = p[i] - (i === c ? 1 : 0); return '<tr style="border-top:1px solid ' + C.silver + ';text-align:right"><td style="text-align:left;padding:8px 0 8px 6px"><b>' + esc(t) + '</b>' + (i === c ? ' <span style="color:' + C.red + ';font-size:12px">correct</span>' : '') + '</td><td style="text-align:left"><input class="lg" data-i="' + i + '" type="range" min="-5" max="5" step="0.1" value="' + logits[i] + '" style="width:150px"> <b>' + logits[i].toFixed(1) + '</b></td><td>' + p[i].toFixed(3) + '</td><td><div class="pbar" style="height:10px;margin:0"><i style="background:' + (i === c ? C.red : C.char) + ';width:' + (p[i] * 100).toFixed(0) + '%;transition:none"></i></div></td><td style="color:' + (g < 0 ? C.red : C.char) + '">' + (g >= 0 ? '+' : '') + g.toFixed(3) + '</td></tr>'; }).join('') + '</table>';
       qs('.nlq', pn).innerHTML = '<div class="big" style="color:' + C.red + '">' + L.toFixed(2) + '</div><div class="note" style="font-size:12.5px;color:' + C.char + ';margin-bottom:10px">loss = -ln(' + p[c].toFixed(3) + ')</div>' + naRow('Perplexity', Math.exp(L).toFixed(2)) + naRow('Loss of a uniform guess', Math.log(NA_V6.length).toFixed(2)) + (note ? '<p style="font-size:13px;color:' + C.red + ';font-weight:700;margin-top:10px">' + note + '</p>' : '') + '<p class="note" style="font-size:12px;margin-top:10px">A negative gradient (red) means raising that score lowers the loss. A step subtracts the learning rate (1.0 here) times the gradient from each score.</p>';
       qsa('.lg', pn).forEach(function(r){ r.addEventListener('input', function(){ logits[+r.dataset.i] = +r.value; note = ''; draw(); }); });
     }
@@ -245,13 +245,15 @@ L8.add({ short: 'Counting parameters', title: 'Counting parameters',
   } });
 
 /* ---------- Step 8: fitting a torus ---------- */
-var NA_SHAPE = { runs: null, tr: null, te: null, st: { yaw: 0.5, pitch: 1.1, pts: [] }, busy: false };
-var NA_W = [2, 4, 8, 16, 32, 64], NA_COL = [C.char, '#6F8196', '#D1D8E0', '#F78C85', '#BD120A', C.red];
-async function naTorusNet(w, tr, te, epochs){
-  var S = [3, w, w, 1], L = 3, m = mlpInit(S, 101 + w), A = mlpBuf(S), A2 = mlpBuf(S), r = rng(5 + w), perm = [], i, BS = 64, step = 0, lr = 0.004, secs = 0, hist = [], buf = new Float32Array(3);
+var NA_SHAPE = { tr: null, te: null, anim: null, busy: false, panels: null };
+var NA_W = [4, 16, 64], NA_COL = ['#6F8196', '#BD120A', C.char];
+async function naTorusNet(w, tr, te, epochs, onProg){
+  var S = [3, w, w, 1], L = 3, m = mlpInit(S, 101 + w), A = mlpBuf(S), A2 = mlpBuf(S), r = rng(5 + w), perm = [], i, BS = 64, step = 0, lr = 0.004, secs = 0, buf = new Float32Array(3), ck = [];
   var gW = m.W.map(function(a){ return new Float32Array(a.length); }), gB = m.b.map(function(a){ return new Float32Array(a.length); }), mW = gW.map(function(a){ return new Float32Array(a.length); }), vW = gW.map(function(a){ return new Float32Array(a.length); }), mB = gB.map(function(a){ return new Float32Array(a.length); }), vB = gB.map(function(a){ return new Float32Array(a.length); }), delta = S.slice(1).map(function(n){ return new Float32Array(n); });
   for (i = 0; i < tr.n; i++) perm.push(i);
   var predict = function(x, y, z){ buf[0] = x; buf[1] = y; buf[2] = z; return mlpForward(m, buf, 0, A2, null, 0, null); };
+  function snap(ep){ ck.push({ t: shMesh(predict), acc: shAccuracy(te, predict), x: secs, ep: ep }); }
+  snap(0); await tick();
   for (var ep = 0; ep < epochs; ep++) {
     var t0 = performance.now(); for (var a = perm.length - 1; a > 0; a--) { var j = Math.floor(r() * (a + 1)), tt = perm[a]; perm[a] = perm[j]; perm[j] = tt; }
     for (var s0 = 0; s0 < tr.n; s0 += BS) {
@@ -267,32 +269,29 @@ async function naTorusNet(w, tr, te, epochs){
         var bb = m.b[l2], gb2 = gB[l2], mb = mB[l2], vb = vB[l2]; for (k = 0; k < bb.length; k++) { var g3 = gb2[k]; mb[k] = 0.9 * mb[k] + 0.1 * g3; vb[k] = 0.999 * vb[k] + 0.001 * g3 * g3; bb[k] -= lr * (mb[k] / c1) / (Math.sqrt(vb[k] / c2) + 1e-8); } }
     }
     secs += (performance.now() - t0) / 1000;
-    if (ep % 3 === 2 || ep === 0) { hist.push([secs, shAccuracy(te, predict)]); await tick(); }
+    if (ep % 2 === 1) { snap(ep + 1); if (onProg) onProg(ep + 1); await tick(); }
   }
-  return { w: w, predict: predict, hist: hist, secs: secs, acc: hist[hist.length - 1][1], params: w * w + 5 * w + 1 };
+  return { w: w, ck: ck, secs: secs, params: w * w + 5 * w + 1 };
 }
 L8.add({ short: 'Fitting a torus', title: 'Fitting a 3D shape with networks of different sizes',
-  change: 'Press Train all. Choose a width to see the shape it learned and rotate it.',
-  watch: 'A torus is a donut shape. Each network is given 4,000 points in 3D space, each labelled with its distance to the torus surface, negative inside and positive outside. It learns this distance, and a point is called inside when the prediction is below zero. The width is the number of neurons in each of two hidden layers. A wider network can bend into a more complex shape but takes longer to train. The lines show accuracy on 2,000 held-out points near the surface, half inside and half outside, so that guessing scores 0.5. The 3D view shows grid points the network calls inside, in red, against the true surface in grey.',
+  change: 'Press Play and watch three networks learn the shape. Drag the picture to rotate it, or drag the progress slider.',
+  watch: 'A torus is a donut shape. Each network is given 4,000 points in 3D space, each labelled with its distance to the torus surface, negative inside and positive outside, and learns to predict that distance. The surface drawn is where the prediction crosses zero, found by walking out from the true torus along its normal. Before training there is no inside, so only a faint core shows. The thin grey rings mark the true torus. The width is the number of neurons in each of two hidden layers, so a wider network can bend into a more complex shape but takes longer to train. The chart tracks accuracy on 2,000 held-out points near the surface, half inside and half outside, so that guessing scores 0.5.',
   build: function(api){
-    var vp = api.el('pn', 'left:28px;top:28px;width:440px;height:408px', '<h4 class="vt">Shape learned by the network</h4><canvas width="416" height="350" style="cursor:grab"></canvas>');
-    var cp = api.el('pn', 'left:488px;top:28px;width:444px;height:408px;overflow:auto', '<h4>Accuracy against training time</h4><canvas class="c2" width="420" height="214"></canvas><div class="tb" style="margin-top:6px"></div>');
-    var ctl = api.addControl('Show width <select class="sw">' + NA_W.map(function(v){ return '<option>' + v + '</option>'; }).join('') + '</select> <button type="button" class="btn sm" data-all>Train all</button>');
-    var sw = qs('.sw', ctl), canvas = qs('canvas', vp); sw.value = '16'; shRotatable(canvas, NA_SHAPE.st);
-    function view(){ var run = NA_SHAPE.runs && NA_SHAPE.runs[sw.value]; if (run && !run.pts) run.pts = shGridInside(run.predict); NA_SHAPE.st.pts = run ? run.pts : []; qs('.vt', vp).textContent = run ? 'Width ' + sw.value + ', accuracy ' + run.acc.toFixed(2) : 'Shape learned by the network'; shDraw(canvas, NA_SHAPE.st); }
-    function chart(){
-      var runs = NA_SHAPE.runs || {}, series = NA_W.filter(function(w){ return runs[w]; }).map(function(w, i){ return { pts: runs[w].hist.map(function(p){ return [p[0], p[1]]; }), color: NA_COL[NA_W.indexOf(w)], w: String(w) === sw.value ? 3.4 : 1.8, label: 'width ' + w }; });
-      if (!series.length) { var g0 = cv(qs('.c2', cp)); g0.x.fillStyle = C.char; g0.x.fillText('Press Train all.', 50, 40); qs('.tb', cp).innerHTML = ''; return; }
-      lineChart(qs('.c2', cp), series, { xl: 'training time (s)', yl: 'accuracy', y0: 0.5, y1: 1, x0: 0, ydec: 2, xdec: 1 });
-      qs('.tb', cp).innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12.5px;color:' + C.char + '"><tr style="text-align:right;font-weight:700"><td style="text-align:left">Width</td><td>Parameters</td><td>Training time</td><td>Accuracy</td></tr>' + NA_W.filter(function(w){ return runs[w]; }).map(function(w){ var r = runs[w]; return '<tr style="text-align:right;border-top:1px solid ' + C.silver + '"><td style="text-align:left"><b style="color:' + NA_COL[NA_W.indexOf(w)] + '">' + w + '</b></td><td>' + r.params.toLocaleString() + '</td><td>' + r.secs.toFixed(r.secs < 1 ? 2 : 1) + ' s</td><td><b>' + r.acc.toFixed(3) + '</b></td></tr>'; }).join('') + '</table>';
+    var vp = api.el('pn', 'left:28px;top:28px;width:904px;height:228px', '<canvas width="880" height="204"></canvas>');
+    var cp = api.el('pn', 'left:28px;top:266px;width:904px;height:170px', '<canvas class="c2" width="880" height="150"></canvas>');
+    async function prepare(){
+      if (NA_SHAPE.panels) return; NA_SHAPE.tr = shTrain(4000, 31); NA_SHAPE.te = shTest(2000, 77); var panels = [];
+      for (var i = 0; i < NA_W.length; i++) { api.busy('Training width ' + NA_W[i] + ' and building its surface, ' + (i + 1) + ' of ' + NA_W.length); await tick(); await tick(); var run = await naTorusNet(NA_W[i], NA_SHAPE.tr, NA_SHAPE.te, 60); var w = NA_W[i]; panels.push({ w: w, short: 'width ' + w + ' (' + run.params.toLocaleString() + ' parameters)', color: NA_COL[i], ck: run.ck, secs: run.secs, titleAt: (function(rn){ return function(k){ return 'Width ' + rn.w + ', epoch ' + rn.ck[k].ep; }; })(run) }); }
+      NA_SHAPE.panels = panels; api.idle();
     }
-    async function runAll(){
-      if (NA_SHAPE.busy) return; NA_SHAPE.busy = true; NA_SHAPE.runs = {}; if (!NA_SHAPE.tr) { NA_SHAPE.tr = shTrain(4000, 31); NA_SHAPE.te = shTest(2000, 77); }
-      for (var i = 0; i < NA_W.length; i++) { api.busy('Training width ' + NA_W[i] + ', ' + (i + 1) + ' of ' + NA_W.length); await tick(); await tick(); NA_SHAPE.runs[NA_W[i]] = await naTorusNet(NA_W[i], NA_SHAPE.tr, NA_SHAPE.te, 60); chart(); view(); }
-      NA_SHAPE.busy = false; api.idle(); chart(); view();
+    async function renderInner(){
+      await prepare(); if (NA_SHAPE.anim) { NA_SHAPE.anim.draw(); return; }
+      var xmax = Math.max.apply(null, NA_SHAPE.panels.map(function(p){ return p.secs; }));
+      NA_SHAPE.anim = shAnim({ canvas: qs('canvas', vp), chart: qs('.c2', cp), panels: NA_SHAPE.panels, x0: 0, x1: xmax * 1.02, xl: 'training time (s)', xdec: 1, dur: 16 });
+      shControls(api, NA_SHAPE.anim);
     }
-    qs('[data-all]', ctl).addEventListener('click', runAll); sw.addEventListener('change', function(){ chart(); view(); });
-    return { render: async function(){ if (!NA_SHAPE.runs) await runAll(); else { chart(); view(); } } };
+    async function render(){ if (NA_SHAPE.busy) return; NA_SHAPE.busy = true; try { await renderInner(); } finally { NA_SHAPE.busy = false; } }
+    return { render: render };
   } });
 
 L8.glossary([
