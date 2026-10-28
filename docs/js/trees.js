@@ -34,7 +34,7 @@ var tTimer = null;
 L2.onOpts = function(root){
   var fire = function(){ clearTimeout(tTimer); tTimer = setTimeout(function(){ L2.refresh(); }, 220); };
   ['tdepth', 'tntrees', 'tfdepth', 'trounds', 'tlr'].forEach(function(id){ $(id).addEventListener('input', function(){ if (L2.live) L2.live(id); fire(); }); });
-  $('ttrain').addEventListener('click', async function(){ var b = this; b.disabled = true; var st = $('tst'); if (!activeFeats().length) { st.textContent = 'Tick at least one feature.'; b.disabled = false; return; } st.textContent = 'Training'; progress(0.2); await tick(); recordTrees(); progress(0.7); await tick(); tResultsBox(); st.textContent = 'Done. Scores are in Compare.'; progress(1); b.disabled = false; L2.refresh(); });
+  $('ttrain').addEventListener('click', async function(){ var b = this; b.disabled = true; var st = $('tst'); if (!activeFeats().length) { st.textContent = 'Select at least one feature.'; b.disabled = false; return; } st.textContent = 'Training'; progress(0.2); await tick(); recordTrees(); progress(0.7); await tick(); tResultsBox(); st.textContent = 'Done. Scores are in Compare.'; progress(1); b.disabled = false; L2.refresh(); });
 };
 L2.onData = function(){ tResultsBox(); };
 featListeners.push(function(){ if (L2.built) L2.refresh(); });
@@ -264,7 +264,7 @@ L2.add({ short: 'Boosting', title: 'Boosting fixes mistakes a little at a time',
 
 /* ---------- T6: which features matter ---------- */
 L2.add({ short: 'Which features matter', title: 'Which features the model relies on',
-  change: 'Untick a feature in the options panel.',
+  change: 'Clear a feature in the options panel.',
   watch: 'Feature importance measures how much a model depends on each feature. Left: split gain, the total reduction in squared error from all splits on the feature, as a share of the total. Right: ablation, the change in test R2 when the model is retrained without the feature. The two can disagree because a correlated feature can substitute for a removed one.',
   build: function(api){
     var lp = api.el('pn', 'left:28px;top:28px;width:440px;height:408px', '<h4>Split gain inside the boosted trees</h4><div class="ib"></div>');

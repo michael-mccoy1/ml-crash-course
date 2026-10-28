@@ -193,7 +193,7 @@ function qzRender(){
   var html = '<div class="qwrap">' + qzTopbar() + '<div class="qcard"><div class="qtopic">' + esc(q.topic) + '</div><h3 class="qtext">' + esc(q.text) + '</h3><div class="qbody"></div><div class="qfb" hidden></div><div class="qact"></div></div></div>';
   root.innerHTML = '<div class="qpage">' + html + '</div>';
   var body = qs('.qbody', root), act = qs('.qact', root), fb = qs('.qfb', root), done = false;
-  function finish(ok, extra){ if (done) return; done = true; QZ.log[QZ.i] = ok; if (ok) QZ.score++; fb.hidden = false; fb.className = 'qfb ' + (ok ? 'ok' : 'no'); fb.innerHTML = '<b>' + (ok ? 'Correct.' : 'Not quite.') + '</b> ' + (extra || '') + ' ' + esc(q.why || ''); act.innerHTML = '<button type="button" class="btn" data-next>' + (QZ.i === QZ.cur.length - 1 ? 'See my score' : 'Next question') + '</button>'; qs('[data-next]', act).addEventListener('click', function(){ QZ.i++; qzRender(); window.scrollTo({ top: 0 }); }); qs('.qtop', root).outerHTML = qzTopbar(); }
+  function finish(ok, extra){ if (done) return; done = true; QZ.log[QZ.i] = ok; if (ok) QZ.score++; fb.hidden = false; fb.className = 'qfb ' + (ok ? 'ok' : 'no'); fb.innerHTML = '<b>' + (ok ? 'Correct.' : 'Incorrect.') + '</b> ' + (extra || '') + ' ' + esc(q.why || ''); act.innerHTML = '<button type="button" class="btn" data-next>' + (QZ.i === QZ.cur.length - 1 ? 'See my score' : 'Next question') + '</button>'; qs('[data-next]', act).addEventListener('click', function(){ QZ.i++; qzRender(); window.scrollTo({ top: 0 }); }); qs('.qtop', root).outerHTML = qzTopbar(); }
   if (q.t === 'mc' || q.t === 'multi') {
     var multi = q.t === 'multi'; body.innerHTML = (multi ? '<div class="qhint">Select every answer that applies.</div>' : '') + q.view.map(function(oi, k){ return '<label class="qopt"><input type="' + (multi ? 'checkbox' : 'radio') + '" name="qo" value="' + oi + '"><span>' + esc(q.opts[oi]) + '</span></label>'; }).join('');
     act.innerHTML = '<button type="button" class="btn" data-check disabled>Check answer</button>'; var cb = qs('[data-check]', act);
@@ -227,24 +227,24 @@ function qzTune(q, body, act, finish, fb){
   body.innerHTML = '<div class="qgoal">' + esc(qzGoalText(q.goal)) + '</div><div class="qctl">' + ctl.map(function(c){ return '<label>' + c[1] + ' <output data-o="' + c[0] + '">' + s[c[0]] + '</output><input type="range" data-k="' + c[0] + '" min="' + c[2] + '" max="' + c[3] + '" step="' + c[4] + '" value="' + s[c[0]] + '"></label>'; }).join('') + '</div><div class="qrunrow"><button type="button" class="btn" data-run>Train this model</button><span class="qrs"></span></div><div class="qtries"></div><div class="qhintbox" hidden></div>';
   qsa('input[type=range]', body).forEach(function(r){ r.addEventListener('input', function(){ s[r.dataset.k] = +r.value; qs('[data-o="' + r.dataset.k + '"]', body).textContent = r.value; }); });
   var run = qs('[data-run]', body), st = qs('.qrs', body), box = qs('.qtries', body);
-  function drawTries(){ box.innerHTML = tries.length ? '<table class="qt"><thead><tr><th>Settings</th><th>Test R2</th><th>Training R2</th><th>Leaves</th><th></th></tr></thead><tbody>' + tries.slice().reverse().map(function(t){ return '<tr class="' + (t.ok ? 'ok' : '') + '"><td>' + esc(t.label) + '</td><td>' + t.r.te.toFixed(3) + '</td><td>' + t.r.tr.toFixed(3) + '</td><td>' + t.r.leaves.toLocaleString() + '</td><td>' + (t.ok ? 'meets the goal' : 'not yet') + '</td></tr>'; }).join('') + '</tbody></table>' : ''; }
+  function drawTries(){ box.innerHTML = tries.length ? '<table class="qt"><thead><tr><th>Settings</th><th>Test R2</th><th>Training R2</th><th>Leaves</th><th></th></tr></thead><tbody>' + tries.slice().reverse().map(function(t){ return '<tr class="' + (t.ok ? 'ok' : '') + '"><td>' + esc(t.label) + '</td><td>' + t.r.te.toFixed(3) + '</td><td>' + t.r.tr.toFixed(3) + '</td><td>' + t.r.leaves.toLocaleString() + '</td><td>' + (t.ok ? 'goal met' : 'goal not met') + '</td></tr>'; }).join('') + '</tbody></table>' : ''; }
   function label(){ return q.kind === 'boost' ? s.rounds + ' rounds, depth ' + s.depth + ', rate ' + (+s.lr).toFixed(2) : (q.kind === 'forest' ? s.trees + ' trees, depth ' + s.depth : 'depth ' + s.depth + ', min leaf ' + s.minleaf); }
   run.addEventListener('click', async function(){
     if (passed) return; run.disabled = true; st.textContent = 'Training'; await tick();
-    try { var r = await qzRun(q, s), ok = qzPass(q.goal, r); tries.push({ label: label(), r: r, ok: ok }); drawTries(); st.textContent = ok ? '' : 'Not there yet. Change a setting and train again.';
+    try { var r = await qzRun(q, s), ok = qzPass(q.goal, r); tries.push({ label: label(), r: r, ok: ok }); drawTries(); st.textContent = ok ? '' : 'Goal not met. Change a setting and train again.';
       if (ok) { passed = true; run.disabled = true; act.innerHTML = ''; finish(true, 'Your model met the goal with ' + r.leaves.toLocaleString() + ' leaves in ' + Math.max(1, Math.round(r.ms)) + ' ms.'); } else run.disabled = false;
-    } catch (e) { console.error(e); st.textContent = 'Something went wrong. Try again.'; run.disabled = false; }
+    } catch (e) { console.error(e); st.textContent = 'The model could not be trained. Try again.'; run.disabled = false; }
   });
   act.innerHTML = '<button type="button" class="btn ghost" data-hint>Show a hint</button> <button type="button" class="btn ghost" data-give>Give up and see why</button>';
   qs('[data-hint]', act).addEventListener('click', function(){ var hb = qs('.qhintbox', body); hb.hidden = false; hb.textContent = 'Hint: ' + q.hint; hintShown = true; });
-  qs('[data-give]', act).addEventListener('click', function(){ if (passed) return; passed = true; run.disabled = true; act.innerHTML = ''; finish(false, 'You can keep this model in mind: ' + q.hint); });
+  qs('[data-give]', act).addEventListener('click', function(){ if (passed) return; passed = true; run.disabled = true; act.innerHTML = ''; finish(false, 'Suggested approach: ' + q.hint); });
 }
 
 function qzFinish(){
   var root = QZ.root, n = QZ.cur.length, pc = Math.round(100 * QZ.score / n);
-  var msg = QZ.score === n ? 'A perfect round.' : (QZ.score >= 8 ? 'A strong round.' : (QZ.score >= 5 ? 'A solid start. The review below shows where to look again.' : 'Worth another look at the lessons. The review below shows where.'));
+  var msg = '';
   var rev = QZ.cur.map(function(q, i){ return '<li class="' + (QZ.log[i] ? 'ok' : 'no') + '"><b>' + (QZ.log[i] ? 'Right' : 'Missed') + '</b> <span class="qtp">' + esc(q.topic) + '</span><div>' + esc(q.text) + '</div>' + (QZ.log[i] ? '' : '<div class="qwhy">' + esc(q.why || '') + '</div>') + '</li>'; }).join('');
-  root.innerHTML = '<div class="qpage"><div class="qwrap">' + qzTopbar() + '<div class="qcard qend"><div class="qtopic">Your score</div><div class="qbig">' + QZ.score + ' of ' + n + '</div><p>' + pc + '% right. ' + msg + '</p><div class="qact"><button type="button" class="btn" data-again>New random ' + n + '</button></div></div><ol class="qrev">' + rev + '</ol></div></div>';
+  root.innerHTML = '<div class="qpage"><div class="qwrap">' + qzTopbar() + '<div class="qcard qend"><div class="qtopic">Your score</div><div class="qbig">' + QZ.score + ' of ' + n + '</div><p>' + pc + '% correct. The review below gives the explanation for each question that was missed.</p><div class="qact"><button type="button" class="btn" data-again>New random ' + n + '</button></div></div><ol class="qrev">' + rev + '</ol></div></div>';
   qs('[data-again]', root).addEventListener('click', function(){ qzDraw(); qzRender(); window.scrollTo({ top: 0 }); });
 }
 

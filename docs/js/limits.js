@@ -6,7 +6,7 @@ L6.onData = function(){ };
 
 /* ---------- Step 1: what AI means ---------- */
 var AI_LAYERS = [
-  { name: 'Artificial intelligence', what: 'Software that does something we would call intelligent if a person did it, such as recognising patterns, planning, deciding or using language.', course: 'Every lesson.', outside: 'Rule-based programs that follow steps a person wrote, route planners, and chat assistants.' },
+  { name: 'Artificial intelligence', what: 'Software that performs tasks that would otherwise require human intelligence, such as recognising patterns, planning, deciding or using language.', course: 'Every lesson.', outside: 'Rule-based programs that follow steps a person wrote, route planners, and chat assistants.' },
   { name: 'Machine learning', what: 'AI whose rules are learned from examples instead of written by hand.', course: 'Tree models and neural networks that predict clearance and logD (lessons 02 and 03).', outside: 'Spam filters, product recommendations and credit scoring.' },
   { name: 'Deep learning', what: 'Machine learning with neural networks that have many layers.', course: 'The neural network, Chemprop, the GPT and the pre-trained models (lessons 03 to 05).', outside: 'Image recognition, speech recognition and protein structure prediction.' },
   { name: 'Generative AI', what: 'Deep learning that writes new text, images or molecules instead of returning one score.', course: 'The small GPT that writes SMILES (lesson 04).', outside: 'Chat assistants such as ChatGPT and Claude. These are large language models (LLMs): GPT-style models trained on very large amounts of text.' }

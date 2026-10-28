@@ -43,7 +43,7 @@ var GUIDE = {
     'trees/Seeds and ensembles': { notice: 'Grey bars are single runs. The red line averages the first runs.', q: 'Why does an average of runs usually beat a typical single run?', a: 'Each run makes different random mistakes. Averaging cancels part of them.' },
     'trees/Is it useful': { notice: 'The tree is blocky, the forest smoother, boosting closest to the data. All three go flat outside the data.', q: 'Which model would you trust for a compound far outside the data?', a: 'None without further checks. All three repeat the last value seen in training, and only a model with the correct functional form could extrapolate the trend.' },
 
-    'nn/What a weight is': { notice: 'The thin lines show the misses.', q: 'Set the weight to zero. What does the model predict?', a: 'The bias for every compound. The input has no effect.' },
+    'nn/What a weight is': { notice: 'The thin lines show the residuals.', q: 'Set the weight to zero. What does the model predict?', a: 'The bias for every compound. The input has no effect.' },
     'nn/One neuron': { notice: 'Red adds to the total. Grey subtracts.', q: 'What does ReLU do to a negative total?', a: 'It turns it into zero.' },
     'nn/Workbench': { notice: 'Each line is a weight. Watch them go from random to organised.', q: 'Raise Epochs to 120 and Train. What happens to the curves?', a: 'Training error keeps falling. Validation error stops falling or rises. That is overfitting.' },
     'nn/Layers and neurons': { notice: 'The table counts every weight.', q: 'Doubling the neurons per layer multiplies the weights between two hidden layers by how much?', a: 'Four.' },
