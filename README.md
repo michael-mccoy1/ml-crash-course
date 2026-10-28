@@ -13,9 +13,11 @@ RDKit builds the data and also runs in the browser.
 
 Nothing to install. Each lesson lists its goals, has an options panel, steps with a Notice line and a Pop quiz, and a glossary. The tree, network and GPT lessons have a workbench: change an option and the picture updates, press Train and the fit replays slowly. Every lesson has Filter training data in its options.
 
+Every lesson is split into four sections that open and close: **Beginner** (plain words and pictures, no machine learning and only minimal chemistry assumed), **Intermediate**, **Advanced** and **Pro**. Only the first section is open at the start. A row of numbered dots at the right edge of the page jumps to any step, and opens its section if it is closed. A section assumes only the Beginner sections of the lessons before it.
+
 | Lesson | Content |
 |---|---|
-| 01 Data and ML basics | Fitting a line, features, the test set, censoring, overfitting, scoring, logD feeding HLM |
+| 01 Data and ML basics | Beginner: why clearance matters, reading a molecule drawing, oil and water, the data as a table, practice against real exam. Then fitting a line, features, the test set, censoring, overfitting, scoring, logD feeding HLM |
 | 02 Tree models | Workbench, one cut, one compound, forest, boosting, features, filtering, all three side by side, seeds and ensembles |
 | 03 Neural networks | Weights, one neuron, workbench, learning rate, dropout, filtering, Chemprop, a comparison test, seeds and ensembles |
 | 04 GPT | Tokens, embeddings, the stack, workbench, attention, temperature, RDKit check, filtering, a design test |

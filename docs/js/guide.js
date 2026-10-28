@@ -2,7 +2,7 @@
 /* Lesson cards, what to notice in each step, and a pop quiz question with a hidden answer. */
 var GUIDE = {
   intro: {
-    start: { what: 'We predict how fast the liver breaks a molecule down (HLM clearance) and how oily it is (logD).', goals: ['Turn a molecule into numbers.', 'Test a model on compounds it has not seen.', 'Spot three data problems.'], words: ['feature', 'test set', 'R2', 'censoring', 'overfitting'] },
+    start: { what: 'We predict how fast the liver breaks a molecule down (HLM clearance) and how oily it is (logD). You do not need any chemistry or machine learning background to start.', goals: ['See why predicting from a drawing of a molecule saves lab work.', 'Read a molecule drawing and a table of examples.', 'Understand what it means for a model to learn, and to memorise.', 'Turn a molecule into numbers, test a model fairly, and spot three data problems.'], words: ['feature', 'test set', 'R2', 'censoring', 'overfitting'] },
     trees: { goals: ['See how a tree predicts from yes or no questions.', 'See what forests and boosting add.', 'See where trees fail.'], words: ['tree', 'depth', 'forest', 'boosting', 'learning rate'] },
     nn: { goals: ['Learn what a weight is.', 'See training adjust many weights.', 'See overfitting and dropout.'], words: ['weight', 'neuron', 'layer', 'epoch', 'dropout'] },
     gpt: { what: 'A GPT is a model that writes text one piece at a time by guessing the next piece.', goals: ['See a molecule become tokens and numbers.', 'See a GPT learn to guess the next token.', 'Check its output with RDKit, a chemistry toolkit.'], words: ['token', 'embedding', 'attention', 'temperature', 'SMILES'] },
@@ -14,6 +14,16 @@ var GUIDE = {
   },
   steps: {
     'start/What learning means': { notice: 'The error number falls as the line fits better.', q: 'Can one straight line match every compound?', a: 'No. Compounds scatter around any line. Learning finds the line that misses least.' },
+    'trees/Twenty questions': { notice: 'The red line in each group is the prediction. The groups get tighter as the tree asks more questions.', q: 'What does the tree predict for a new compound?', a: 'It follows the questions to a group and gives that group average.' },
+    'nn/A dial and a sum': { notice: 'The dots move toward the dashed line as the dials improve.', q: 'What is a weight?', a: 'A dial that sets how strongly one input counts toward the answer.' },
+    'gpt/Autocomplete for molecules': { notice: 'The chances change with every piece you add.', q: 'Why can the model write text that is not a molecule?', a: 'It follows common patterns and nothing checks the chemistry.' },
+    'pre/A head start': { notice: 'The gap is biggest when there are few labelled compounds.', q: 'Why does studying related data first help?', a: 'The model already knows general facts about molecules, so each labelled compound teaches it more.' },
+    'compare/Fast or accurate': { notice: 'The grey model is beaten on both accuracy and time.', q: 'What is a dominated model?', a: 'One that another model beats on both accuracy and speed.' },
+    'start/Why this matters': { notice: 'A faster clearance curve falls below the useful level sooner.', q: 'Why can a model that predicts clearance save lab work?', a: 'Chemists can skip compounds that are likely to be cleared too fast before they spend weeks making and testing them.' },
+    'start/What a molecule is': { notice: 'Rings are closed loops. Letters mark atoms other than carbon.', q: 'In the caffeine picture, what do the letters N and O stand for?', a: 'N is nitrogen and O is oxygen. Corners with no letter are carbon.' },
+    'start/Oily or watery': { notice: 'Hexane sits almost entirely in oil. Glucose sits mostly in water.', q: 'What does a logP of 0 mean?', a: 'The compound spreads equally between the oil layer and the water layer.' },
+    'start/The data is a table': { notice: 'The target column is the only one the model is asked to guess.', q: 'Why does the model get no answer for the new compound?', a: 'The aim is to predict compounds nobody has measured. The lab value is shown afterwards only so we can check the guess.' },
+    'start/Practice and real exam': { notice: 'Practice scores keep rising while the score on new questions stops rising.', q: 'Which score tells you whether the model is useful?', a: 'The score on new questions, which is the score on the test compounds.' },
     'start/Structure to prediction': { notice: 'The model sees only the feature numbers.', q: 'Why can a few numbers such as logP give a rough prediction?', a: 'They describe how oily and how polar a compound is, which affects how fast the liver clears it. Other details are missing, so it stays rough.' },
     'start/Where features come from': { notice: 'Darker atoms add more.', q: 'What usually happens to logP when you add a carbon?', a: 'It rises.' },
     'start/The test set': { notice: 'Compare how many test compounds have a close relative in training.', q: 'Why is a random split too optimistic?', a: 'Test compounds often have near twins in training, so the model scores well by recognising twins.' },

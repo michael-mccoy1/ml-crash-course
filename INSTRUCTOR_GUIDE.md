@@ -7,7 +7,8 @@
 
 ## How the site works
 
-* Each lesson opens with its goals.
+* Each lesson opens with its goals, then four sections that open and close: Beginner, Intermediate, Advanced and Pro. Only the first is open. Beginner assumes no machine learning and only minimal chemistry, and each later section assumes only the Beginner sections of earlier lessons.
+* The numbered dots at the right edge of the page jump to any step and open its section.
 * The options panel changes every stage. Have people change something before reading.
 * The tree, network and GPT lessons have a workbench. Change an option, then press Train. Slow shows every step. Fast skips ahead.
 * Each step has a Notice line and a Pop quiz. Ask the question before anyone opens the answer.

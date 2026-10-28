@@ -1,7 +1,7 @@
 "use strict";
 /* Entry point: load HLM data, build the first lesson, then load the rest in the background. */
 (async function(){
-  boot();
+  boot(); applyLevels();
   try {
     progress(0.1);
     await loadDataset('HLM'); D = DATA.HLM; setRange(D); renderChips(); progress(0.5);

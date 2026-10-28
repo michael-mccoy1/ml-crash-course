@@ -16,6 +16,7 @@ function ensureLogdPred(){
 
 var L0 = new Lesson('start', 'Data and ML basics');
 L0.optsHTML = function(){ return sharedOptions() + optGroup('Data', '<div id="dsinfo" class="hint"></div>') + filterGroup(); };
+L0.optsClosed = true; L0.optsLabel = 'Options for the later sections';
 L0.onData = function(){ updateInfo(); };
 L0.onOpts = function(){ updateInfo(); };
 function updateInfo(){ var e = $('dsinfo'); if (!e || !D) return; var c = D.cens ? D.cens.reduce(function(a, b){ return a + b; }, 0) : 0; e.innerHTML = esc(D.full) + '.<br>' + D.N + ' compounds: ' + D.TRAIN.length + ' to study, ' + D.TEST.length + ' held out by scaffold.' + (c ? '<br>' + pct(c, D.N) + '% of values sit at the assay floor.' : ''); }
@@ -283,6 +284,11 @@ L0.add({ short: 'Predict a compound', title: 'Predict a compound from its struct
   } });
 
 L0.glossary([
+  ['Clearance', 'How fast the liver removes a compound from the blood. Fast clearance means the compound does not last long.'],
+  ['Molecule', 'A group of atoms joined by bonds.'],
+  ['Atom', 'The smallest piece of an element, such as carbon, oxygen or nitrogen.'],
+  ['Bond', 'The link between two atoms. A line in a drawing.'],
+  ['Lipophilic', 'Oil-loving: prefers oil to water. Hydrophilic means water-loving.'],
   ['Machine learning', 'Software that learns a pattern from examples instead of following hand-written rules.'],
   ['Model', 'A formula with adjustable settings that turns features into a prediction.'],
   ['Feature', 'A number describing a molecule, such as logP or molecular weight.'],
