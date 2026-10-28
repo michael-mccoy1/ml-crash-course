@@ -11,8 +11,6 @@ var STEP_LEVELS = {
   compare: { intermediate: ['Leaderboard', 'Accuracy against time', 'Discussion'] },
   ai: { beginner: ['What AI means', 'Predict or generate'], intermediate: ['Outside the training range', 'Lab noise', 'How generative AI goes wrong', 'Can it or cannot it'], advanced: ['Using it in a project'] },
   treealgo: { advanced: ['Split search', 'Growing a tree', 'Bagging', 'Fitting a helix', 'Trees and data'], pro: ['Boosting math', 'Tuning', 'Library designs'] },
-  pk: { beginner: ['Concentration-time profile', 'In vitro to in vivo clearance', 'ML in the PBPK workflow', 'MIDD decisions'], intermediate: ['PBPK structure', 'Compartmental fit', 'Population variability'], advanced: ['Sensitivity', 'Absorption and distribution', 'DDI models', 'Estimation'], pro: ['QSP', 'Uncertainty propagation', 'Credibility'] },
-  mlpk: { beginner: ['Model families and tasks', 'Predicted parameters', 'Error propagation'], intermediate: ['Surrogate models', 'Covariate screening', 'Ensembles for uncertainty'], advanced: ['Hybrid ODE', 'Sequence models', 'Transfer to in vivo', 'Graph networks to parameters'], pro: ['LLMs in the workflow', 'Generative design', 'ML credibility', 'Validation design'] },
   netalgo: { advanced: ['Gradient descent', 'Backpropagation', 'Counting parameters', 'Scaling networks'], pro: ['Initialisation', 'Weight decay', 'Attention', 'Next-token loss'] }
 };
 /* the order of the Beginner steps in each lesson */
@@ -25,8 +23,6 @@ var STEP_ORDER = {
   compare: ['What the scores mean', 'Why no score is perfect', 'Fast or accurate'],
   ai: ['What AI means', 'Predict or generate', 'What a model has not seen', 'Checking an answer'],
   treealgo: ['Scoring a cut', 'Fewer places to cut', 'Random draws'],
-  pk: ['Concentration-time profile', 'In vitro to in vivo clearance', 'ML in the PBPK workflow', 'MIDD decisions'],
-  mlpk: ['Model families and tasks', 'Predicted parameters', 'Error propagation'],
   netalgo: ['Rolling downhill', 'Which way to turn the dial', 'Counting the dials']
 };
 function applyLevels(){
