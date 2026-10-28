@@ -168,7 +168,7 @@ async function loadExtras(){ if (!EXTRAS) EXTRAS = await loadJSON('extras'); ret
 /* =====================================================================
    Lesson framework
    ===================================================================== */
-var LESSONS = {}, LORDER = ['start', 'trees', 'nn', 'gpt', 'pre', 'compare', 'ai', 'treealgo', 'netalgo', 'quiz'], ACTIVE = 'start', featListeners = [];
+var LESSONS = {}, LORDER = ['start', 'trees', 'nn', 'gpt', 'pre', 'compare', 'ai', 'treealgo', 'netalgo', 'pk', 'mlpk', 'quiz'], ACTIVE = 'start', featListeners = [];
 function Lesson(id, title){ this.id = id; this.title = title; this.steps = []; this.gloss = null; this.optsHTML = ''; this.onOpts = null; this.onData = null; LESSONS[id] = this; }
 Lesson.prototype.add = function(def){ this.steps.push(def); return this; };
 Lesson.prototype.glossary = function(items){ this.gloss = items; return this; };
@@ -205,8 +205,9 @@ function buildLesson(L){
   var root = $('lesson-' + L.id), n = L.steps.length + (L.gloss ? 1 : 0), startsBeginner = L.steps.some(function(st){ return levelOf(st) === 'beginner'; });
   if (L.optsClosed === undefined) L.optsClosed = startsBeginner; 
   if (L.custom) { L.custom(root); L.built = true; return; }
-  root.innerHTML = '<aside class="options"><details class="optd"' + (L.optsClosed ? '' : ' open') + '><summary class="otitle">' + (L.optsLabel || 'Options') + '</summary><div class="obody"></div><div class="aff"><div class="hint">Change an option to see which steps use it.</div></div></details></aside><div class="steps"><nav class="toc"></nav></div>';
-  qs('.obody', root).innerHTML = typeof L.optsHTML === 'function' ? L.optsHTML() : L.optsHTML; var stepsEl = qs('.steps', root), toc = qs('.toc', root);
+  if (L.noOpts) root.classList.add('noopts');
+  root.innerHTML = (L.noOpts ? '' : '<aside class="options"><details class="optd"' + (L.optsClosed ? '' : ' open') + '><summary class="otitle">' + (L.optsLabel || 'Options') + '</summary><div class="obody"></div><div class="aff"><div class="hint">Change an option to see which steps use it.</div></div></details></aside>') + '<div class="steps"><nav class="toc"></nav></div>';
+  if (!L.noOpts) qs('.obody', root).innerHTML = typeof L.optsHTML === 'function' ? L.optsHTML() : L.optsHTML; var stepsEl = qs('.steps', root), toc = qs('.toc', root);
   var ig = window.GUIDE && GUIDE.intro[L.id]; if (ig) { var card = h('div', 'intro', '<div class="ig"><div><div class="ol">Objectives</div><ul>' + ig.goals.map(function(g){ return '<li>' + esc(g) + '</li>'; }).join('') + '</ul></div></div>'); stepsEl.insertBefore(card, toc); }
   var rank = { beginner: 0, intermediate: 1, advanced: 2, pro: 3 };
   L.steps.forEach(function(st, k){ st._o = k; }); function ordKey(st){ return st.ord !== undefined ? st.ord : 100 + st._o; }

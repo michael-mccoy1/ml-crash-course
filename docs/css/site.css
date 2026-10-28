@@ -341,3 +341,11 @@ nav.tabs button{font-size:.92rem}
 .qfig{margin:0 0 16px;border:1px solid var(--silver);border-radius:6px;background:var(--panel);padding:10px 12px;text-align:center}
 .qfig[hidden]{display:none}
 .qfig svg{display:block;margin:0 auto}
+
+.lesson.noopts{grid-template-columns:minmax(0,1fr)}
+
+nav.tabs .in{gap:15px}
+nav.tabs button{font-size:.88rem}
+nav.tabs button b{margin-right:5px}
+
+nav.tabs .in{gap:13px;padding:0 14px}
