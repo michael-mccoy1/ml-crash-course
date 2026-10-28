@@ -26,7 +26,7 @@ Each lesson has four sections that open and close: **Beginner** (core machine le
 | 07 Role of AI | AI, machine learning and generative AI, prediction and generation, applicability domain, assessing a prediction, extrapolation, assay noise, failures of generative models, checks before use |
 | 08 Tree algorithms | Split criterion, histogram binning, bootstrap sampling, exact and binned search, depth and leaf size, bagging, boosting losses, tuning, library designs, fitting a 3D double helix, data requirements |
 | 09 Network algorithms | Gradient descent, finite-difference gradients, parameter count, optimisers, backpropagation, initialisation, weight decay, attention, cross-entropy, network size against data |
-| 10 Quiz | A bank of 75 questions, ten drawn at random each round: multiple choice, select all, numeric, ordering, and challenges that train a boosting model, forest or tree against a goal |
+| 10 Quiz | 75 questions, 10 drawn at random each round: multiple choice, select all, numeric, ordering, and challenges that train a boosting model, forest or tree against a goal |
 
 ## Notebooks
 

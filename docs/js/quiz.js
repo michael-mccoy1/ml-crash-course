@@ -1,5 +1,5 @@
 "use strict";
-/* Tab 10: a quiz. A bank of 75 questions, ten drawn at random each round.
+/* Tab 10: quiz. 75 questions, 10 drawn at random each round.
    Knowledge questions are multiple choice, select-all, numeric or ordering.
    Challenge questions train a real model in the browser and check the result against a goal. */
 var QZ = { bank: [], cur: [], i: 0, score: 0, log: [], root: null, drawn: false };
@@ -224,7 +224,7 @@ function qzTune(q, body, act, finish, fb){
   if (q.kind === 'boost') ctl = [['rounds', 'Rounds', 1, 400, 1], ['depth', 'Tree depth', 1, 8, 1], ['lr', 'Learning rate', 0.01, 1, 0.01]];
   else if (q.kind === 'forest') ctl = [['trees', 'Trees', 1, 150, 1], ['depth', 'Tree depth', 1, 14, 1]];
   else ctl = [['depth', 'Tree depth', 1, 14, 1], ['minleaf', 'Minimum leaf size', 1, 50, 1]];
-  body.innerHTML = '<div class="qgoal">' + esc(qzGoalText(q.goal)) + '</div><div class="qctl">' + ctl.map(function(c){ return '<label>' + c[1] + ' <output data-o="' + c[0] + '">' + s[c[0]] + '</output><input type="range" data-k="' + c[0] + '" min="' + c[2] + '" max="' + c[3] + '" step="' + c[4] + '" value="' + s[c[0]] + '"></label>'; }).join('') + '</div><div class="qrunrow"><button type="button" class="btn" data-run>Train this model</button><span class="qrs"></span></div><div class="qtries"></div><div class="qhintbox" hidden></div>';
+  body.innerHTML = '<div class="qgoal">' + esc(qzGoalText(q.goal)) + '</div><div class="qctl">' + ctl.map(function(c){ return '<label>' + c[1] + ' <output data-o="' + c[0] + '">' + s[c[0]] + '</output><input type="range" data-k="' + c[0] + '" min="' + c[2] + '" max="' + c[3] + '" step="' + c[4] + '" value="' + s[c[0]] + '"></label>'; }).join('') + '</div><div class="qrunrow"><button type="button" class="btn" data-run>Train</button><span class="qrs"></span></div><div class="qtries"></div><div class="qhintbox" hidden></div>';
   qsa('input[type=range]', body).forEach(function(r){ r.addEventListener('input', function(){ s[r.dataset.k] = +r.value; qs('[data-o="' + r.dataset.k + '"]', body).textContent = r.value; }); });
   var run = qs('[data-run]', body), st = qs('.qrs', body), box = qs('.qtries', body);
   function drawTries(){ box.innerHTML = tries.length ? '<table class="qt"><thead><tr><th>Settings</th><th>Test R2</th><th>Training R2</th><th>Leaves</th><th></th></tr></thead><tbody>' + tries.slice().reverse().map(function(t){ return '<tr class="' + (t.ok ? 'ok' : '') + '"><td>' + esc(t.label) + '</td><td>' + t.r.te.toFixed(3) + '</td><td>' + t.r.tr.toFixed(3) + '</td><td>' + t.r.leaves.toLocaleString() + '</td><td>' + (t.ok ? 'goal met' : 'goal not met') + '</td></tr>'; }).join('') + '</tbody></table>' : ''; }
@@ -235,7 +235,7 @@ function qzTune(q, body, act, finish, fb){
       if (ok) { passed = true; run.disabled = true; act.innerHTML = ''; finish(true, 'Your model met the goal with ' + r.leaves.toLocaleString() + ' leaves in ' + Math.max(1, Math.round(r.ms)) + ' ms.'); } else run.disabled = false;
     } catch (e) { console.error(e); st.textContent = 'The model could not be trained. Try again.'; run.disabled = false; }
   });
-  act.innerHTML = '<button type="button" class="btn ghost" data-hint>Show a hint</button> <button type="button" class="btn ghost" data-give>Give up and see why</button>';
+  act.innerHTML = '<button type="button" class="btn ghost" data-hint>Show hint</button> <button type="button" class="btn ghost" data-give>Show explanation</button>';
   qs('[data-hint]', act).addEventListener('click', function(){ var hb = qs('.qhintbox', body); hb.hidden = false; hb.textContent = 'Hint: ' + q.hint; hintShown = true; });
   qs('[data-give]', act).addEventListener('click', function(){ if (passed) return; passed = true; run.disabled = true; act.innerHTML = ''; finish(false, 'Suggested approach: ' + q.hint); });
 }
@@ -244,13 +244,13 @@ function qzFinish(){
   var root = QZ.root, n = QZ.cur.length, pc = Math.round(100 * QZ.score / n);
   var msg = '';
   var rev = QZ.cur.map(function(q, i){ return '<li class="' + (QZ.log[i] ? 'ok' : 'no') + '"><b>' + (QZ.log[i] ? 'Right' : 'Missed') + '</b> <span class="qtp">' + esc(q.topic) + '</span><div>' + esc(q.text) + '</div>' + (QZ.log[i] ? '' : '<div class="qwhy">' + esc(q.why || '') + '</div>') + '</li>'; }).join('');
-  root.innerHTML = '<div class="qpage"><div class="qwrap">' + qzTopbar() + '<div class="qcard qend"><div class="qtopic">Your score</div><div class="qbig">' + QZ.score + ' of ' + n + '</div><p>' + pc + '% correct. The review below gives the explanation for each question that was missed.</p><div class="qact"><button type="button" class="btn" data-again>New random ' + n + '</button></div></div><ol class="qrev">' + rev + '</ol></div></div>';
+  root.innerHTML = '<div class="qpage"><div class="qwrap">' + qzTopbar() + '<div class="qcard qend"><div class="qtopic">Your score</div><div class="qbig">' + QZ.score + ' of ' + n + '</div><p>' + pc + '% correct. The review below gives the explanation for each question that was missed.</p><div class="qact"><button type="button" class="btn" data-again>New set of ' + n + '</button></div></div><ol class="qrev">' + rev + '</ol></div></div>';
   qs('[data-again]', root).addEventListener('click', function(){ qzDraw(); qzRender(); window.scrollTo({ top: 0 }); });
 }
 
 var LQ = new Lesson('quiz', 'Quiz');
 LQ.custom = function(root){
   QZ.root = root; root.classList.add('qz');
-  var intro = '<div class="qpage"><div class="qwrap"><div class="qcard qintro"><div class="qtopic">Quiz</div><h3 class="qtext">Ten questions, drawn at random from a bank of ' + QZ.bank.length + '</h3><p>Some questions are multiple choice, some ask for a number or an order, and some are challenges where you set the parameters of a real model and train it. Challenge models train in your browser on the HLM or logD data, and the goal always counts leaves, the pieces a tree model builds, so a smaller model is a faster one on any computer.</p><div class="qact"><button type="button" class="btn" data-start>Start the quiz</button></div></div></div></div>';
+  var intro = '<div class="qpage"><div class="qwrap"><div class="qcard qintro"><div class="qtopic">Quiz</div><h3 class="qtext">Question set</h3><p>Each round draws 10 questions at random from ' + QZ.bank.length + '. The question types are multiple choice, select all that apply, numeric answer, ordering, and parameter challenges. In a challenge, the settings of a boosting model, random forest or decision tree are chosen and the model is trained in the browser on the HLM or logD data. The goal is stated in test R2 and in leaves, the number of terminal nodes built, which measures fitting cost independently of the computer.</p><div class="qact"><button type="button" class="btn" data-start>Start</button></div></div></div></div>';
   root.innerHTML = intro; qs('[data-start]', root).addEventListener('click', function(){ qzDraw(); qzRender(); window.scrollTo({ top: 0 }); });
 };

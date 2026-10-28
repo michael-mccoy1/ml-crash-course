@@ -28,7 +28,7 @@
 | 07 Role of AI | AI, machine learning and generative AI, prediction and generation, applicability domain, assessing a prediction | Extrapolation, assay noise, generative model failures, capabilities and limits, checks before use |
 | 08 Tree algorithms | Split criterion, histogram binning, bootstrap sampling | Exact and binned search, depth and leaf size, bagging and variance, fitting a 3D shape, data requirements, boosting losses, hyperparameter tuning, boosting libraries |
 | 09 Network algorithms | Gradient descent in one dimension, finite-difference gradient, parameter count | Optimisers, backpropagation, parameter count of a GPT, network size and data, weight initialisation, weight decay, scaled dot-product attention, cross-entropy and perplexity |
-| 10 Quiz | Ten random questions from a bank of 75, including challenges that train real models |  |
+| 10 Quiz | 10 questions drawn at random from 75, including challenges that train models |  |
 
 ## Suggested activities
 
