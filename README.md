@@ -26,9 +26,7 @@ Each lesson has four sections that open and close: **Beginner** (core machine le
 | 07 Role of AI | AI, machine learning and generative AI, prediction and generation, applicability domain, assessing a prediction, extrapolation, assay noise, failures of generative models, checks before use |
 | 08 Tree algorithms | Split criterion, histogram binning, bootstrap sampling, exact and binned search, depth and leaf size, bagging, boosting losses, tuning, library designs, fitting a 3D double helix, data requirements |
 | 09 Network algorithms | Gradient descent, finite-difference gradients, parameter count, optimisers, backpropagation, initialisation, weight decay, attention, cross-entropy, network size against data |
-| 10 PK and PBPK | Concentration-time profiles, in vitro to in vivo clearance, where ML enters a PBPK workflow, MIDD decisions and ICH M15, PBPK model structure, NCA and compartmental fits of public Theoph and Indometh data, population variability, parameter sensitivity, absorption and distribution, drug-drug interaction models, parameter estimation, quantitative systems pharmacology, uncertainty propagation, model credibility |
-| 11 ML in PK and MIDD | Model families and PK tasks, predicted parameters as PBPK inputs, error propagation to exposure, surrogate models, covariate screening, ensembles for parameter uncertainty, hybrid mechanistic-ML models, sequence models, transfer from in vitro to in vivo, graph networks for PK parameters, LLMs in the workflow, generative design, credibility of ML components, validation design |
-| 12 Quiz | 97 questions, 10 drawn at random each round: multiple choice, select all, numeric, ordering, and challenges that train a boosting model, forest or tree against a goal. Each question has a schematic. 22 questions cover PK, PBPK, MIDD and machine learning in PK |
+| 10 Quiz | 75 questions, 10 drawn at random each round: multiple choice, select all, numeric, ordering, and challenges that train a boosting model, forest or tree against a goal |
 
 ## Notebooks
 

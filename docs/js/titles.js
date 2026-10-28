@@ -114,38 +114,6 @@ var STEP_TITLES = {
     'Tuning': 'Hyperparameter tuning',
     'Library designs': 'Boosting libraries'
   },
-  pk: {
-    'Concentration-time profile': 'Concentration-time profile',
-    'In vitro to in vivo clearance': 'In vitro to in vivo clearance',
-    'ML in the PBPK workflow': 'Where ML enters a PBPK workflow',
-    'MIDD decisions': 'MIDD decisions and ICH M15',
-    'PBPK structure': 'PBPK model structure',
-    'Compartmental fit': 'NCA and compartmental fits',
-    'Population variability': 'Population variability',
-    'Sensitivity': 'Parameter sensitivity',
-    'Absorption and distribution': 'Absorption and distribution',
-    'DDI models': 'Drug-drug interaction models',
-    'Estimation': 'Parameter estimation',
-    'QSP': 'Quantitative systems pharmacology',
-    'Uncertainty propagation': 'Uncertainty propagation',
-    'Credibility': 'Model credibility'
-  },
-  mlpk: {
-    'Model families and tasks': 'Model families and PK tasks',
-    'Predicted parameters': 'Predicted parameters as PBPK inputs',
-    'Error propagation': 'Error propagation to exposure',
-    'Surrogate models': 'Surrogate models',
-    'Covariate screening': 'Covariate screening',
-    'Ensembles for uncertainty': 'Ensembles for parameter uncertainty',
-    'Hybrid ODE': 'Hybrid mechanistic-ML models',
-    'Sequence models': 'Sequence models for profiles',
-    'Transfer to in vivo': 'Transfer from in vitro to in vivo',
-    'Graph networks to parameters': 'Graph networks for PK parameters',
-    'LLMs in the workflow': 'LLMs in the workflow',
-    'Generative design': 'Generative design under PK constraints',
-    'ML credibility': 'Credibility of ML components',
-    'Validation design': 'Validation design'
-  },
   netalgo: {
     'Rolling downhill': 'Gradient descent in one dimension',
     'Which way to turn the dial': 'Finite-difference gradient',

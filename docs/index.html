@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Model Lab | AI/ML for ADME</title>
-<link rel="stylesheet" href="css/site.css?v=o2">
+<link rel="stylesheet" href="css/site.css?v=n6">
 </head>
 <body>
 <div id="bar"></div>
@@ -19,13 +19,11 @@
   <button type="button" data-tab="nn" aria-selected="false"><b>03</b>Neural networks</button>
   <button type="button" data-tab="gpt" aria-selected="false"><b>04</b>GPT</button>
   <button type="button" data-tab="pre" aria-selected="false"><b>05</b>Pre-trained models</button>
-  <button type="button" data-tab="compare" aria-selected="false"><b>06</b>Comparison</button>
+  <button type="button" data-tab="compare" aria-selected="false"><b>06</b>Model comparison</button>
   <button type="button" data-tab="ai" aria-selected="false"><b>07</b>Role of AI</button>
   <button type="button" data-tab="treealgo" aria-selected="false"><b>08</b>Tree algorithms</button>
   <button type="button" data-tab="netalgo" aria-selected="false"><b>09</b>Network algorithms</button>
-  <button type="button" data-tab="pk" aria-selected="false"><b>10</b>PK and PBPK</button>
-  <button type="button" data-tab="mlpk" aria-selected="false"><b>11</b>ML in PK and MIDD</button>
-  <button type="button" data-tab="quiz" aria-selected="false"><b>12</b>Quiz</button>
+  <button type="button" data-tab="quiz" aria-selected="false"><b>10</b>Quiz</button>
 </div></nav>
 <main>
   <div class="lesson" id="lesson-start"><div class="loading">Loading</div></div>
@@ -37,51 +35,37 @@
   <div class="lesson" id="lesson-ai" hidden></div>
   <div class="lesson" id="lesson-treealgo" hidden></div>
   <div class="lesson" id="lesson-netalgo" hidden></div>
-  <div class="lesson" id="lesson-pk" hidden></div>
-  <div class="lesson" id="lesson-mlpk" hidden></div>
   <div class="lesson" id="lesson-quiz" hidden></div>
 </main>
 <footer class="site"><div>Data: Biogen ADME set (Fang et al., J. Chem. Inf. Model. 2023) and AstraZeneca logD (ChEMBL, via MoleculeNet). Structures and descriptors from RDKit. Every model trains in your browser. Nothing is stored.</div></footer>
 <script src="vendor/tf.min.js"></script>
-<script src="js/core.js?v=o2"></script>
-<script src="js/guide.js?v=o2"></script>
-<script src="js/filters.js?v=o2"></script>
-<script src="js/start.js?v=o2"></script>
-<script src="js/intro.js?v=o2"></script>
-<script src="js/trees.js?v=o2"></script>
-<script src="js/nn.js?v=o2"></script>
-<script src="js/nn2.js?v=o2"></script>
-<script src="js/transformer.js?v=o2"></script>
-<script src="js/pretrained.js?v=o2"></script>
-<script src="js/compare.js?v=o2"></script>
-<script src="js/limits.js?v=o2"></script>
-<script src="js/shape3d.js?v=o2"></script>
-<script src="js/treealgo.js?v=o2"></script>
-<script src="js/netalgo.js?v=o2"></script>
-<script src="js/pkengine.js?v=o2"></script>
-<script src="js/pk.js?v=o2"></script>
-<script src="js/mlpk.js?v=o2"></script>
-<script src="js/pk_a.js?v=o2"></script>
-<script src="js/pk_b.js?v=o2"></script>
-<script src="js/pk_c.js?v=o2"></script>
-<script src="js/pk_d.js?v=o2"></script>
-<script src="js/mlpk_a.js?v=o2"></script>
-<script src="js/mlpk_b.js?v=o2"></script>
-<script src="js/mlpk_c.js?v=o2"></script>
-<script src="js/mlpk_d.js?v=o2"></script>
-<script src="js/beginner.js?v=o2"></script>
-<script src="js/beginner2_trees.js?v=o2"></script>
-<script src="js/beginner2_nn.js?v=o2"></script>
-<script src="js/beginner2_gpt.js?v=o2"></script>
-<script src="js/beginner2_misc.js?v=o2"></script>
-<script src="js/titles.js?v=o2"></script>
-<script src="js/levels.js?v=o2"></script>
-<script src="js/quiz.js?v=o2"></script>
-<script src="js/quizfig_a.js?v=o2"></script>
-<script src="js/quizfig_b.js?v=o2"></script>
-<script src="js/quizfig_c.js?v=o2"></script>
-<script src="js/quizfig_d.js?v=o2"></script>
-<script src="js/quiz_pk.js?v=o2"></script>
-<script src="js/main.js?v=o2"></script>
+<script src="js/core.js?v=n6"></script>
+<script src="js/guide.js?v=n6"></script>
+<script src="js/filters.js?v=n6"></script>
+<script src="js/start.js?v=n6"></script>
+<script src="js/intro.js?v=n6"></script>
+<script src="js/trees.js?v=n6"></script>
+<script src="js/nn.js?v=n6"></script>
+<script src="js/nn2.js?v=n6"></script>
+<script src="js/transformer.js?v=n6"></script>
+<script src="js/pretrained.js?v=n6"></script>
+<script src="js/compare.js?v=n6"></script>
+<script src="js/limits.js?v=n6"></script>
+<script src="js/shape3d.js?v=n6"></script>
+<script src="js/treealgo.js?v=n6"></script>
+<script src="js/netalgo.js?v=n6"></script>
+<script src="js/beginner.js?v=n6"></script>
+<script src="js/beginner2_trees.js?v=n6"></script>
+<script src="js/beginner2_nn.js?v=n6"></script>
+<script src="js/beginner2_gpt.js?v=n6"></script>
+<script src="js/beginner2_misc.js?v=n6"></script>
+<script src="js/titles.js?v=n6"></script>
+<script src="js/levels.js?v=n6"></script>
+<script src="js/quiz.js?v=n6"></script>
+<script src="js/quizfig_a.js?v=n6"></script>
+<script src="js/quizfig_b.js?v=n6"></script>
+<script src="js/quizfig_c.js?v=n6"></script>
+<script src="js/quizfig_d.js?v=n6"></script>
+<script src="js/main.js?v=n6"></script>
 </body>
 </html>
