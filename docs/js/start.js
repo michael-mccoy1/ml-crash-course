@@ -196,7 +196,7 @@ L0.add({ short: 'Scoring a model', title: 'R2, Spearman and RMSE measure differe
   build: function(api){
     var q = 100, pv = null, ys = null, idx = null, pm = 0;
     var plot = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Predicted against measured, test compounds</h4><canvas width="540" height="352" style="margin-top:2px"></canvas>');
-    var tiles = [['R2', C.red], ['Spearman', C.char], ['RMSE', C.char]].map(function(t, k){ return api.el('pn', 'left:608px;top:' + (28 + k * 138) + 'px;width:324px;height:126px', '<h4>' + t[0] + '</h4><div class="big" style="color:' + t[1] + '">0</div><div class="note" style="font-size:12px;color:#34373F"></div>'); });
+    var tiles = [['R2', C.red], ['Spearman', C.char], ['RMSE', C.char]].map(function(t, k){ return api.el('pn', 'left:608px;top:' + (28 + k * 142) + 'px;width:324px;height:134px', '<h4>' + t[0] + '</h4><div class="big" style="color:' + t[1] + '">0</div><div class="note" style="font-size:12px;color:#34373F"></div>'); });
     var notes = ['Fraction of the variance in the measured values explained by the predictions. 1 is perfect, 0 equals predicting the mean.', 'Rank correlation between predictions and measurements. It ignores the size of each error.', 'Root mean squared error, in the units of the endpoint. Lower is better.'];
     var ctl = api.addControl('Model quality <input type="range" min="0" max="200" value="100" style="width:220px"><span class="qv"></span>'); var rg = qs('input', ctl);
     function prep(){ var t = demoTree() || fitTree(D.BASE, D.TRAIN, 5, 20, 1); idx = D.TEST; ys = idx.map(function(i){ return D.Y[i]; }); pv = idx.map(function(i){ return predictTree(t, D.B, i); }); pm = mean(D.TRAIN.map(function(i){ return D.Y[i]; })); }

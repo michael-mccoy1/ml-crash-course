@@ -17,7 +17,7 @@ a{color:var(--red)}
 header.site{background:#fff;border-bottom:1px solid var(--silver)}
 header.site .in{max-width:1360px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:16px}
 .brand{display:flex;align-items:center;gap:12px}
-.brand img{height:30px;width:auto}
+.brand i{display:block;width:26px;height:26px;border-radius:5px;background:var(--red,#e4002b)}
 .brand b{font-size:1.15rem;font-weight:700;letter-spacing:-.01em}
 .brand small{display:block;font-size:.78rem;color:var(--mid);font-weight:400}
 .sp{flex:1}
@@ -349,3 +349,10 @@ nav.tabs button{font-size:.88rem}
 nav.tabs button b{margin-right:5px}
 
 nav.tabs .in{gap:13px;padding:0 14px}
+
+/* bookmark rail: one centred column, labels over the circles, hover label to the left */
+.rail{width:30px;align-items:center;gap:6px;right:14px}
+.rail .rl{width:30px;text-align:center;margin:8px 0 0;line-height:1;font-size:.6rem}
+.rail .rl:first-child{margin-top:0}
+.rail a.ra{position:relative;justify-content:center;width:26px;height:26px}
+.rail a.ra span{position:absolute;right:calc(100% + 10px);top:50%;transform:translateY(-50%);z-index:5}

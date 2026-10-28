@@ -26,11 +26,11 @@ L0.add({ short: 'Molecular representations', title: 'Molecular representations',
     var pa = api.el('pn', 'left:28px;top:20px;width:290px;height:240px', '<h4 class="ha"></h4><div class="struct" style="height:196px"></div>');
     var pb = api.el('pn', 'left:28px;top:272px;width:290px;height:240px', '<h4 class="hb"></h4><div class="struct" style="height:196px"></div>');
     var sp = api.el('pn', 'left:338px;top:20px;width:594px;height:96px', '<h4>SMILES</h4><div class="sm" style="font:13px Cascadia Mono,Consolas,monospace;color:' + C.char + ';line-height:1.7;word-break:break-all"></div>');
-    var dp = api.el('pn', 'left:338px;top:128px;width:594px;height:196px', '<h4>Descriptors</h4><div class="ds"></div>');
-    var fp = api.el('pn', 'left:338px;top:336px;width:594px;height:176px', '<h4>Morgan fingerprint, radius 2, 1024 bits</h4><div class="fpw" style="display:flex;gap:26px;align-items:flex-start"></div>');
+    var dp = api.el('pn', 'left:338px;top:128px;width:594px;height:194px', '<h4>Descriptors</h4><div class="ds"></div>');
+    var fp = api.el('pn', 'left:338px;top:332px;width:594px;height:188px', '<h4>Morgan fingerprint, radius 2, 1024 bits</h4><div class="fpw" style="display:flex;gap:26px;align-items:flex-start"></div>');
     var ctl = api.addControl('A ' + inSeg(IN_MOLS.map(function(m){ return m.n; }), a, 'data-a') + ' B ' + inSeg(IN_MOLS.map(function(m){ return m.n; }), b, 'data-b'));
     function grid(bits, other, mode){
-      var cell = 4, n = 32, c = '<svg width="' + (n * cell) + '" height="' + (n * cell) + '" style="background:' + C.light + ';display:block">'; for (var i = 0; i < bits.length; i++) { var on = bits[i] === '1', o = other ? other[i] === '1' : false, col = null; if (mode === 'both') { if (on && o) col = C.red; else if (on || o) col = C.bg; } else if (on) col = C.char; if (col) c += '<rect x="' + (i % n) * cell + '" y="' + Math.floor(i / n) * cell + '" width="' + (cell - 0.6) + '" height="' + (cell - 0.6) + '" fill="' + col + '"/>'; } return c + '</svg>';
+      var cell = 3.6, n = 32, c = '<svg width="' + (n * cell) + '" height="' + (n * cell) + '" style="background:' + C.light + ';display:block">'; for (var i = 0; i < bits.length; i++) { var on = bits[i] === '1', o = other ? other[i] === '1' : false, col = null; if (mode === 'both') { if (on && o) col = C.red; else if (on || o) col = C.bg; } else if (on) col = C.char; if (col) c += '<rect x="' + (i % n) * cell + '" y="' + Math.floor(i / n) * cell + '" width="' + (cell - 0.6) + '" height="' + (cell - 0.6) + '" fill="' + col + '"/>'; } return c + '</svg>';
     }
     function draw(){
       if (!RDK) return; var A = IN_MOLS[a], B = IN_MOLS[b], fa = inFp(A), fb = inFp(B), ia = inInfo(A), ib = inInfo(B), cnt = function(f){ return (f.match(/1/g) || []).length; }, both = 0, either = 0;

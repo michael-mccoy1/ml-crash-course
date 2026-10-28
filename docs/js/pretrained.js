@@ -93,7 +93,7 @@ L6.add({ short: 'Which groups are present', uses: ['endpoint'],
   change: 'Click a group marked present to highlight it.',
   build: function(api){
     var sp = api.el('pn', 'left:28px;top:28px;width:440px;height:408px', '<h4>Structure</h4><div class="struct" style="height:350px"></div>');
-    var lp = api.el('pn', 'left:488px;top:28px;width:444px;height:408px', '<h4>Groups predicted in the pre-training task</h4><div class="ml"></div>');
+    var lp = api.el('pn', 'left:488px;top:28px;width:444px;height:436px', '<h4>Groups predicted in the pre-training task</h4><div class="ml"></div>');
     var ctl = api.addControl('Molecule <select></select> <button type="button" class="btn sm" data-load>Load RDKit (about 7 MB)</button>'), sel = qs('select', ctl), btn = qs('[data-load]', ctl), cur = null, hit = -1, found = null;
     function show(){ if (!cur) return; var ml = qs('.ml', lp);
       if (!window.RDK) { qs('.struct', sp).innerHTML = cur.svg; ml.innerHTML = '<p class="note">Load RDKit to find the groups in this molecule. RDKit runs in the browser.</p>'; btn.style.display = ''; return; }

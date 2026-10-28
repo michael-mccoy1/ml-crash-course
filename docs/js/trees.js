@@ -159,7 +159,7 @@ L2.add({ short: 'Choosing a question', title: 'A tree asks one question to split
   build: function(api){
     var plot = api.el('pn', 'left:28px;top:28px;width:580px;height:408px', '<h4>Training compounds. Drag across the plot to move the cut.</h4><canvas width="556" height="346"></canvas>');
     var tp = api.el('pn', 'left:628px;top:28px;width:304px;height:272px', '<div class="qq" style="font-size:13px;line-height:1.45"></div>');
-    var gp = api.el('pn', 'left:628px;top:310px;width:304px;height:126px', '<h4>Mean squared residual at every threshold</h4><canvas width="284" height="86"></canvas>');
+    var gp = api.el('pn', 'left:628px;top:310px;width:304px;height:138px', '<h4>Mean squared residual at every threshold</h4><canvas width="284" height="86"></canvas>');
     var ctl = api.addControl('Feature <select></select> <button type="button" class="btn sm" data-best>Best cut</button>'); var sel = qs('select', ctl), S = null, pts = [], running = false;
     function fillSel(){ var f = activeFeats(), cur = sel.value; sel.innerHTML = f.map(function(x){ return '<option>' + x + '</option>'; }).join(''); if (f.indexOf(cur) >= 0) sel.value = cur; }
     function compute(){

@@ -28,7 +28,9 @@
 | 07 Role of AI | AI, machine learning and generative AI, prediction and generation, applicability domain, assessing a prediction | Extrapolation, assay noise, generative model failures, capabilities and limits, checks before use |
 | 08 Tree algorithms | Split criterion, histogram binning, bootstrap sampling | Exact and binned search, depth and leaf size, bagging and variance, fitting a 3D shape, data requirements, boosting losses, hyperparameter tuning, boosting libraries |
 | 09 Network algorithms | Gradient descent in one dimension, finite-difference gradient, parameter count | Optimisers, backpropagation, parameter count of a GPT, network size and data, weight initialisation, weight decay, scaled dot-product attention, cross-entropy and perplexity |
-| 10 Quiz | 10 questions drawn at random from 75, including challenges that train models |  |
+| 10 PK and PBPK | Concentration-time profile, in vitro to in vivo clearance, where ML enters a PBPK workflow, MIDD decisions and ICH M15 | PBPK model structure, NCA and compartmental fits, population variability, parameter sensitivity, absorption and distribution, drug-drug interaction models, parameter estimation, quantitative systems pharmacology, uncertainty propagation, model credibility |
+| 11 ML in PK and MIDD | Model families and PK tasks, predicted parameters as PBPK inputs, error propagation to exposure | Surrogate models, covariate screening, ensembles for parameter uncertainty, hybrid mechanistic-ML models, sequence models, transfer from in vitro to in vivo, graph networks for PK parameters, LLMs in the workflow, generative design, credibility of ML components, validation design |
+| 12 Quiz | 10 questions drawn at random from 97, including challenges that train models | |
 
 ## Suggested activities
 
@@ -41,7 +43,9 @@
 * **07:** drag the training range in Extrapolation until the score outside it falls to zero. Raise the assay noise and read the ceiling.
 * **08:** compare exact and binned search. Run the tuning grid and compare the cell chosen on validation with the best cell on test.
 * **09:** run the three optimisers on the raw and the centred feature. Step through backpropagation. Compare the network sizes at 100, 1,000 and 10,000 points.
-* **10:** run a round as a group, or individually. The challenge goals count leaves, the units of tree-model size, so a smaller model fits faster on any computer. On these eight descriptors the test R2 is limited to about 0.3 on HLM and 0.36 on logD, and the goals are set near those limits.
+* **10:** compare a measured and a predicted CLint through the same PBPK model, then fit a compartmental model to the public Theoph data and read the parameter uncertainty.
+* **11:** in Hybrid ODE, compare the three fits at the 500 mg dose that no model was fitted to. In Error propagation, move the reference CLint from low to high and read how the AUC error changes.
+* **12:** run a round as a group, or individually. The challenge goals count leaves, the units of tree-model size, so a smaller model fits faster on any computer. On these eight descriptors the test R2 is limited to about 0.3 on HLM and 0.36 on logD, and the goals are set near those limits.
 
 ## Points to watch
 
