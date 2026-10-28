@@ -42,7 +42,7 @@ L3.add({ short: 'Inside a neuron', title: 'Inside one neuron',
       var n = Math.max(1, Math.round(prog * (f.length + 2)));
       f.forEach(function(ft, k){ var wt = ker[k * units + j], c = a.x[k] * wt; z += c; zs.push(z); if (k < n) rows += '<tr><td>' + esc(ft) + '</td><td>' + fmtFeat(ft, a.raw[k]) + '</td><td>' + a.x[k].toFixed(2) + '</td><td style="color:' + (wt >= 0 ? C.red : C.char) + '">' + (wt >= 0 ? '+' : '') + wt.toFixed(2) + '</td><td><b>' + (c >= 0 ? '+' : '') + c.toFixed(2) + '</b></td><td style="width:90px"><div style="position:relative;height:10px;background:#EDF2F4;border-radius:3px"><div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:#34373F"></div><div style="position:absolute;top:0;bottom:0;border-radius:3px;background:' + (c >= 0 ? C.red : C.bg) + ';' + (c >= 0 ? 'left:50%;' : 'right:50%;') + 'width:' + Math.min(50, Math.abs(c) * 14) + '%"></div></div></td><td style="text-align:right">' + zs[k].toFixed(2) + '</td></tr>'; });
       var showB = n >= f.length + 1, showR = n >= f.length + 2;
-      qs('.nt', tp).innerHTML = '<h4>Neuron ' + (j + 1) + ' of hidden layer 1</h4><div class="tblwrap"><table style="font-size:12px"><thead><tr><th>Feature</th><th>Value</th><th>Rescaled</th><th>Weight</th><th>Contribution</th><th></th><th style="text-align:right">Running total</th></tr></thead><tbody>' + rows + (showB ? '<tr><td>bias</td><td></td><td></td><td></td><td><b>' + (bias[j] >= 0 ? '+' : '') + bias[j].toFixed(2) + '</b></td><td></td><td style="text-align:right">' + z.toFixed(2) + '</td></tr>' : '') + '</tbody></table></div>' + (showR ? '<p style="font-size:13px;margin-top:10px">Total <b>' + z.toFixed(2) + '</b>. ReLU turns it into <b style="color:' + C.red + '">' + Math.max(0, z).toFixed(2) + '</b>' + (z <= 0 ? ', so this neuron is silent for this compound.' : ', so this neuron passes a signal to the next layer.') + '</p>' : '');
+      qs('.nt', tp).innerHTML = '<h4>Neuron ' + (j + 1) + ' of hidden layer 1</h4><div class="tblwrap"><table style="font-size:12px"><thead><tr><th>Feature</th><th>Value</th><th>Rescaled</th><th>Weight</th><th>Contribution</th><th></th><th style="text-align:right">Running total</th></tr></thead><tbody>' + rows + (showB ? '<tr><td>bias</td><td></td><td></td><td></td><td><b>' + (bias[j] >= 0 ? '+' : '') + bias[j].toFixed(2) + '</b></td><td></td><td style="text-align:right">' + z.toFixed(2) + '</td></tr>' : '') + '</tbody></table></div>' + (showR ? '<p style="font-size:13px;margin-top:10px">Total <b>' + z.toFixed(2) + '</b>. ReLU turns it into <b style="color:' + C.red + '">' + Math.max(0, z).toFixed(2) + '</b>' + (z <= 0 ? ', so this neuron outputs zero for this compound.' : ', so this neuron outputs a positive value to the next layer.') + '</p>' : '');
     }
     async function ready(){ if (!(await nnReady(api))) return false; if (!NN.act) NN.act = nnAct(D.TEST[Math.floor(Math.random() * D.TEST.length)]); return true; }
     async function render(){ if (!(await ready())) return; draw(); table(1); }
@@ -72,7 +72,7 @@ L3.add({ short: 'What it learned', title: 'What the network learned about one fe
 /* ---------- N9: Chemprop and message passing ---------- */
 L3.add({ short: 'Chemprop', title: 'Chemprop reads atoms and bonds',
   change: 'Click an atom. Drag Rounds below the picture.',
-  watch: 'Chemprop is a neural network that reads a molecule as a graph, with atoms as nodes and bonds as links. It works in rounds called message passing. In each round every atom sends what it knows to its neighbours and updates itself. After one round an atom knows about its direct neighbours, after two rounds about atoms two bonds away, and so on. The red zone shows which atoms can affect the chosen atom.',
+  watch: 'Chemprop is a neural network that reads a molecule as a graph, with atoms as nodes and bonds as links. It works in rounds called message passing. In each round every atom sends a message to its bonded neighbours and updates its own vector. After one round an atom knows about its direct neighbours, after two rounds about atoms two bonds away, and so on. The red zone shows which atoms can affect the chosen atom.',
   build: function(api){
     var G = [], cur = { g: 0, c: 0, k: 0 }, playing = false, EL = { N: C.red, O: C.dred, S: '#450A0A', F: C.char, Cl: C.char, Br: C.char };
     var gp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<svg viewBox="0 0 540 372" width="540" height="372"></svg>');
@@ -97,7 +97,7 @@ L3.add({ short: 'Chemprop', title: 'Chemprop reads atoms and bonds',
     async function ready(){ var ex = await loadExtras(); G = ex.graphs; if (!msel.options.length) G.forEach(function(g, i){ var o = document.createElement('option'); o.value = i; o.textContent = g.smi.length > 26 ? g.smi.slice(0, 26) + '...' : g.smi; msel.appendChild(o); }); }
     async function render(){ await ready(); draw(); }
     async function play(tok){ await ready(); playing = true; try { cur.k = 0; draw(); await api.beat('A molecule is a graph: atoms are nodes and bonds are edges. Chemprop works on this graph directly, with no descriptor table.', 3600);
-      for (var k = 1; k <= 4; k++) { await setK(k, true); api.cap(k === 1 ? 'Round 1: the chosen atom has heard from its bonded neighbours.' : 'Round ' + k + ': information has travelled ' + k + ' bonds from the chosen atom.'); await api.sleep(2000); }
+      for (var k = 1; k <= 4; k++) { await setK(k, true); api.cap(k === 1 ? 'Round 1: the chosen atom has received messages from its bonded neighbours.' : 'Round ' + k + ': information has travelled ' + k + ' bonds from the chosen atom.'); await api.sleep(2000); }
       api.cap('After a few rounds every atom carries a summary of the chemistry around it. These are pooled and passed to a small network.'); await api.sleep(3400); } finally { playing = false; } }
     return { render: render, play: play };
   } });
@@ -136,9 +136,9 @@ L3.add({ short: 'Is it useful', uses: ['endpoint', 'features', 'filters', 'nlaye
 L3.add(seedStepDef('nn'));
 
 L3.glossary([
-  ['Neural network', 'A model built from many small calculators (neurons) in layers. It learns by adjusting the strength of the connections.'],
+  ['Neural network', 'A model built from layers of simple units (neurons) joined by weighted connections. Training adjusts the weights.'],
   ['Neuron', 'Multiplies each input by a weight, adds a bias, and passes the total through an activation.'],
-  ['Weight', 'A number that says how strongly one input pushes the prediction. A bigger weight is a stronger push, a negative weight pushes the other way. Training changes the weights.'], ['Bias', 'A learned offset added in each neuron.'],
+  ['Weight', 'A number that scales one input. A larger magnitude means a stronger effect on the prediction, and a negative weight acts in the opposite direction. Training changes the weights.'], ['Bias', 'A learned offset added in each neuron.'],
   ['Layer', 'A column of neurons: input, hidden or output.'], ['ReLU', 'Negative values become 0 and positive values pass unchanged.'],
   ['Parameters', 'All weights and biases together.'], ['Epoch', 'One pass through the training data.'],
   ['Loss', 'Average squared error. Training tries to lower it.'], ['Gradient descent', 'Repeatedly stepping the weights in the direction that lowers the loss.'],

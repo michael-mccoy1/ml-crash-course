@@ -192,7 +192,7 @@ async function setEndpoint(key){
   LORDER.forEach(function(id){ var L = LESSONS[id]; if (L && L.built) { if (L.onData) L.onData(); L.refresh(); } });
 }
 
-var LEVELS = [['beginner', 'Beginner', 'Plain words and pictures. No background needed.'], ['intermediate', 'Intermediate', 'The main ideas, with the real data and numbers.'], ['advanced', 'Advanced', 'How and why it works, and where it breaks.'], ['pro', 'Pro', 'Settings, trade-offs and the maths.']];
+var LEVELS = [['beginner', 'Beginner', 'Core machine learning concepts for scientists new to the field.'], ['intermediate', 'Intermediate', 'Models and data in detail, using the course data sets.'], ['advanced', 'Advanced', 'Algorithm behaviour, failure modes and diagnostics.'], ['pro', 'Pro', 'Optimisation, tuning and the underlying mathematics.']];
 function levelOf(st){ return st.level || 'intermediate'; }
 function levelName(k){ for (var i = 0; i < LEVELS.length; i++) if (LEVELS[i][0] === k) return LEVELS[i][1]; return k; }
 function openAncestors(el){ for (var p = el; p; p = p.parentElement) if (p.tagName === 'DETAILS') p.open = true; }
@@ -203,14 +203,19 @@ var railBusy = false;
 window.addEventListener('scroll', function(){ if (railBusy) return; railBusy = true; requestAnimationFrame(function(){ railBusy = false; var root = $('lesson-' + ACTIVE), L = LESSONS[ACTIVE]; if (!root || !L || !L.built) return; var best = null; qsa('.rail a.ra', root).forEach(function(a){ a.classList.remove('on'); var t = $(a.dataset.t); if (t && t.getBoundingClientRect().height > 0 && t.getBoundingClientRect().top <= 140) best = a; }); if (best) best.classList.add('on'); }); }, { passive: true });
 function buildLesson(L){
   var root = $('lesson-' + L.id), n = L.steps.length + (L.gloss ? 1 : 0), startsBeginner = L.steps.some(function(st){ return levelOf(st) === 'beginner'; });
-  if (L.optsClosed === undefined) L.optsClosed = startsBeginner; if (L.optsClosed && !L.optsLabel) L.optsLabel = 'Options for the later sections';
+  if (L.optsClosed === undefined) L.optsClosed = startsBeginner; 
   if (L.custom) { L.custom(root); L.built = true; return; }
   root.innerHTML = '<aside class="options"><details class="optd"' + (L.optsClosed ? '' : ' open') + '><summary class="otitle">' + (L.optsLabel || 'Options') + '</summary><div class="obody"></div><div class="aff"><div class="hint">Change an option to see which steps use it.</div></div></details></aside><div class="steps"><nav class="toc"></nav></div>';
   qs('.obody', root).innerHTML = typeof L.optsHTML === 'function' ? L.optsHTML() : L.optsHTML; var stepsEl = qs('.steps', root), toc = qs('.toc', root);
-  var ig = window.GUIDE && GUIDE.intro[L.id]; if (ig) { var card = h('div', 'intro', '<div class="ig"><div><div class="ol">Goals</div><ul>' + ig.goals.map(function(g){ return '<li>' + esc(g) + '</li>'; }).join('') + '</ul></div></div>'); stepsEl.insertBefore(card, toc); }
+  var ig = window.GUIDE && GUIDE.intro[L.id]; if (ig) { var card = h('div', 'intro', '<div class="ig"><div><div class="ol">Objectives</div><ul>' + ig.goals.map(function(g){ return '<li>' + esc(g) + '</li>'; }).join('') + '</ul></div></div>'); stepsEl.insertBefore(card, toc); }
   var rank = { beginner: 0, intermediate: 1, advanced: 2, pro: 3 };
-  L.steps.forEach(function(st, k){ st._o = k; }); L.steps.sort(function(x, y){ return rank[levelOf(x)] - rank[levelOf(y)] || x._o - y._o; });
+  L.steps.forEach(function(st, k){ st._o = k; }); function ordKey(st){ return st.ord !== undefined ? st.ord : 100 + st._o; }
+  L.steps.sort(function(x, y){ return rank[levelOf(x)] - rank[levelOf(y)] || ordKey(x) - ordKey(y); });
   var secs = {}, opened = false, lastLv = null, rail = h('nav', 'rail'); rail.setAttribute('aria-label', 'Jump to a step');
+  var cols = LEVELS.map(function(lv){ var items = []; L.steps.forEach(function(st, i){ if (levelOf(st) === lv[0]) items.push([st, i]); }); if (!items.length) return ''; return '<div class="tcol"><div class="tch"><b>' + lv[1] + '</b><span>' + items.length + (items.length > 1 ? ' steps' : ' step') + '</span></div><ol>' + items.map(function(it){ return '<li><a data-t="' + L.id + '-s' + (it[1] + 1) + '" data-si="' + it[1] + '" tabindex="0"><span class="n">' + (it[1] + 1) + '</span>' + esc(it[0].title) + '</a></li>'; }).join('') + '</ol></div>'; }).join('');
+  toc.innerHTML = '<div class="tochead"><span class="toct">Contents</span><span class="tocr">' + (L.gloss ? '<a data-t="' + L.id + '-gl" tabindex="0">Glossary</a>' : '') + '<button type="button" data-all="1">Expand all</button><button type="button" data-all="0">Collapse all</button></span></div><div class="tocgrid">' + cols + '</div>';
+  toc.addEventListener('click', function(e){ var a = e.target.closest('a[data-t]'); if (a) { goStep(a.dataset.t); return; } var b = e.target.closest('button[data-all]'); if (!b) return; qsa('details.lvl', root).forEach(function(d){ d.open = b.dataset.all === '1'; }); if (b.dataset.all === '1') setTimeout(function(){ kickVisible(L); }, 80); });
+  toc.addEventListener('keydown', function(e){ var a = e.target.closest ? e.target.closest('a[data-t]') : null; if (a && e.key === 'Enter') goStep(a.dataset.t); });
   LEVELS.forEach(function(lv){
     var items = L.steps.filter(function(st){ return levelOf(st) === lv[0]; }); if (!items.length) return;
     var d = h('details', 'lvl lvl-' + lv[0]); d.id = L.id + '-lv-' + lv[0];
@@ -218,15 +223,12 @@ function buildLesson(L){
     if (!opened) { d.open = true; opened = true; } stepsEl.appendChild(d); secs[lv[0]] = qs('.lvb', d);
     d.addEventListener('toggle', function(){ if (d.open) setTimeout(function(){ kickVisible(L); }, 80); });
   });
-  var lc = h('span', 'lvctl', '<button type="button" class="btn sm ghost" data-all="1">Open all sections</button><button type="button" class="btn sm ghost" data-all="0">Close all</button>'); toc.appendChild(lc);
-  lc.addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; qsa('details.lvl', root).forEach(function(d){ d.open = b.dataset.all === '1'; }); if (b.dataset.all === '1') setTimeout(function(){ kickVisible(L); }, 80); });
   L.steps.forEach(function(st, i){
     var lvl = levelOf(st); st.L = L; st.idx = i; buildStep(L, st, i, n, secs[lvl]);
-    if (lvl !== lastLv) { lastLv = lvl; var lab = h('button', 'tc tcl tcl-' + lvl, esc(levelName(lvl))); lab.type = 'button'; lab.addEventListener('click', function(){ goStep(L.id + '-lv-' + lvl); }); toc.insertBefore(lab, lc); rail.appendChild(h('div', 'rl rl-' + lvl, esc(levelName(lvl).slice(0, 3)))); }
-    var chip = tocChip(L.id + '-s' + (i + 1), (i + 1) + '  ' + st.short); chip.dataset.si = i; toc.insertBefore(chip, lc);
-    var ra = h('a', 'ra rl-' + lvl, '<b>' + (i + 1) + '</b><span>' + esc(st.short) + '</span>'); ra.tabIndex = 0; ra.dataset.t = L.id + '-s' + (i + 1); ra.addEventListener('click', function(){ goStep(ra.dataset.t); }); ra.addEventListener('keydown', function(e){ if (e.key === 'Enter') goStep(ra.dataset.t); }); rail.appendChild(ra);
+    if (lvl !== lastLv) { lastLv = lvl; rail.appendChild(h('div', 'rl rl-' + lvl, esc(levelName(lvl).slice(0, 3)))); }
+    var ra = h('a', 'ra rl-' + lvl, '<b>' + (i + 1) + '</b><span>' + esc(st.title) + '</span>'); ra.tabIndex = 0; ra.dataset.t = L.id + '-s' + (i + 1); ra.addEventListener('click', function(){ goStep(ra.dataset.t); }); ra.addEventListener('keydown', function(e){ if (e.key === 'Enter') goStep(ra.dataset.t); }); rail.appendChild(ra);
   });
-  if (L.gloss) { var g = h('section', 'step gloss'); g.id = L.id + '-gl'; g.innerHTML = '<div class="shead"><i class="tick"></i><div><div class="eyebrow">GLOSSARY</div><h2>Terms in this lesson</h2></div></div><dl class="gl">' + L.gloss.map(function(t){ return '<div><dt>' + t[0] + '</dt><dd>' + t[1] + '</dd></div>'; }).join('') + '</dl>'; stepsEl.appendChild(g); toc.insertBefore(tocChip(L.id + '-gl', 'Glossary'), lc); var ra2 = h('a', 'ra rl-gl', '<b>G</b><span>Glossary</span>'); ra2.tabIndex = 0; ra2.dataset.t = L.id + '-gl'; ra2.addEventListener('click', function(){ goStep(ra2.dataset.t); }); rail.appendChild(ra2); }
+  if (L.gloss) { var g = h('section', 'step gloss'); g.id = L.id + '-gl'; g.innerHTML = '<div class="shead"><i class="tick"></i><div><div class="eyebrow">GLOSSARY</div><h2>Terms in this lesson</h2></div></div><dl class="gl">' + L.gloss.map(function(t){ return '<div><dt>' + t[0] + '</dt><dd>' + t[1] + '</dd></div>'; }).join('') + '</dl>'; stepsEl.appendChild(g); var ra2 = h('a', 'ra rl-gl', '<b>G</b><span>Glossary</span>'); ra2.tabIndex = 0; ra2.dataset.t = L.id + '-gl'; ra2.addEventListener('click', function(){ goStep(ra2.dataset.t); }); rail.appendChild(ra2); }
   root.appendChild(rail);
   L.built = true; if (L.onOpts) L.onOpts(root); renderChips(); if (window.syncFilterControls) syncFilterControls();
 }
@@ -336,7 +338,7 @@ function showAffects(key){
   L.steps.forEach(function(st, i){ if (st.uses && st.uses.indexOf(key) >= 0) hits.push(i); });
   box.innerHTML = '<div class="ol">' + esc(optLabel(key)) + '</div>' + (hits.length ? '<div class="hint" style="margin-bottom:5px">Drives these steps:</div><div class="ah">' + hits.map(function(i){ return '<button type="button" data-g="' + L.id + '-s' + (i + 1) + '">' + (i + 1) + ' ' + esc(L.steps[i].short) + '</button>'; }).join('') + '</div>' : '<div class="hint">No step in this lesson uses this option.</div>');
   qsa('.ah button', box).forEach(function(b){ b.addEventListener('click', function(){ goStep(b.dataset.g); }); });
-  qsa('.tc', root).forEach(function(c){ c.classList.toggle('hit', c.dataset.si !== undefined && hits.indexOf(+c.dataset.si) >= 0); }); clearTimeout(affTimer); affTimer = setTimeout(function(){ qsa('.tc.hit', root).forEach(function(c){ c.classList.remove('hit'); }); }, 4500);
+  qsa('.toc a[data-si]', root).forEach(function(c){ c.classList.toggle('hit', hits.indexOf(+c.dataset.si) >= 0); }); clearTimeout(affTimer); affTimer = setTimeout(function(){ qsa('.toc a.hit', root).forEach(function(c){ c.classList.remove('hit'); }); }, 4500);
 }
 ['input', 'change'].forEach(function(ev){ document.addEventListener(ev, function(e){ var k = optKey(e.target); if (k) showAffects(k); }, true); });
 document.addEventListener('click', function(e){ var b = e.target.closest ? e.target.closest('.seg button') : null; if (b && b.closest('aside.options')) { var k = optKey(b); if (k) showAffects(k); } }, true);

@@ -1,15 +1,15 @@
 # %% [markdown]
-# # 03: GPT (20 min)
+# # 03: GPT
 # **GPT = Generative Pre-trained Transformer**: a *decoder-only* transformer trained on one task, **predict the next token** given all previous tokens.
 #
-# Ingredients you will see in ~60 lines of code:
+# The code has four parts:
 # 1. **Tokenizer** - text to integer IDs (here: SMILES atoms/bonds/rings).
 # 2. **Embeddings** - token ID to vector, plus position information.
-# 3. **Causal self-attention** - each token looks at *earlier* tokens only, weighting them by relevance.
+# 3. **Causal self-attention** - each token attends to *earlier* tokens only, weighting them by relevance.
 # 4. **Next-token loss** - cross-entropy against the sequence shifted by one.
 #
-# ChatGPT-scale models are this same recipe with trillions of tokens, billions of parameters, plus instruction tuning. Here we train a **tiny chemistry GPT on SMILES** from scratch on CPU, then:
-# * **Generate** new molecules (the "G" in GPT)
+# Large language models use the same architecture with far more data and parameters, plus instruction tuning. This notebook trains a **small GPT on SMILES** from scratch on CPU, then:
+# * **Generate** new molecules
 # * **Reuse** what it learned (embeddings) to predict HLM clearance (transfer learning)
 
 # %%
@@ -28,14 +28,14 @@ df = c.load("HLM"); tr, te = c.split(df, "scaffold"); y = df.y.values
 
 # %% [markdown]
 # ## 1. Tokenize SMILES
-# Treat `Cl`, `Br`, `[C@@H]` etc. as single tokens (the usual regex from the Molecular Transformer paper).
+# The tokeniser treats `Cl`, `Br` and `[C@@H]` as single tokens (the regular expression from the Molecular Transformer paper).
 
 # %%
 PATTERN = re.compile(r"(\[[^\]]+]|Br?|Cl?|N|O|S|P|F|I|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\|/|:|~|@|\?|>|\*|\$|%[0-9]{2}|[0-9])")
 tokenize = lambda s: PATTERN.findall(s)
 print(tokenize("CNc1cc(Cl)ccc1[C@@H](O)C"))
 
-# vocab built from TRAIN only (no peeking at test molecules)
+# vocabulary built from the training set only
 train_smiles = list(df.smiles[tr])
 vocab = ["<pad>", "<bos>", "<eos>"] + sorted({t for s in train_smiles for t in tokenize(s)})
 stoi = {t: i for i, t in enumerate(vocab)}; itos = dict(enumerate(vocab))
@@ -82,7 +82,7 @@ print(f"{sum(p.numel() for p in gpt.parameters())/1e6:.2f}M parameters   (GPT-3 
 
 # %% [markdown]
 # ## 3. Pre-train: predict the next token
-# Input = tokens `[0..T-1]`, target = tokens `[1..T]`. Trained only on **training-set SMILES** (no `y` labels!). ~3 min on a laptop CPU.
+# Input = tokens `[0..T-1]`, target = tokens `[1..T]`. Trained only on **training-set SMILES** (no `y` labels!).
 
 # %%
 import time
@@ -102,7 +102,7 @@ plt.plot(losses); plt.xlabel("epoch"); plt.ylabel("next-token loss"); plt.show()
 
 # %% [markdown]
 # ## 4. Generate molecules (sampling)
-# Start from `<bos>`, sample a token, append, repeat. **Temperature** controls creativity: low = conservative, high = wild.
+# Start from `<bos>`, sample a token, append, repeat. **Temperature** scales the logits: a low temperature favours the most probable token, and a high temperature gives more varied samples.
 
 # %%
 @torch.no_grad()
@@ -135,11 +135,11 @@ good = [s for s in generate(100, 0.8) if s and Chem.MolFromSmiles(s) is not None
 Draw.MolsToGridImage([Chem.MolFromSmiles(s) for s in good], molsPerRow=3, subImgSize=(250, 200))
 
 # %% [markdown]
-# **Your turn:** the model never saw a rule for valence or ring closure. Where does its "chemistry" come from? What happens to validity if you train for 2 epochs instead of 40?
+# **Exercise:** The model was given no rule for valence or ring closure. What can it learn from the training strings alone? What happens to validity if it is trained for 2 epochs instead of 40?
 
 # %% [markdown]
 # ## 5. Reuse the GPT for prediction
-# The GPT's hidden states are a learned representation of each molecule. Mean-pool them to feature vector to fit a simple **ridge regression** to `y`. This is the same pattern as using LLM embeddings for downstream tasks.
+# The GPT's hidden states are a learned representation of each molecule. Mean-pool them to a feature vector and fit a **ridge regression** to `y`. This is the same pattern as using LLM embeddings for downstream tasks.
 
 # %%
 @torch.no_grad()
@@ -158,7 +158,7 @@ ridge = RidgeCV(alphas=np.logspace(-1, 4, 12)).fit(sc.transform(E[tr]), y[tr])
 c.log_result("GPT embeddings + ridge", c.metrics(y[te], ridge.predict(sc.transform(E[te]))))
 
 # %% [markdown]
-# **Discuss:** this tiny GPT saw only ~2,500 molecules. Published chemistry language models (ChemBERTa, MolFormer, ...) pre-train on 10⁷-10⁹ molecules. What would you expect to change? And how does this differ from *prompting* a general LLM like ChatGPT/Claude with a SMILES string?
+# **Discuss:** this small GPT saw only ~2,500 molecules. Published chemistry language models (ChemBERTa, MolFormer, ...) pre-train on 10⁷-10⁹ molecules. What would you expect to change? And how does this differ from *prompting* a general LLM like ChatGPT/Claude with a SMILES string?
 
 # %% [markdown]
 # ### Optional: use a real pre-trained chemistry language model

@@ -1,93 +1,59 @@
-# Instructor Guide
+# Instructor guide
 
 ## Before the session
 
-* Open the site and hard refresh (Ctrl+F5). Click each lesson tab once.
-* Nothing needs installing.
+* Open the site and hard refresh (Ctrl+F5). Open each lesson tab once so that its data and scripts load.
+* Nothing needs installing. Every model trains in the browser.
 
-## How the site works
+## Structure of the site
 
-* Each lesson opens with its goals, then four sections that open and close: Beginner, Intermediate, Advanced and Pro. Only the first is open. Beginner assumes no machine learning and only minimal chemistry, and each later section assumes only the Beginner sections of earlier lessons.
-* The numbered dots at the right edge of the page jump to any step and open its section.
-* The options panel changes every stage. Have people change something before reading.
-* The tree, network and GPT lessons have a workbench. Change an option, then press Train. Slow shows every step. Fast skips ahead.
-* Each step has a Notice line and a Pop quiz. Ask the question before anyone opens the answer.
+* Each lesson opens with its objectives and a contents table. The contents table lists every step by section and links to it.
+* Each lesson has four sections: Beginner, Intermediate, Advanced and Pro. Each section opens and closes. Only the first is open at the start.
+* Beginner assumes chemistry and statistics but no machine learning. Each later section assumes only the Beginner sections of the earlier lessons.
+* The numbered markers at the right edge of the page jump to any step and open its section.
+* The options panel at the left sets the endpoint, the features and the training-set filters for the Intermediate steps and above. It is collapsed in lessons that start with a Beginner section.
+* The tree, network and GPT lessons have a workbench: set options, then select Train. Slow replay shows every step. Fast skips ahead.
+* Each step has a Notice line and a pop quiz. Pose the question before opening the answer.
 
 ## Lessons
 
-| Lesson | Cover |
-|---|---|
-| 01 Data and ML basics | Fitting a line, features, the test set, assay floor, overfitting |
-| 02 Tree models | One cut, workbench, forest, boosting, all three side by side, seeds |
-| 03 Neural networks | One weight, one neuron, workbench, learning rate, dropout, the comparison test, seeds |
-| 04 GPT | Tokens, attention, workbench, the design test |
-| 05 Pre-trained models | Fill in the blank, GROVER, fine-tuning a GPT and Chemprop |
-| 06 Compare | Leaderboard, discussion |
-| 07 Role of AI | Machine learning against generative AI, which fits which job, the training range, lab noise, how generative AI fails, can and cannot, five checks |
-| 08 Tree algorithms | Split search, growth limits, bagging, boosting losses, tuning, library designs, fitting a double helix, trees against data |
-| 09 Network algorithms | Gradient descent, backpropagation, initialisation, weight decay, attention, next-token loss, parameter counts, network size against data |
-| 10 Quiz | Ten random questions from a bank of 75, including challenges that train real models |
+| Lesson | Beginner | Later sections |
+|---|---|---|
+| 01 Data and ML basics | Molecular representations, dataset structure, fitting a model, training and test sets, training and test performance, evaluation metrics | Descriptor contributions, target distribution, model complexity, censored measurements, stacking a logD model, predicting a new compound |
+| 02 Tree models | Decision tree structure, split selection, random forests, gradient boosting | Workbench, single split, prediction path, forest size and depth, boosting rounds, feature importance, training set filters, seeds and ensembles |
+| 03 Neural networks | Linear neuron, hidden layer, nonlinearity, network capacity | Weight and bias, neuron activation, workbench, network size, learning rate, regularisation, partial dependence, message passing |
+| 04 GPT | Tokenisation, token embeddings, next-token prediction, context length | Vocabulary, workbench, sampling and temperature, generation and validity, transformer architecture, attention weights, design test |
+| 05 Pre-trained models | Labelled and unlabelled data, masked prediction, effect of pre-training, transfer strategies | Learning curve from scratch, self-supervised task, functional group prediction, GROVER, frozen embeddings, fine-tuning the GPT and Chemprop |
+| 06 Model comparison | Metric behaviour, assay repeatability ceiling, accuracy and training time | Leaderboard, accuracy against training time, reading a result |
+| 07 Role of AI | AI, machine learning and generative AI, prediction and generation, applicability domain, assessing a prediction | Extrapolation, assay noise, generative model failures, capabilities and limits, checks before use |
+| 08 Tree algorithms | Split criterion, histogram binning, bootstrap sampling | Exact and binned search, depth and leaf size, bagging and variance, fitting a 3D shape, data requirements, boosting losses, hyperparameter tuning, boosting libraries |
+| 09 Network algorithms | Gradient descent in one dimension, finite-difference gradient, parameter count | Optimisers, backpropagation, parameter count of a GPT, network size and data, weight initialisation, weight decay, scaled dot-product attention, cross-entropy and perplexity |
+| 10 Quiz | Ten random questions from a bank of 75, including challenges that train real models |  |
 
-### 01 Data and ML basics
-* **Say:** a model is a rule fitted to examples.
-* **Do:** drag the weight and bias, then press Find the best weights. Switch the split in The test set.
-* **Ask:** why is a random split too optimistic?
-* **Watch for:** R2 of 0 means no better than the average, not a broken model.
+## Suggested activities
 
-### 02 Tree models
-* **Say:** a tree is yes or no questions. A forest averages trees. Boosting fixes mistakes in turn.
-* **Do:** guess depth 2 against 12, then Train. Click in the shaded zones of the last test.
-* **Ask:** why do the trees in a forest differ?
-* **Watch for:** a high training score is not a good result.
+* **01:** compare two molecules in Molecular representations and read the Tanimoto similarity. Switch between random and scaffold splits in Training and test sets. Ask why a random split gives an optimistic estimate.
+* **02:** set depth 2 against 12 in the workbench and select Train. Ask why the trees in a forest differ.
+* **03:** fit the linear neuron, then train the workbench with 120 epochs. Ask why dropout is used when it raises training error.
+* **04:** compare the output before and after Train. Ask why generated molecules are checked with RDKit.
+* **05:** compare Head only with Everything in the fine-tuning workbench. Read the Chemprop curves at 50 and 1,000 compounds.
+* **06:** read the leaderboard. Ask which result is least trustworthy and why.
+* **07:** drag the training range in Extrapolation until the score outside it falls to zero. Raise the assay noise and read the ceiling.
+* **08:** compare exact and binned search. Run the tuning grid and compare the cell chosen on validation with the best cell on test.
+* **09:** run the three optimisers on the raw and the centred feature. Step through backpropagation. Compare the network sizes at 100, 1,000 and 10,000 points.
+* **10:** run a round as a group, or individually. The challenge goals count leaves, the units of tree-model size, so a smaller model fits faster on any computer. On these eight descriptors the test R2 is limited to about 0.3 on HLM and 0.36 on logD, and the goals are set near those limits.
 
-### 03 Neural networks
-* **Say:** a weight is how hard one input pushes. Training nudges all of them.
-* **Do:** one weight first, then the workbench with Epochs at 120. Run the last test.
-* **Ask:** why use dropout when it worsens training error?
-* **Watch for:** the lines in the diagram are weights. Hover to read one.
+## Points to watch
 
-### 04 GPT
-* **Say:** a GPT guesses the next token. Here the text is a molecule.
-* **Do:** click tokens in Attention. Compare what it writes before and after Train. Run the last test.
-* **Ask:** why check its molecules with RDKit?
-* **Watch for:** the demo model is tiny.
-
-### 05 Pre-trained models
-* **Say:** pre-training learns from molecules with no lab values. Fine-tuning adds your labels.
-* **Do:** play the fill-in-the-blank game. Compare Head only with Everything. Read the Chemprop lines at 50 and 1,000.
-* **Ask:** when would you freeze the model?
-* **Watch for:** pre-training does not always help. Grey is the baseline.
-
-### 06 Compare
-* Walk the leaderboard. Ask which result people trust least.
-
-### 07 Role of AI
-* **Say:** machine learning predicts a number you can score. Generative AI produces content you must check. People decide.
-* **Do:** click through the layers, then the six jobs and both tools. Open each of the five failures. Drag the training range until the score outside it falls to zero. Raise the lab noise. Sort the ten statements.
-* **Ask:** which of the five checks would have caught the weakest result you saw today?
-* **Watch for:** a score below the noise ceiling is not a failure. It may be as good as the assay allows.
-
-### 08 Tree algorithms
-* **Say:** a split is the threshold with the largest drop in squared error. Everything else, forests, boosting and tuning, is built on that search.
-* **Do:** compare exact and binned search. Raise the depth and watch test R2 peak and fall. Fit forests with 1 and 8 features per split. Run the tuning grid. Play the helix fit and rotate it. Play the data step and read the final chart.
-* **Ask:** why must the test set stay out of the choice of settings?
-* **Watch for:** the boosting step is simplified. Real libraries use second-order steps.
-
-### 09 Network algorithms
-* **Say:** training is gradient descent, and backpropagation is how the gradients are found.
-* **Do:** run the three optimisers on the raw and the centred feature. Step through the backward pass. Move the weight scale in the initialisation step. Drag the attention query. Play the scaling step with 100, 1,000 and 10,000 points and compare the five network sizes.
-* **Ask:** why does a sigmoid network lose its gradient in a deep stack?
-* **Watch for:** the attention and parameter steps use tiny sizes so the numbers can be read. Real models are far larger.
-
-### 10 Quiz
-* **Say:** each round is ten questions chosen at random from 75, so a second round is different from the first.
-* **Do:** run a round as a group, or let people work alone. In the challenge questions the goal counts leaves, the pieces a tree model builds, so a smaller model is a faster one on any computer.
-* **Ask:** which setting did you change first in the challenge, and why?
-* **Watch for:** the data allow a test R2 of only about 0.3 on HLM and 0.36 on logD with these eight descriptors, so the challenge goals are set near those limits.
+* R2 of 0 means no better than predicting the training mean. It does not indicate a broken model.
+* A high training score is not a good result without a matching test score.
+* The demonstration GPT and the attention and parameter steps use small sizes so that the numbers can be read. Real models are far larger.
+* The boosting loss step is simplified. Real libraries use second-order steps.
+* A test score below the assay noise ceiling is not a failure. It may be as good as the assay allows.
 
 ## If something goes wrong
 
 * Blank page: open the site over http, not from a file.
-* GPT steps blank: an ad blocker or policy may block a script. Press F12 and read the Console.
+* GPT steps blank: an ad blocker or policy may block a script. Open the browser console (F12) and read the messages.
 * RDKit steps fail: RDKit is about 7 MB. Wait for it to load.
 * Slow laptop: switch animations off and lower the GPT training steps.

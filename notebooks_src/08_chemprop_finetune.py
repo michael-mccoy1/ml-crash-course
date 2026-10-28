@@ -46,7 +46,7 @@ pre_secs = time.time() - t0
 pre_ckpt = find_ckpt(pre_dir)
 chemprop("predict", "--test-path", os.path.join(OUT, "az_test.csv"), "--smiles-columns", "smiles", "--model-paths", pre_ckpt, "--preds-path", os.path.join(OUT, "az_pred.csv"), "--num-workers", "0")
 pre_r2 = c.metrics(az.y.values[te_a], pd.read_csv(os.path.join(OUT, "az_pred.csv")).iloc[:, -1].values)["R2"]
-print(f"logD pre-training: {pre_secs:.0f} s, unseen R2 {pre_r2:.3f}")
+print(f"logD pre-training: {pre_secs:.0f} s, test R2 {pre_r2:.3f}")
 
 # %% [markdown]
 # ## 2. Fine-tune on HLM with few labels

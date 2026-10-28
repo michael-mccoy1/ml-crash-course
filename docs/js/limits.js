@@ -6,14 +6,14 @@ L6.onData = function(){ };
 
 /* ---------- Step 1: what AI means ---------- */
 var AI_LAYERS = [
-  { name: 'Artificial intelligence', what: 'Software that does something we would call intelligent if a person did it, such as recognising patterns, planning, deciding or using language.', course: 'All six lessons.', outside: 'Rule-based programs that follow steps a person wrote, route planners, and chat assistants.' },
+  { name: 'Artificial intelligence', what: 'Software that does something we would call intelligent if a person did it, such as recognising patterns, planning, deciding or using language.', course: 'Every lesson.', outside: 'Rule-based programs that follow steps a person wrote, route planners, and chat assistants.' },
   { name: 'Machine learning', what: 'AI whose rules are learned from examples instead of written by hand.', course: 'Tree models and neural networks that predict clearance and logD (lessons 02 and 03).', outside: 'Spam filters, product recommendations and credit scoring.' },
   { name: 'Deep learning', what: 'Machine learning with neural networks that have many layers.', course: 'The neural network, Chemprop, the GPT and the pre-trained models (lessons 03 to 05).', outside: 'Image recognition, speech recognition and protein structure prediction.' },
   { name: 'Generative AI', what: 'Deep learning that writes new text, images or molecules instead of returning one score.', course: 'The small GPT that writes SMILES (lesson 04).', outside: 'Chat assistants such as ChatGPT and Claude. These are large language models (LLMs): GPT-style models trained on very large amounts of text.' }
 ];
 L6.add({ short: 'What AI means', title: 'Machine learning predicts, generative AI produces',
-  change: 'Click a layer to see what it means, where it appeared in this course and where else you meet it.',
-  watch: 'Artificial intelligence (AI) is the widest term. Machine learning is the part of AI that learns from examples, and most of it predicts: give it a compound and it returns a number. Deep learning is machine learning with many-layered neural networks. Generative AI is deep learning that produces new content, such as text, code or molecules. Each layer sits inside the one before it, but the two jobs differ. The rest of this tab keeps prediction and generation apart.',
+  change: 'Select a layer. The panel gives its definition, where it appears in this course, and examples elsewhere.',
+  watch: 'Artificial intelligence (AI) is the broadest term. Machine learning is the part of AI whose rules are learned from examples. Most applications predict: the input is a compound and the output is a number. Deep learning is machine learning with neural networks that have many layers. Generative AI is deep learning that produces new content, such as text, code or molecules. Each layer is contained in the one before it, but prediction and generation are different tasks. The rest of this lesson keeps them apart.',
   build: function(api){
     var pn = api.el('pn', 'left:28px;top:28px;width:904px;height:408px', '<div style="display:grid;grid-template-columns:340px 1fr;gap:28px"><div class="ail"></div><div class="aid"></div></div>'), cur = 0;
     function box(i){ var L = AI_LAYERS[i], on = i === cur, inner = i < AI_LAYERS.length - 1 ? box(i + 1) : ''; return '<div data-l="' + i + '" style="cursor:pointer;border:2px solid ' + (on ? C.red : C.silver) + ';border-radius:10px;padding:8px 10px 10px;background:' + (on ? C.light : '#fff') + ';margin-top:' + (i ? 8 : 0) + 'px"><div style="font-size:14px;font-weight:700;color:' + C.char + '">' + L.name + '</div>' + inner + '</div>'; }
@@ -28,17 +28,17 @@ L6.add({ short: 'What AI means', title: 'Machine learning predicts, generative A
 
 /* ---------- Step 2: predict or generate ---------- */
 var AI_TASKS = [
-  { name: 'Estimate clearance for a new compound', ml: [2, 'It learns from measured values and is scored on test compounds it never saw. The best reference runs in this course reach R2 0.4 to 0.5.'], gen: [0, 'A chat model has no measured clearance for your compounds. It can give a number that sounds right, with no test score behind it.'] },
+  { name: 'Estimate clearance for a new compound', ml: [2, 'It is trained on measured values and scored on the test compounds. The best reference runs in this course reach R2 0.4 to 0.5.'], gen: [0, 'A chat model has no measured clearance for the compounds. It can return a number, with no test-set performance behind it.'] },
   { name: 'Score 5,000 library compounds', ml: [2, 'Once trained, a model scores thousands of compounds in seconds, with the same method for each.'], gen: [0, 'It is not built to give consistent numbers at scale, and each answer would need checking.'] },
-  { name: 'Propose new molecules', ml: [0, 'A prediction model scores molecules you give it. It does not write new ones.'], gen: [1, 'A model like the GPT in lesson 04 writes candidates. Some are invalid, and none comes with proof that it is active or can be made.'] },
+  { name: 'Propose new molecules', ml: [0, 'A prediction model scores the molecules it is given. It does not write new ones.'], gen: [1, 'A model like the GPT in lesson 04 writes candidates. Some are invalid, and none comes with proof that it is active or can be made.'] },
   { name: 'Summarise a set of papers', ml: [0, 'A clearance model reads numbers, not text.'], gen: [1, 'A language model drafts a summary quickly. It can state something the paper does not say, so open the source.'] },
   { name: 'Write an analysis script', ml: [0, 'A prediction model does not write code.'], gen: [1, 'It drafts code that saves time. Read it, then run it on a case with a known answer.'] },
-  { name: 'Explain why a compound is cleared quickly', ml: [0, 'It finds patterns that predict. Feature importance shows what it leaned on, not what the liver does.'], gen: [1, 'It can write a plausible explanation from what it read. Plausible is not tested, so treat it as a hypothesis for an experiment.'] }
+  { name: 'Explain why a compound is cleared quickly', ml: [0, 'It finds patterns that predict. Feature importance shows which features the model relied on, not the metabolic mechanism.'], gen: [1, 'It can write a plausible explanation from what it read. Plausible is not tested, so treat it as a hypothesis for an experiment.'] }
 ];
 var AI_VERDICT = [['Does not fit', C.red, '#fff', C.red], ['Fits with checks', C.bg, C.char, C.bg], ['Fits well', C.char, '#fff', C.char]];
 L6.add({ short: 'Predict or generate', title: 'Which tool fits which job',
-  change: 'Click a job to see how well machine learning and generative AI each fit it.',
-  watch: 'Machine learning is used to predict: it returns a number for a compound, and that number can be scored against measurements. Generative AI is used to produce: it writes text, code or molecules. Its output has no measurement behind it, so a person must check it. Choose a job and compare the two. A tool that fits well still needs the checks in the last step.',
+  change: 'Select a task to compare how well machine learning and generative AI fit it.',
+  watch: 'Machine learning is used to predict: it returns a number for a compound, and that number can be scored against measurements. Generative AI is used to produce text, code or molecules. Its output has no measurement behind it, so a person must check it. Select a task to compare the two. A tool that fits well still needs the checks in the last step.',
   build: function(api){
     var pn = api.el('pn', 'left:28px;top:28px;width:904px;height:408px', '<div class="ait"></div>'), cur = 0;
     function card(title, v, text){ var vd = AI_VERDICT[v[0]]; return '<div style="border:1px solid ' + C.silver + ';border-radius:8px;padding:14px 16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:16px;color:' + C.char + '">' + title + '</b><span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:' + vd[1] + ';color:' + vd[2] + '">' + vd[0] + '</span></div><div style="font-size:15px;line-height:1.5;color:' + C.char + ';margin-top:10px">' + esc(text) + '</div></div>'; }
@@ -53,8 +53,8 @@ L6.add({ short: 'Predict or generate', title: 'Which tool fits which job',
 
 /* ---------- Step 3: outside the training range ---------- */
 L6.add({ short: 'Outside the training range', title: 'A prediction model is reliable only near what it learned from',
-  change: 'Choose a feature and drag the training range below the plot.',
-  watch: 'A machine learning model has only its examples to go on. This demonstration uses a tree model on our compounds. It is trained on compounds whose feature value is below a cut-off, shown as a dashed line, and then scored on test compounds on each side of the line. A test R2 of 0 means no better than guessing the average, and below 0 means worse. The range is the span of feature values the model saw.',
+  change: 'Select a feature and drag the training range.',
+  watch: 'A model is constrained by its training examples. This demonstration uses a tree model on the compounds in this course. It is trained on compounds whose feature value is below a cut-off, shown as a dashed line, and then scored on test compounds on each side of the line. A test R2 of 0 equals predicting the mean, and a negative value is worse. The training range is the span of feature values in the training set.',
   build: function(api){
     var G_ = 200, st = null;
     var plot = api.el('pn', 'left:28px;top:28px;width:620px;height:408px', '<h4 class="pt"></h4><canvas width="600" height="334" style="margin-top:2px"></canvas><div class="note" style="font-size:12px;margin-top:4px">Blue: trained on. Dark rings: test inside. Red rings: test outside.</div>');
@@ -83,7 +83,7 @@ L6.add({ short: 'Outside the training range', title: 'A prediction model is reli
       x.strokeStyle = C.red; x.lineWidth = 3.4; x.lineJoin = 'round'; x.beginPath(); for (var k = 0; k < G_; k++) { var px = box.l + k / (G_ - 1) * (box.r - box.l); k ? x.lineTo(px, sy(st.cu[k])) : x.moveTo(px, sy(st.cu[k])); } x.stroke();
             qs('.pt', plot).textContent = 'Measured value against ' + f + ', with a decision tree fit';
       function bar(label, n, v, col){ var w = v === null ? 0 : clamp(v, 0, 0.5) / 0.5 * 100; return '<div style="margin-bottom:14px"><div style="font-size:12.5px;color:' + C.char + '">' + label + ' <span style="color:' + C.char + '">(' + n + ' compounds)</span></div><div class="pbar" style="height:12px;margin:3px 0"><i style="background:' + col + ';width:' + w + '%;transition:none"></i></div><b style="font-size:20px;color:' + col + '">' + (v === null ? 'n/a' : v.toFixed(2)) + '</b></div>'; }
-      var msg = st.rIn === null || st.rOut === null ? 'Too few test compounds on one side to score it.' : (st.rOut < -0.02 ? 'Outside the range the model is worse than guessing the average.' : (st.rOut <= 0.02 ? 'Outside the range the model is no better than the average.' : (st.rOut >= st.rIn ? 'Here the score holds up outside the range.' : 'Outside the range the score drops from ' + st.rIn.toFixed(2) + ' to ' + st.rOut.toFixed(2) + '.')));
+      var msg = st.rIn === null || st.rOut === null ? 'Too few test compounds on one side to score it.' : (st.rOut < -0.02 ? 'Outside the training range the model is worse than predicting the mean.' : (st.rOut <= 0.02 ? 'Outside the training range the model is equal to predicting the mean.' : (st.rOut >= st.rIn ? 'Here the score holds outside the training range.' : 'Outside the training range the score drops from ' + st.rIn.toFixed(2) + ' to ' + st.rOut.toFixed(2) + '.')));
       qs('.sd', side).innerHTML = bar('Inside the trained range', st.nIn, st.rIn, C.char) + bar('Outside the trained range', st.nOut, st.rOut, C.red) + '<p style="font-size:13px;line-height:1.45;margin:0;color:' + C.char + '">' + msg + '</p><p class="note" style="font-size:12px;margin-top:8px">Bars show test R2 from 0 to 0.5. A negative score shows as an empty bar.</p>';
       dv.textContent = st.pct;
     }
@@ -94,8 +94,8 @@ L6.add({ short: 'Outside the training range', title: 'A prediction model is reli
 
 /* ---------- Step 4: lab noise ---------- */
 L6.add({ short: 'Lab noise', title: 'Noisy data caps how accurate a prediction can look',
-  change: 'Drag Assay noise and watch the test R2 ceiling.',
-  watch: 'A lab measurement is never exact. Measure the same compound again and the number changes a little. That spread is assay noise. A prediction model is judged against the measured value, so noise costs it score even when it is right. Here each test compound is measured a second time, with random noise of the size you choose. The R2 between the two sets of numbers is the most any prediction could be expected to reach.',
+  change: 'Drag Assay noise. Read the test R2 ceiling.',
+  watch: 'A measurement is never exact. A repeat measurement of the same compound gives a slightly different value, and this spread is assay noise. A model is scored against the measured value, so noise lowers its R2 even when its predictions are correct. Here a second measurement of each test compound is simulated by adding random noise with the standard deviation set by the slider. The R2 between the two sets of values is the highest R2 any model could be expected to reach.',
   build: function(api){
     var plot = api.el('pn', 'left:28px;top:28px;width:620px;height:408px', '<h4>First measurement against a repeat measurement, test compounds</h4><canvas width="600" height="352" style="margin-top:2px"></canvas>');
     var side = api.el('pn', 'left:668px;top:28px;width:264px;height:408px', '<h4>R2 between the two measurements</h4><div class="sd"></div>');
@@ -111,7 +111,7 @@ L6.add({ short: 'Lab noise', title: 'Noisy data caps how accurate a prediction c
       x.setLineDash([5, 5]); x.strokeStyle = C.char; x.lineWidth = 1.4; x.beginPath(); x.moveTo(sx(yl), sy(yl)); x.lineTo(sx(yh), sy(yh)); x.stroke(); x.setLineDash([]);
       x.fillStyle = 'rgba(225,36,42,.45)'; D.TEST.forEach(function(i){ x.beginPath(); x.arc(sx(D.Y[i]), sy(pred[i]), 3, 0, 6.3); x.fill(); });
       var b = best(); qs('.sd', side).innerHTML = '<div class="big" style="color:' + C.red + '">' + ceil.toFixed(2) + '</div><div class="note" style="font-size:12px;color:' + C.char + ';margin-bottom:12px">ceiling for test R2 at this noise</div>' +
-        (b === null ? '<p style="font-size:13px;line-height:1.45;color:' + C.char + '">Train a model in lessons 02 or 03 to compare its test R2 with this ceiling.</p>' : '<div class="rrow">Your best model so far<b>' + b.toFixed(2) + '</b></div><p style="font-size:13px;line-height:1.45;margin-top:10px;color:' + C.char + '">' + (b >= ceil ? 'Your model already scores above this ceiling, so the real noise in this assay is smaller than ' + s.toFixed(2) + '.' : 'Your model is below this ceiling. If the real noise is this large, there is room to improve.') + '</p>') +
+        (b === null ? '<p style="font-size:13px;line-height:1.45;color:' + C.char + '">Train a model in lessons 02 or 03 to compare its test R2 with this ceiling.</p>' : '<div class="rrow">Best model trained so far<b>' + b.toFixed(2) + '</b></div><p style="font-size:13px;line-height:1.45;margin-top:10px;color:' + C.char + '">' + (b >= ceil ? 'The best model already scores above this ceiling, so the actual assay noise is below ' + s.toFixed(2) + '.' : 'The best model is below this ceiling. If the actual noise is this large, improvement is possible.') + '</p>') +
         '<p class="note" style="font-size:12px;margin-top:10px">Noise is the standard deviation (SD) of the random error added to each value, in the units of the target.' + (D.cens ? ' Compounds at the assay floor share one first value, so they form the vertical column.' : '') + '</p>';
       dv.textContent = s.toFixed(2);
     }
@@ -122,21 +122,21 @@ L6.add({ short: 'Lab noise', title: 'Noisy data caps how accurate a prediction c
 /* ---------- Step 5: how generative AI goes wrong ---------- */
 var AI_FAILS = [
   { name: 'Invalid output', look: 'The GPT in lesson 04 writes text that looks like a molecule, and RDKit rejects some of it, more at a high temperature.', catch_: 'Run a validator such as RDKit on every candidate.' },
-  { name: 'Fluent but false', look: 'A language model writes sentences that sound right whether or not they are. A wrong fact reads the same as a true one.', catch_: 'Open the cited source and read the passage. Ask for no claim you cannot check.' },
-  { name: 'Copying, not creating', look: 'A generator can reproduce molecules from its training set. The test in lesson 04 counts how many of its molecules are new.', catch_: 'Compare each candidate with the training molecules.' },
-  { name: 'No score', look: 'A generator writes a molecule. It does not say how active it is or how fast the liver clears it.', catch_: 'Pass candidates to a prediction model, then measure the best ones.' },
-  { name: 'Frozen knowledge', look: 'A language model knows only its training text, up to a cut-off date, unless it is given documents or search tools.', catch_: 'Give it the documents, or search for recent work yourself.' }
+  { name: 'Plausible but incorrect output', look: 'A language model writes fluent sentences whether or not they are correct. An incorrect statement reads the same as a correct one.', catch_: 'Check each claim against the cited source. Rely on no claim that cannot be checked.' },
+  { name: 'Reproduction of training data', look: 'A generator can reproduce molecules from its training set. The test in lesson 04 counts how many of its molecules are new.', catch_: 'Compare each candidate with the training molecules.' },
+  { name: 'No performance estimate', look: 'A generator writes a molecule. It gives no estimate of activity or clearance.', catch_: 'Pass candidates to a prediction model, then measure the best ones.' },
+  { name: 'Knowledge cut-off', look: 'A language model is limited to its training text, which ends at a cut-off date, unless it is given documents or search tools.', catch_: 'Supply the documents, or search the recent literature directly.' }
 ];
 L6.add({ short: 'How generative AI goes wrong', title: 'Where generative AI fails',
-  change: 'Click a failure to see what it looks like and how to catch it.',
-  watch: 'A prediction model can be scored against measurements. A generative model produces new content, so there is no measured answer to score it against. That is its use and its weakness. It can draft, propose and write quickly. It cannot tell you that what it wrote is right. Five common failures are listed here.',
+  change: 'Select a failure mode to see how it appears and how to detect it.',
+  watch: 'A prediction model is scored against measurements. A generative model produces new content, so there is no measured value to score it against. It can draft and propose quickly. It cannot establish that its output is correct. Five common failure modes are listed.',
   build: function(api){
     var pn = api.el('pn', 'left:28px;top:28px;width:904px;height:408px', '<div class="aif"></div>'), cur = 0;
     function draw(){
       var f = AI_FAILS[cur], host = qs('.aif', pn);
       if (!qs('.aifr', pn)) { host.innerHTML = '<div style="display:grid;grid-template-columns:260px 1fr;gap:22px"><div>' + AI_FAILS.map(function(x, i){ return '<button type="button" data-f="' + i + '" style="display:block;width:100%;text-align:left;font:inherit;font-size:14px;padding:10px 12px;margin-bottom:6px;border-radius:6px;cursor:pointer;border:1px solid ' + C.silver + ';background:#fff;color:' + C.char + '">' + (i + 1) + '. ' + esc(x.name) + '</button>'; }).join('') + '</div><div class="aifr"></div></div>'; qsa('[data-f]', pn).forEach(function(b){ b.addEventListener('click', function(){ cur = +b.dataset.f; draw(); }); }); }
       qsa('[data-f]', pn).forEach(function(b){ var on = +b.dataset.f === cur; b.style.borderColor = on ? C.red : C.silver; b.style.background = on ? C.light : '#fff'; b.style.fontWeight = on ? 700 : 500; });
-      qs('.aifr', pn).innerHTML = '<h4 style="font-size:20px;color:' + C.red + ';margin-bottom:6px">' + esc(f.name) + '</h4><div style="padding:12px 0;border-top:1px solid ' + C.silver + '"><div class="lbl" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:700;color:' + C.char + '">What it looks like</div><div style="font-size:16px;line-height:1.45;color:' + C.char + ';margin-top:2px">' + esc(f.look) + '</div></div><div style="padding:12px 0;border-top:1px solid ' + C.silver + '"><div class="lbl" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:700;color:' + C.char + '">How to catch it</div><div style="font-size:16px;line-height:1.45;color:' + C.char + ';margin-top:2px">' + esc(f.catch_) + '</div></div>';
+      qs('.aifr', pn).innerHTML = '<h4 style="font-size:20px;color:' + C.red + ';margin-bottom:6px">' + esc(f.name) + '</h4><div style="padding:12px 0;border-top:1px solid ' + C.silver + '"><div class="lbl" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:700;color:' + C.char + '">Appearance</div><div style="font-size:16px;line-height:1.45;color:' + C.char + ';margin-top:2px">' + esc(f.look) + '</div></div><div style="padding:12px 0;border-top:1px solid ' + C.silver + '"><div class="lbl" style="text-transform:none;letter-spacing:0;font-size:13px;font-weight:700;color:' + C.char + '">Detection</div><div style="font-size:16px;line-height:1.45;color:' + C.char + ';margin-top:2px">' + esc(f.catch_) + '</div></div>';
     }
     return { render: draw };
   } });
@@ -144,30 +144,30 @@ L6.add({ short: 'How generative AI goes wrong', title: 'Where generative AI fail
 /* ---------- Step 6: sort what AI can and cannot do ---------- */
 var AI_CLAIMS = [
   [true, 'Rank new compounds by predicted clearance when they resemble the compounds it learned from.', 'This is what the tree and network models do. The test R2 says how well.', 'Machine learning'],
-  [true, 'Draft a summary of a set of papers in seconds.', 'A language model reads the text you give it and writes a summary. A person still checks it against the papers.', 'Generative AI'],
+  [true, 'Draft a summary of a set of papers in seconds.', 'A language model reads the text it is given and writes a summary. A person still checks it against the papers.', 'Generative AI'],
   [true, 'Suggest new molecules for a chemist to review.', 'A GPT trained on SMILES writes candidates. Some are invalid and all of them need checking.', 'Generative AI'],
-  [true, 'Write code for an analysis that you then review and run.', 'Language models write code well enough to save time. The code still needs reading and a test on a case with a known answer.', 'Generative AI'],
-  [true, 'Use what it learned from one dataset to help with a related one.', 'Chemprop trained on logD first and then fine-tuned on 1,000 HLM compounds scored 0.41, against 0.24 from scratch.', 'Machine learning'],
-  [false, 'Predict well for chemistry unlike anything it learned from.', 'Outside the range it trained on, AI has nothing to go on. The test R2 fell to zero or below in the outside-the-range step.', 'Both'],
-  [false, 'Tell you reliably when its own answer is wrong.', 'A prediction comes with no warning, and a language model can state a wrong fact in the same confident tone as a right one. Only a check against a measurement or a source settles it.', 'Both'],
+  [true, 'Write code for an analysis that is then reviewed and run.', 'Language models write code well enough to save time. The code still needs reading and a test on a case with a known answer.', 'Generative AI'],
+  [true, 'Transfer what it learned from one data set to a related one.', 'Chemprop trained on logD first and then fine-tuned on 1,000 HLM compounds scored 0.41, against 0.24 from scratch.', 'Machine learning'],
+  [false, 'Predict well for chemistry unlike anything it learned from.', 'Outside its training range, a model has no examples to draw on. The test R2 fell to zero or below in the outside-the-range step.', 'Both'],
+  [false, 'Report reliably when its own answer is wrong.', 'A prediction comes with no warning, and a language model can state a wrong fact in the same confident tone as a right one. Only a check against a measurement or a source settles it.', 'Both'],
   [false, 'Score better than the noise in the lab measurements allows.', 'The measured value is the answer key. Noise in it caps the score for any AI.', 'Both'],
   [false, 'Explain why a compound is cleared quickly.', 'AI finds patterns that predict. It does not find causes. Feature importance shows what a model leaned on, not what the liver does.', 'Both'],
   [false, 'Take responsibility for a decision.', 'AI proposes and ranks. A person decides and answers for the result.', 'Both']
 ];
 AI_CLAIMS = [0, 5, 1, 6, 7, 2, 8, 3, 9, 4].map(function(k){ return AI_CLAIMS[k]; });
 L6.add({ short: 'Can it or cannot it', title: 'Sort what AI can and cannot do',
-  change: 'Read each statement and choose AI can or AI cannot. The reason appears after you choose.',
-  watch: 'Each statement describes something people ask of AI. Decide whether AI can do it. After you answer, the reason points back to the lessons, and a tag says whether the answer is about machine learning, generative AI or both.',
+  change: 'Read each statement and select AI can or AI cannot. The reason is shown after the selection.',
+  watch: 'Each statement describes a task asked of AI. Select whether AI can do it. The reason refers to the earlier lessons, and a tag states whether it concerns machine learning, generative AI or both.',
   build: function(api){
     var pn = api.el('pn', 'left:28px;top:28px;width:904px;height:408px', '<div class="aic"></div>'), i = 0, score = 0, answered = null;
     function draw(){
       var el = qs('.aic', pn);
-      if (i >= AI_CLAIMS.length) { el.innerHTML = '<div class="big" style="color:' + C.red + '">' + score + ' of ' + AI_CLAIMS.length + '</div><p style="font-size:16px;line-height:1.5;color:' + C.char + ';margin:8px 0 18px">' + (score === AI_CLAIMS.length ? 'You sorted every statement the way the lessons did.' : 'That is how many you sorted the way the lessons did. For the others, reread the reason.') + '</p><button type="button" class="btn" data-again>Start again</button>'; qs('[data-again]', el).addEventListener('click', function(){ i = 0; score = 0; answered = null; draw(); }); return; }
+      if (i >= AI_CLAIMS.length) { el.innerHTML = '<div class="big" style="color:' + C.red + '">' + score + ' of ' + AI_CLAIMS.length + '</div><p style="font-size:16px;line-height:1.5;color:' + C.char + ';margin:8px 0 18px">' + (score === AI_CLAIMS.length ? 'All answers agree with the lessons.' : 'This many answers agree with the lessons. Reread the reason for the others.') + '</p><button type="button" class="btn" data-again>Start again</button>'; qs('[data-again]', el).addEventListener('click', function(){ i = 0; score = 0; answered = null; draw(); }); return; }
       var c = AI_CLAIMS[i];
-      el.innerHTML = '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:' + C.char + '"><span>Statement ' + (i + 1) + ' of ' + AI_CLAIMS.length + '</span><span>Matches so far: ' + score + '</span></div>' +
+      el.innerHTML = '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:' + C.char + '"><span>Statement ' + (i + 1) + ' of ' + AI_CLAIMS.length + '</span><span>In agreement so far: ' + score + '</span></div>' +
         '<div style="font-size:22px;line-height:1.35;font-weight:700;font-family:var(--display);color:' + C.char + ';margin:22px 0 22px;min-height:90px">' + esc(c[1]) + '</div>' +
         '<div style="display:flex;gap:12px"><button type="button" class="btn" data-a="1"' + (answered !== null ? ' disabled' : '') + '>AI can</button><button type="button" class="btn ghost" data-a="0"' + (answered !== null ? ' disabled' : '') + '>AI cannot</button></div>' +
-        (answered === null ? '' : '<div style="margin-top:22px;padding:14px 16px;border-radius:6px;background:' + C.light + ';border-left:4px solid ' + (answered === c[0] ? C.char : C.red) + '"><b style="color:' + (answered === c[0] ? C.char : C.red) + '">' + (answered === c[0] ? 'Matches the lessons. ' : 'Not quite. ') + (c[0] ? 'AI can.' : 'AI cannot.') + '</b> <span style="font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:' + C.bg + ';color:' + C.char + ';margin-left:6px">' + c[3] + '</span><div style="margin-top:4px;font-size:15px;line-height:1.5;color:' + C.char + '">' + esc(c[2]) + '</div></div><div style="margin-top:14px"><button type="button" class="btn sm" data-next>' + (i === AI_CLAIMS.length - 1 ? 'See result' : 'Next statement') + '</button></div>');
+        (answered === null ? '' : '<div style="margin-top:22px;padding:14px 16px;border-radius:6px;background:' + C.light + ';border-left:4px solid ' + (answered === c[0] ? C.char : C.red) + '"><b style="color:' + (answered === c[0] ? C.char : C.red) + '">' + (answered === c[0] ? 'Agrees with the lessons. ' : 'Disagrees with the lessons. ') + (c[0] ? 'AI can.' : 'AI cannot.') + '</b> <span style="font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:' + C.bg + ';color:' + C.char + ';margin-left:6px">' + c[3] + '</span><div style="margin-top:4px;font-size:15px;line-height:1.5;color:' + C.char + '">' + esc(c[2]) + '</div></div><div style="margin-top:14px"><button type="button" class="btn sm" data-next>' + (i === AI_CLAIMS.length - 1 ? 'See result' : 'Next statement') + '</button></div>');
       qsa('[data-a]', el).forEach(function(b){ b.addEventListener('click', function(){ answered = b.dataset.a === '1'; if (answered === c[0]) score++; draw(); }); });
       var nx = qs('[data-next]', el); if (nx) nx.addEventListener('click', function(){ i++; answered = null; draw(); });
     }
@@ -176,15 +176,15 @@ L6.add({ short: 'Can it or cannot it', title: 'Sort what AI can and cannot do',
 
 /* ---------- Step 7: using AI in a project ---------- */
 var AI_CHECKS = [
-  ['Is the question like what it learned from?', 'A model is reliable near its examples. Compare the new compound, or the new topic, with what it was built on.', 'start', 'Lesson 01, the test set'],
-  ['Was it tested fairly?', 'Score it on test compounds held back by scaffold, not at random.', 'start', 'Lesson 01, the test set'],
+  ['Is the compound within the applicability domain?', 'A model is reliable near its training examples. Compare the new compound, or the new topic, with the training data.', 'ai', 'Lesson 07, applicability domain'],
+  ['Was it tested fairly?', 'Score it on test compounds held back by scaffold, not at random.', 'start', 'Lesson 01, training and test sets'],
   ['Is the gain bigger than the noise?', 'Compare a difference in score with the spread between seeds and with the noise in the assay.', 'trees', 'Lesson 02, seeds and ensembles'],
   ['Does a simpler method do as well?', 'Put a tree model or a descriptor model next to the AI, on the same split and with its training time.', 'compare', 'Lesson 06, the leaderboard'],
-  ['Can a person verify it?', 'Generative output has no score of its own. Open the source, run the code on a known case, or measure the compound. A person decides and answers for the result.', null, '']
+  ['Can the output be verified?', 'Generative output has no score of its own. Check it against the source, run the code on a case with a known answer, or measure the compound. A person remains accountable for the decision.', null, '']
 ];
 L6.add({ short: 'Using it in a project', title: 'Checks before relying on AI',
-  change: 'Read the five checks. Each one has a button that opens the lesson where it was shown.',
-  watch: 'AI gives an answer. It does not know whether the answer is right, so a person has to check. AI proposes and ranks. People test, decide and answer for the result. These five checks use what the earlier lessons showed.',
+  change: 'Read the five checks. Each links to the lesson where the point was shown.',
+  watch: 'A model returns an answer with no indication of whether it is correct, so the output needs checking. AI proposes and ranks. People test and decide. These five checks apply the results of the earlier lessons.',
   build: function(api){
     var els = AI_CHECKS.map(function(c, i){ var top = 28 + i * 80;
       return api.el('pn fd', 'left:28px;top:' + top + 'px;width:904px;height:72px;display:flex;align-items:center;gap:16px', '<div class="big" style="color:' + C.red + ';font-size:28px;width:34px">' + (i + 1) + '</div><div style="flex:1"><div style="font-size:16px;font-weight:700;color:' + C.char + '">' + esc(c[0]) + '</div><div style="font-size:13.5px;line-height:1.4;color:' + C.char + '">' + esc(c[1]) + '</div></div>' + (c[2] ? '<button type="button" class="btn sm ghost" data-go="' + c[2] + '" style="white-space:nowrap">' + esc(c[3]) + '</button>' : '')); });
@@ -194,15 +194,15 @@ L6.add({ short: 'Using it in a project', title: 'Checks before relying on AI',
   } });
 
 L6.glossary([
-  ['Artificial intelligence', 'Software that does something we would call intelligent if a person did it.'],
+  ['Artificial intelligence', 'Software that performs tasks that would otherwise require human intelligence.'],
   ['Machine learning', 'AI whose rules are learned from examples instead of written by hand.'],
   ['Deep learning', 'Machine learning with neural networks that have many layers.'],
   ['Generative AI', 'Deep learning that writes new text, images or molecules.'],
-  ['Hallucination', 'Text from a language model that sounds right and is false.'],
+  ['Hallucination', 'Output from a language model that is fluent but factually incorrect.'],
   ['Large language model', 'A GPT-style model trained on very large amounts of text. ChatGPT and Claude are examples.'],
   ['Training range', 'The span of feature values among the training compounds.'],
   ['Test set', 'Compounds held back from training and used only to score the model.'],
-  ['Test R2', 'R2 on the test set. 1 is perfect and 0 is no better than the average.'],
+  ['Test R2', 'R2 on the test set. 1 is perfect and 0 equals predicting the mean.'],
   ['Assay noise', 'Random error in a lab measurement. It limits the score any AI can reach.'],
   ['Repeat measurement', 'A second measurement of the same compound.']
 ]);

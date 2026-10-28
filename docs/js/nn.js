@@ -125,13 +125,13 @@ function lossChart(canvas, hist, best, upto, xmax){
 }
 
 L3.add(lineStepDef({ short: 'What a weight is', title: 'A weight is how hard one input pushes',
-  watch: 'A model turns inputs into a prediction using numbers it can adjust. The smallest model has one input, one weight and one bias. The weight says how hard the input pushes the prediction: a large weight makes the line steep. The bias is a fixed number added at the end, which moves the line up or down. Prediction = weight times input, plus bias. Thin lines show how far the red line misses each compound. Training is the search for the weight and bias that make the misses small.',
+  watch: 'A model turns inputs into a prediction using adjustable numbers called parameters. The smallest model has one input, one weight and one bias: prediction = weight times input plus bias. The weight sets the slope of the line and the bias sets its intercept. Thin lines show the residual of each compound, the difference between the measured value and the prediction. Training searches for the weight and bias that minimise the average squared residual.',
   change: 'Drag Weight and Bias below the plot, then press Find the best weights.' }));
 
 /* ---------- workbench: set up a network, press Train ---------- */
 L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filters', 'nlayers', 'nunits', 'ndrop', 'nlr', 'nepochs', 'nearly'],
   title: 'Train a network and watch it learn',
-  watch: 'A neural network is many neurons arranged in columns called layers. Each line in the picture is a weight, so the network has thousands of weights instead of one. Training starts from random weights and nudges every one a little to shrink the error. One full pass over the training compounds is an epoch. Training error is measured on the compounds the network learns from. Validation error is measured on compounds held back during training, and shows whether the network will work on new ones.',
+  watch: 'A neural network is arranged in layers of neurons. Each line in the picture is a weight, so the network has thousands of weights. Training starts from random weights and adjusts each one to reduce the error. One pass over the training compounds is an epoch. Training error is measured on the training compounds. Validation error is measured on compounds held out of the weight updates, and indicates how well the network generalises.',
   change: 'Set the options in the options panel, then press Train.',
   build: function(api){
     var bb = benchBar(api);
@@ -181,7 +181,7 @@ L3.add({ short: 'Workbench', bench: true, uses: ['endpoint', 'features', 'filter
 /* ---------- N1: a neuron is a weighted sum ---------- */
 L3.add({ short: 'One neuron', title: 'A neuron adds up its inputs',
   change: 'Drag the sliders in the picture. Press Next compound.',
-  watch: 'A neuron is the basic unit of a network: it takes several inputs and gives one output. Each input is multiplied by its own weight, and the results are added with a bias to make a total. Red lines push the total up and grey lines push it down. The neuron then passes the total through a switch called ReLU. A negative total becomes 0. A positive total stays as it is. Without the switch, many layers would still add up to one straight line.',
+  watch: 'A neuron takes several inputs and returns one output. Each input is multiplied by its own weight, and the products are summed with a bias to give a total. Red lines are positive weights and grey lines are negative weights. The total then passes through an activation function, here ReLU: a negative total becomes 0 and a positive total is unchanged. Without an activation function, any number of layers composes to a single linear function.',
   build: function(api){
     var cur = 0, feats = [], x = [0, 0, 0], w = [0.9, -0.6, 0.4], bias = 0.2, built = false;
     var svg = api.el('abs', 'left:0;top:0;width:960px;height:540px;pointer-events:none', '<svg viewBox="0 0 960 540" width="960" height="540"></svg>');
@@ -214,7 +214,7 @@ L3.add({ short: 'One neuron', title: 'A neuron adds up its inputs',
 /* ---------- N2: layers and units ---------- */
 L3.add({ short: 'Layers and neurons', title: 'More layers and neurons mean more weights',
   change: 'Drag Hidden layers and Neurons per layer in the options panel.',
-  watch: 'A hidden layer is a column of neurons between the inputs and the output. Every neuron connects to every neuron in the next column, and each connection is a weight. Each neuron also has a bias. So the number of weights grows fast as the network gets wider. The table counts them all. More weights can fit more complex patterns, but they need more data and make overfitting more likely. Overfitting is memorising noise. The picture draws at most 12 neurons per layer, and the label gives the true count. Dashed circles are neurons switched off by dropout, explained in a later step.',
+  watch: 'A hidden layer is a layer of neurons between the inputs and the output. Every neuron connects to every neuron in the next layer, and each connection has a weight. Each neuron also has a bias. The number of weights grows with the product of adjacent layer widths. The table counts every parameter. More parameters can represent more complex functions, but they need more data and make overfitting more likely. Overfitting is fitting noise in the training data. The picture draws at most 12 neurons per layer, and the label gives the true count. Dashed circles are neurons switched off by dropout, described in a later step.',
   build: function(api){
     var dp = api.el('pn', 'left:28px;top:28px;width:640px;height:408px', '<svg viewBox="0 0 620 380" width="620" height="380"></svg>');
     var cp = api.el('pn', 'left:688px;top:28px;width:244px;height:408px', '<h4>Parameters to learn</h4><div class="big pc" style="color:' + C.red + '">0</div><div class="note" style="font-size:12px;color:#34373F;margin-bottom:8px">weights and biases</div><div class="pl" style="font-size:12px"></div>');
@@ -228,11 +228,11 @@ L3.add({ short: 'Layers and neurons', title: 'More layers and neurons mean more 
   } });
 
 /* ---------- N3: learning rate ---------- */
-L3.add({ short: 'Learning rate', title: 'The learning rate is the size of each nudge',
+L3.add({ short: 'Learning rate', title: 'Learning rate',
   change: 'Drag Learning rate in the options panel, or Steps taken below the plot.',
   watch: 'Training changes the weights in small steps to reduce the error. The learning rate is the size of each step. Too small and training is slow. Too large and each step overshoots the best weights, so the error bounces or grows. Each coloured curve uses a different learning rate on the same line-fitting problem.',
   build: function(api){
-    var cp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Error after each nudge (lower is better)</h4><canvas width="536" height="320"></canvas><div class="note" style="font-size:12px;margin-top:6px">The error is the average squared distance between the line and the compounds. Each coloured curve is a different learning rate.</div>');
+    var cp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Error after each update (lower is better)</h4><canvas width="536" height="320"></canvas><div class="note" style="font-size:12px;margin-top:6px">The error is the average squared distance between the line and the compounds. Each coloured curve is a different learning rate.</div>');
     var sp = api.el('pn', 'left:608px;top:28px;width:324px;height:408px', '<h4>The fitted line at this step</h4><canvas width="300" height="170"></canvas><div class="lr" style="margin-top:6px"></div>');
     var DX = null, DY = null, f0 = null, paths = [], NSTEP = 40;
     function prep(){ var f = activeFeats()[0] || D.BASE[0], idx = D.TRAIN.filter(function(_, k){ return k % 3 === 0; }), xv = idx.map(function(i){ return D.COL[f][i]; }), yv = idx.map(function(i){ return D.Y[i]; }), mx = mean(xv), my = mean(yv), sx = Math.sqrt(mean(xv.map(function(v){ return (v - mx) * (v - mx); }))) || 1, sy = Math.sqrt(mean(yv.map(function(v){ return (v - my) * (v - my); }))) || 1; DX = xv.map(function(v){ return (v - mx) / sx; }); DY = yv.map(function(v){ return (v - my) / sy; }); f0 = f; }
@@ -244,11 +244,11 @@ L3.add({ short: 'Learning rate', title: 'The learning rate is the size of each n
     var sc = api.addControl('Steps taken <input type="range" min="0" max="120" step="1" value="120" style="width:240px"><b class="sv"></b>'), ss = qs('input', sc), atEnd = true;
     function draw(upto){
       setup(); upto = Math.min(upto, NSTEP); var top = Math.min(6, Math.max.apply(null, paths.map(function(p){ return p.pts[0][2]; })) * 1.05);
-      lineChart(qs('canvas', cp), paths.map(function(p){ return { pts: p.pts.slice(0, upto + 1).map(function(q, k){ return [k, Math.min(q[2], top)]; }), color: p.s.c, w: 3, label: p.s.n }; }), { xl: 'number of nudges', yl: 'error', x0: 0, x1: NSTEP, y0: 0, y1: top, xdec: 0, ydec: 1 });
+      lineChart(qs('canvas', cp), paths.map(function(p){ return { pts: p.pts.slice(0, upto + 1).map(function(q, k){ return [k, Math.min(q[2], top)]; }), color: p.s.c, w: 3, label: p.s.n }; }), { xl: 'number of updates', yl: 'error', x0: 0, x1: NSTEP, y0: 0, y1: top, xdec: 0, ydec: 1 });
       var g = cv(qs('canvas', sp)), x = g.x, box = { l: 10, r: g.w - 8, t: 8, b: g.h - 22 }, sx = function(v){ return box.l + (v + 2.5) / 5 * (box.r - box.l); }, sy = function(v){ return box.b - (v + 2.5) / 5 * (box.b - box.t); }, step = Math.ceil(DX.length / 160);
       x.strokeStyle = C.silver; x.beginPath(); x.moveTo(box.l, box.b); x.lineTo(box.r, box.b); x.stroke(); x.fillStyle = C.mid; x.font = '11px Aptos, Segoe UI, sans-serif'; x.textAlign = 'center'; x.fillText('input, rescaled', (box.l + box.r) / 2, g.h - 6); x.fillStyle = 'rgba(161,177,195,.6)'; for (var i = 0; i < DX.length; i += step) { x.beginPath(); x.arc(sx(clamp(DX[i], -2.5, 2.5)), sy(clamp(DY[i], -2.5, 2.5)), 2.2, 0, 6.3); x.fill(); }
       paths.forEach(function(p){ var q = p.pts[upto], a = clamp(q[0] * -2.5 + q[1], -2.5, 2.5), z = clamp(q[0] * 2.5 + q[1], -2.5, 2.5); x.strokeStyle = p.s.c; x.lineWidth = 2.6; x.beginPath(); x.moveTo(sx(-2.5), sy(a)); x.lineTo(sx(2.5), sy(z)); x.stroke(); }); x.lineWidth = 1;
-      qs('.lr', sp).innerHTML = paths.map(function(p){ var q = p.pts[upto]; return '<div style="margin:7px 0;border-left:4px solid ' + p.s.c + ';padding-left:9px;font-size:12.5px"><b>' + p.s.n + '</b> <span class="note" style="font-size:11.5px">nudge size ' + p.s.lr.toFixed(2) + (p.s.n === 'Your setting' ? ' (learning rate ' + $('nlr').value + ')' : '') + '</span><br>after ' + upto + ' nudges the error is <b>' + (q[2] > 99 ? 'huge' : q[2].toFixed(2)) + '</b></div>'; }).join('');
+      qs('.lr', sp).innerHTML = paths.map(function(p){ var q = p.pts[upto]; return '<div style="margin:7px 0;border-left:4px solid ' + p.s.c + ';padding-left:9px;font-size:12.5px"><b>' + p.s.n + '</b> <span class="note" style="font-size:11.5px">update size ' + p.s.lr.toFixed(2) + (p.s.n === 'Your setting' ? ' (learning rate ' + $('nlr').value + ')' : '') + '</span><br>after ' + upto + ' nudges the error is <b>' + (q[2] > 99 ? 'huge' : q[2].toFixed(2)) + '</b></div>'; }).join('');
       qs('.sv', sc).textContent = upto;
     }
     ss.addEventListener('input', function(){ atEnd = +ss.value >= NSTEP; draw(+ss.value); });
@@ -259,7 +259,7 @@ L3.add({ short: 'Learning rate', title: 'The learning rate is the size of each n
 /* ---------- N5: dropout and early stopping ---------- */
 L3.add({ short: 'Dropout and early stopping', title: 'Dropout and early stopping',
   change: 'Set Dropout in the options panel, then press Run comparison below the plot.',
-  watch: 'Overfitting is when a network memorises the training compounds, noise included, and then predicts new compounds worse. Dropout is one defence. In each training step it switches off a random share of the neurons, so the network cannot depend on any one of them. Early stopping is another. It keeps the weights from the epoch with the lowest validation error. Validation error is the error on compounds held back from training to check progress.',
+  watch: 'Overfitting is when a network fits the training compounds, noise included, and predicts new compounds worse. Dropout is one remedy: in each training step it switches off a random share of the neurons, so the network cannot depend on any single neuron. Early stopping is another: it keeps the weights from the epoch with the lowest validation error. Validation error is the error on compounds held out of the weight updates.',
   auto: false,
   build: function(api){
     var np = api.el('pn', 'left:28px;top:28px;width:360px;height:408px', '<h4>Neurons switched off in each training step</h4><svg viewBox="0 0 340 330" width="340" height="330"></svg><div class="dn note" style="font-size:12px;color:#34373F"></div>');

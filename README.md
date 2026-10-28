@@ -1,6 +1,6 @@
 # Model Lab: AI/ML for ADME
 
-A course on tree models, neural networks and GPTs. Two public endpoints:
+A course on tree models, neural networks and GPTs for ADME modelling, written for scientists who are new to machine learning. Two public endpoints:
 
 * **HLM clearance**: Biogen set (Fang et al., J. Chem. Inf. Model. 2023), 3,087 compounds. 31% sit at the assay floor.
 * **logD**: AstraZeneca set from ChEMBL via MoleculeNet, 4,200 compounds.
@@ -11,22 +11,22 @@ RDKit builds the data and also runs in the browser.
 
 **https://michael-mccoy1.github.io/ml-crash-course/**
 
-Nothing to install. Each lesson lists its goals, has an options panel, steps with a Notice line and a Pop quiz, and a glossary. The tree, network and GPT lessons have a workbench: change an option and the picture updates, press Train and the fit replays slowly. Every lesson has Filter training data in its options.
+Nothing to install. Each lesson has objectives, a contents table, an options panel, steps with a Notice line and a pop quiz, and a glossary. The tree, network and GPT lessons have a workbench: change an option and the figure updates, select Train and the fit replays. Every lesson has training-set filters in its options.
 
-Every lesson is split into four sections that open and close: **Beginner** (plain words and pictures, no machine learning and only minimal chemistry assumed), **Intermediate**, **Advanced** and **Pro**. Only the first section is open at the start. A row of numbered dots at the right edge of the page jumps to any step, and opens its section if it is closed. A section assumes only the Beginner sections of the lessons before it.
+Each lesson has four sections that open and close: **Beginner** (core machine learning concepts for scientists new to the field; chemistry is assumed), **Intermediate**, **Advanced** and **Pro**. Only the first section is open at the start. Numbered markers at the right edge of the page jump to any step and open its section. A section assumes only the Beginner sections of the earlier lessons. Step titles are set in `docs/js/titles.js`, and the writing conventions are in `STYLE.md`.
 
 | Lesson | Content |
 |---|---|
-| 01 Data and ML basics | Beginner: why clearance matters, reading a molecule drawing, oil and water, the data as a table, practice against real exam. Then fitting a line, features, the test set, censoring, overfitting, scoring, logD feeding HLM |
-| 02 Tree models | Workbench, one cut, one compound, forest, boosting, features, filtering, all three side by side, seeds and ensembles |
-| 03 Neural networks | Weights, one neuron, workbench, learning rate, dropout, filtering, Chemprop, a comparison test, seeds and ensembles |
-| 04 GPT | Tokens, embeddings, the stack, workbench, attention, temperature, RDKit check, filtering, a design test |
-| 05 Pre-trained models | Why pre-train, hiding atoms and groups, GROVER, fixed features, fine-tuning a GPT and Chemprop |
-| 06 Compare | Leaderboard, accuracy against time, discussion |
-| 07 Role of AI | Machine learning against generative AI, which fits which job, the training range, lab noise, how generative AI fails, a can and cannot sort, five checks |
-| 08 Tree algorithms | Split search, depth and leaf size, bagging, boosting losses, tuning, how the libraries differ, fitting a 3D double helix, tree models against the amount of data |
-| 09 Network algorithms | Gradient descent, backpropagation, initialisation, weight decay, attention, next-token loss, parameter counts, network size against the amount of data |
-| 10 Quiz | A bank of 75 questions, ten drawn at random each round: multiple choice, select all, numbers, ordering, and challenges where you set the parameters of a boosting model, forest or tree and train it against a goal |
+| 01 Data and ML basics | Molecular representations, dataset structure, fitting a model, training and test sets, training and test performance, evaluation metrics, descriptors, target distribution, model complexity, censored measurements, stacking a logD model, prediction of a new compound |
+| 02 Tree models | Decision tree structure, split selection, random forests, gradient boosting, workbench, feature importance, filters, seeds and ensembles |
+| 03 Neural networks | Linear neuron, hidden layer, nonlinearity, network capacity, workbench, learning rate, regularisation, partial dependence, message passing, comparison with trees, seeds and ensembles |
+| 04 GPT | Tokenisation, token embeddings, next-token prediction, context length, workbench, sampling and temperature, validity, transformer architecture, attention weights, design test |
+| 05 Pre-trained models | Labelled and unlabelled data, masked prediction, effect of pre-training, transfer strategies, GROVER, frozen embeddings, fine-tuning a GPT and Chemprop |
+| 06 Model comparison | Metric behaviour, assay repeatability ceiling, accuracy and training time, leaderboard, reading a result |
+| 07 Role of AI | AI, machine learning and generative AI, prediction and generation, applicability domain, assessing a prediction, extrapolation, assay noise, failures of generative models, checks before use |
+| 08 Tree algorithms | Split criterion, histogram binning, bootstrap sampling, exact and binned search, depth and leaf size, bagging, boosting losses, tuning, library designs, fitting a 3D double helix, data requirements |
+| 09 Network algorithms | Gradient descent, finite-difference gradients, parameter count, optimisers, backpropagation, initialisation, weight decay, attention, cross-entropy, network size against data |
+| 10 Quiz | A bank of 75 questions, ten drawn at random each round: multiple choice, select all, numeric, ordering, and challenges that train a boosting model, forest or tree against a goal |
 
 ## Notebooks
 

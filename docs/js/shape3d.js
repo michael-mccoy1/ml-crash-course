@@ -121,16 +121,16 @@ function shAnim(cfg){
   }
   function drawChart(){
     if (!cfg.chart) return; var series = cfg.panels.map(function(p){ var ps = at(p, st.prog), pts = []; for (var i = 0; i <= ps.i0; i++) pts.push([p.ck[i].x, p.ck[i].acc]); if (ps.a > 0 && ps.i1 !== ps.i0) pts.push([p.ck[ps.i0].x + (p.ck[ps.i1].x - p.ck[ps.i0].x) * ps.a, p.ck[ps.i0].acc + (p.ck[ps.i1].acc - p.ck[ps.i0].acc) * ps.a]); return { pts: pts, color: p.color, w: 2.8, label: p.short }; });
-    lineChart(cfg.chart, series, { xl: cfg.xl, yl: 'accuracy', y0: 0.5, y1: 1, x0: cfg.x0, x1: cfg.x1, xticks: cfg.xticks, xdec: cfg.xdec });
+    lineChart(cfg.chart, series, { xl: cfg.xl, yl: 'accuracy (balanced)', y0: 0.5, y1: 1, x0: cfg.x0, x1: cfg.x1, xticks: cfg.xticks, xdec: cfg.xdec });
   }
   function draw(){
     var g = cv(canvas), x = g.x, n = cfg.panels.length, w = g.w / n, S = Math.min(w / 1.5, (g.h - 64) / 2 / 1.9);
     cfg.panels.forEach(function(p, i){
       var ps = at(p, st.prog); x.save(); x.beginPath(); x.rect(i * w, 0, w, g.h); x.clip(); drawPanel(x, i * w + w / 2, g.h / 2 + 12, S, p, ps); x.restore();
       var acc = p.ck[ps.i0].acc + (p.ck[ps.i1].acc - p.ck[ps.i0].acc) * ps.a; x.fillStyle = C.char; x.textAlign = 'left'; x.font = '700 13px Aptos, Segoe UI, sans-serif'; x.fillText(p.titleAt(ps.a >= 0.5 ? ps.i1 : ps.i0), i * w + 10, 18);
-      var trn = p.ck[ps.i0].tr !== undefined ? p.ck[ps.i0].tr + (p.ck[ps.i1].tr - p.ck[ps.i0].tr) * ps.a : null; x.font = '12px Aptos, Segoe UI, sans-serif'; x.fillStyle = p.color; x.fillText(trn === null ? 'accuracy ' + acc.toFixed(2) : 'test ' + acc.toFixed(2) + ', train ' + trn.toFixed(2), i * w + 10, 35);
+      var trn = p.ck[ps.i0].tr !== undefined ? p.ck[ps.i0].tr + (p.ck[ps.i1].tr - p.ck[ps.i0].tr) * ps.a : null; x.font = '12px Aptos, Segoe UI, sans-serif'; x.fillStyle = p.color; x.fillText(trn === null ? 'balanced accuracy ' + acc.toFixed(2) : 'test ' + acc.toFixed(2) + ', train ' + trn.toFixed(2), i * w + 10, 35);
     });
-    x.font = '11px Aptos, Segoe UI, sans-serif'; x.textAlign = 'left'; var l1 = 'grey lines: the true helix', l2 = 'red dots: nodes sliding onto the surface the model has learned', l3 = 'black specks: training points inside the helix'; x.fillStyle = '#6F8196'; x.fillText(l1, 10, g.h - 6); x.fillStyle = '#BD120A'; x.fillText(l2, 24 + x.measureText(l1).width, g.h - 6); x.fillStyle = '#232A34'; x.textAlign = 'right'; x.fillText(l3, g.w - 8, g.h - 6);
+    x.font = '11px Aptos, Segoe UI, sans-serif'; x.textAlign = 'left'; var l1 = 'grey lines: true helix', l2 = 'red points: nodes on the surface where the prediction is zero', l3 = 'dark points: training points inside the helix'; x.fillStyle = '#6F8196'; x.fillText(l1, 10, g.h - 6); x.fillStyle = '#BD120A'; x.fillText(l2, 24 + x.measureText(l1).width, g.h - 6); x.fillStyle = '#232A34'; x.textAlign = 'right'; x.fillText(l3, g.w - 8, g.h - 6);
     drawChart();
   }
   function visible(){ var r = canvas.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight && r.width > 0; }

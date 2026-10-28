@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 04: Head-to-Head & Discussion (10 min)
+# # 04: Comparison and discussion
 # Every model from blocks 01-03 logged its score on the **same scaffold-split test set**. (Missing a row? Run that notebook first.)
 
 # %%

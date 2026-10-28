@@ -1,13 +1,13 @@
 # %% [markdown]
-# # 02: Neural Networks (25 min)
-# **Idea:** stack layers of `output = activation(W times input + b)`; learn all `W`,`b` by gradient descent on the prediction error.
+# # 02: Neural networks
+# **Method:** a network stacks layers of `output = activation(W times input + b)`. All `W` and `b` are learned by gradient descent on the prediction error.
 #
-# Three flavours we touch:
-# 1. **MLP** on a fixed feature table (fingerprints/descriptors) - the "plain" NN.
+# Three model types:
+# 1. **MLP** on a fixed feature table (fingerprints/descriptors) - the basic network.
 # 2. **Graph neural network (GNN)** - learns features by passing messages along bonds. (Chemprop is the standard tool.)
-# 3. **Transformer/GPT** - next block.
+# 3. **Transformer/GPT** - the next notebook.
 #
-# Key lesson: NNs need *more care* than trees (scaling, regularisation, early stopping) and don't automatically win on small tabular data.
+# Neural networks need more care than trees (feature scaling, regularisation, early stopping) and do not automatically outperform them on small tabular data.
 
 # %%
 import os, sys, subprocess
@@ -35,7 +35,7 @@ print("input shape:", X.shape)
 
 # %% [markdown]
 # ## 1. MLP from scratch (PyTorch)
-# Watch the **train vs validation loss**: the gap is overfitting.
+# Compare the **training and validation loss**: the gap indicates overfitting.
 
 # %%
 def make_mlp(d_in, hidden=256, dropout=0.3):
@@ -75,7 +75,7 @@ plt.xlabel("epoch"); plt.legend(); plt.show()
 c.log_result("MLP (desc+ECFP)", c.metrics(y[te], predict(model, X, te)))
 
 # %% [markdown]
-# **Your turn #1:** rerun `fit_mlp` with `dropout=0.0, wd=0` and then `hidden=1024`. Does the train/val gap grow? Does test R² improve?
+# **Exercise 1:** Rerun `fit_mlp` with `dropout=0.0, wd=0` and then `hidden=1024`. Does the train/val gap grow? Does test R² improve?
 
 # %%
 m2, h2 = fit_mlp(X, y, tr_in, va, dropout=0.0, wd=0.0, hidden=1024, patience=100, epochs=40)
@@ -83,9 +83,8 @@ plt.plot(h2[:, 0], label="train"); plt.plot(h2[:, 1], label="val"); plt.legend()
 print({k: round(v, 3) for k, v in c.metrics(y[te], predict(m2, X, te)).items()})
 
 # %% [markdown]
-# ## 2. A graph neural network (stretch / demo)
+# ## 2. A graph neural network
 # Instead of a fixed fingerprint, atoms exchange information with bonded neighbours for *k* rounds, then a pooled vector predicts `y`.
-# (Short on time? Run it and read the result; no need to tweak.)
 
 # %%
 try:

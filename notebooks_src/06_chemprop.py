@@ -42,7 +42,7 @@ train_secs = time.time() - t0
 print(f"trained in {train_secs:.0f} s")
 
 # %% [markdown]
-# ## Predict the unseen scaffolds and score them
+# ## Predict the test scaffolds and score them
 
 # %%
 import glob

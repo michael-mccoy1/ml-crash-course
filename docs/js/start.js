@@ -23,19 +23,19 @@ function updateInfo(){ var e = $('dsinfo'); if (!e || !D) return; var c = D.cens
 function unitWord(){ return D.key === 'HLM' ? 'HLM clearance (log10)' : 'logD'; }
 
 L0.add(lineStepDef({ short: 'What learning means', title: 'A model is a rule fitted to examples',
-  watch: 'Machine learning means finding a rule from examples. Each dot is a compound. Across is logP, a number for how oily the compound is. Up is its clearance, how fast the liver breaks it down. The red line is a rule that predicts clearance from logP. Weight is how steep the line is. Bias is where it sits. The error number is the average squared miss, so a smaller number means a better rule.',
-  change: 'Drag Weight and Bias below the plot, then press Find the best weights.' }));
+  watch: 'A model is a function with adjustable parameters. Fitting it means choosing the parameters that make its predictions match measured values as closely as possible. Each point is a compound: the horizontal axis is logP and the vertical axis is log10 HLM clearance. The red line is a one-feature model, prediction = weight times logP plus bias. The weight sets the slope and the bias sets the intercept. The error shown is the average squared error between the line and the measurements, so a lower value is a better fit.',
+  change: 'Drag Weight and Bias below the plot, then select Find the best weights.' }));
 
 /* ---------- Step 1: structure to prediction ---------- */
 L0.add({ short: 'Structure to prediction', title: 'From structure to prediction',
-  change: 'Click a compound in the library or press Next compound. Untick a feature in the options panel and the model refits without it.',
-  watch: 'A model cannot read a drawing. The molecule is first written as a line of text called SMILES. RDKit, a chemistry toolkit, turns the structure into numbers called features, such as logP (how oily) and TPSA (how polar). The model sees only those numbers and returns a prediction. The lab measured the same compound, so the two can be compared.',
+  change: 'Select a compound in the library or select Next compound. Clear a feature in the options panel and the model refits without it.',
+  watch: 'A model cannot read a structure drawing. RDKit converts the SMILES string to numeric features such as logP and TPSA. The model receives only those numbers and returns a prediction, which can be compared with the measured value for the same compound. The compound shown here was held out of the training set.',
   build: function(api){
     var cur = null;
     var lib = api.el('pn fd', 'left:28px;top:28px;width:300px;height:158px', '<h4>Compound library</h4><div class="lg" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"></div>');
     var big = api.el('pn fd', 'left:28px;top:200px;width:300px;height:236px', '<h4>Sample compound</h4><div class="struct" style="height:196px"></div>');
-    var smi = api.el('pn fd', 'left:348px;top:28px;width:584px;height:64px', '<h4>SMILES: the same structure as text</h4><div class="smi" style="min-height:20px"></div>');
-    var feat = api.el('pn fd', 'left:348px;top:104px;width:276px;height:332px', '<h4>Features from RDKit</h4><div class="fr"></div><div style="font-size:11px;color:#34373F;margin-top:6px">Bar: position among all compounds. Grey rows are switched off.</div>');
+    var smi = api.el('pn fd', 'left:348px;top:28px;width:584px;height:64px', '<h4>SMILES</h4><div class="smi" style="min-height:20px"></div>');
+    var feat = api.el('pn fd', 'left:348px;top:104px;width:276px;height:332px', '<h4>Features computed by RDKit</h4><div class="fr"></div><div style="font-size:11px;color:#34373F;margin-top:6px">Bar: position among all compounds. Grey rows are switched off.</div>');
     var mod = api.el('pn fd', 'left:642px;top:104px;width:290px;height:150px', '<h4>Model</h4><div style="display:flex;gap:14px;align-items:center"><div>' + miniTreeSVG(110, 100) + '</div><div class="mt" style="font-size:12px;color:#34373F"></div></div>');
     var pred = api.el('pn fd', 'left:642px;top:266px;width:290px;height:170px', '<h4 class="ph">Prediction</h4><div class="ps"></div>');
     api.addControl('<button type="button" class="btn sm ghost" data-next>Next compound</button>');
@@ -72,13 +72,13 @@ L0.add({ short: 'Structure to prediction', title: 'From structure to prediction'
     qs('[data-next]', api.sbar).addEventListener('click', async function(){ await loadStructs(); cur = pickCmp(); cur._ep = EP; fill(); api.tok++; var t = api.tok; api.stepDef.safe(function(){ return play(t); }); });
     async function play(tok){
       if (!cur) await render(); fill(); await api.sleep(150);
-      lib.classList.add('on'); qsa('.fl', lib).forEach(function(e, k){ setTimeout(function(){ e.classList.add('on'); }, ANIM ? k * 140 : 0); }); await api.beat('We start from a library of structures. Each one is a compound a chemist could make.', 2600);
-      big.classList.add('on'); await api.beat('Pick one compound and look at its structure.', 2000);
-      smi.classList.add('on'); api.cap('The same structure as one line of text. Letters are atoms, symbols mark bonds and branches, digits close rings.'); await typeInto(qs('.smi', smi), cur.smi, api, 70); await api.sleep(1400);
-      feat.classList.add('on'); api.cap('RDKit turns the structure into numbers. Each number is one feature the model can read.'); var rows = qsa('.fq', feat);
+      lib.classList.add('on'); qsa('.fl', lib).forEach(function(e, k){ setTimeout(function(){ e.classList.add('on'); }, ANIM ? k * 140 : 0); }); await api.beat('The library holds structures from the data set.', 2600);
+      big.classList.add('on'); await api.beat('One compound is selected.', 2000);
+      smi.classList.add('on'); api.cap('The same structure as a SMILES string.'); await typeInto(qs('.smi', smi), cur.smi, api, 70); await api.sleep(1400);
+      feat.classList.add('on'); api.cap('RDKit computes the features. Each number is one model input.'); var rows = qsa('.fq', feat);
       for (var k = 0; k < rows.length; k++) { api.checkTok(tok); rows[k].style.opacity = rows[k].dataset.on === '1' ? 1 : 0.35; var b = qs('b', rows[k]), v = +b.dataset.v, f = b.dataset.f, bar = qs('i', rows[k]); bar.style.width = bar.dataset.w + '%'; (function(b, v, f){ animateFree(500, function(t){ b.textContent = (f === 'logP' || f === 'Fsp3') ? (v * t).toFixed(2) : (v * t).toFixed(0); }); })(b, v, f); await api.sleep(260); }
-      await api.sleep(1200); mod.classList.add('on'); await api.beat('A model has already learned from many compounds with known answers.', 2400);
-      pred.classList.add('on'); api.cap('It predicts a value. The lab measured the same compound, so the two can be compared.'); await api.sleep(500);
+      await api.sleep(1200); mod.classList.add('on'); await api.beat('The model was fitted to training compounds with known targets.', 2400);
+      pred.classList.add('on'); api.cap('The model returns a prediction, which can be compared with the measured value.'); await api.sleep(500);
       var ps = qs('.ps', pred); qsa('.pbar i', ps).forEach(function(i){ i.style.width = i.dataset.w + '%'; }); if (ps.dataset.pv !== '') countUp(qs('.pv', ps), +ps.dataset.pv, 2); countUp(qs('.mv', ps), +ps.dataset.mv, 2); await api.sleep(2600); showFinal();
     }
     return { render: render, play: play };
@@ -87,7 +87,7 @@ L0.add({ short: 'Structure to prediction', title: 'From structure to prediction'
 /* ---------- Step 2: descriptors come from the structure ---------- */
 L0.add({ short: 'Where features come from', title: 'Features are sums over a molecule\'s atoms',
   change: 'Press Next compound.',
-  watch: 'A feature is a number computed from a molecule. logP measures how much a compound prefers oil to water. TPSA, the polar surface area, measures how much of its surface is polar. Both are sums: each atom adds a small amount and the totals are the features. Darker atoms add more.',
+  watch: 'Crippen logP and TPSA are additive descriptors: each atom contributes an amount that depends on its type and neighbours, and the descriptor is the sum over the molecule. Atoms with larger contributions are drawn darker. The model receives only the totals.',
   build: function(api){
     var cur = null, mode = 0;
     var box = api.el('pn', 'left:28px;top:28px;width:430px;height:408px', '<h4 class="t">Structure</h4><div class="ly" style="position:relative;height:356px"></div>');
@@ -105,18 +105,18 @@ L0.add({ short: 'Where features come from', title: 'Features are sums over a mol
     async function pickCmp(){ await loadStructs(); var arr = (STRUCTS[EP] || []).filter(function(e){ return e.logp; }); if (!arr.length) arr = (STRUCTS.HLM || []).filter(function(e){ return e.logp; }); cur = arr[Math.floor(Math.random() * arr.length)]; layers(); show(0); }
     async function render(){ await pickCmp(); }
     qs('[data-next]', api.sbar).addEventListener('click', async function(){ api.tok++; await pickCmp(); var t = api.tok; api.stepDef.safe(function(){ return play(t); }); });
-    async function play(tok){ if (!cur) await pickCmp(); show(0); await api.beat('RDKit reads the structure: atoms, bonds and rings.', 2200); show(1); await api.beat('For logP, each atom is given a contribution. Red raises logP, blue grey lowers it.', 3200); show(2); await api.beat('For TPSA, only polar nitrogen and oxygen atoms count.', 3000); show(0); }
+    async function play(tok){ if (!cur) await pickCmp(); show(0); await api.beat('RDKit perceives the atoms, bonds and rings.', 2200); show(1); await api.beat('For logP, each atom has a contribution. Red raises logP and grey lowers it.', 3200); show(2); await api.beat('For TPSA, only polar nitrogen and oxygen atoms contribute.', 3000); show(0); }
     return { render: render, play: play };
   } });
 
 /* ---------- Step 3: the test set ---------- */
 L0.add({ short: 'The test set', title: 'Hold compounds back to test a model',
-  change: 'Switch between random and scaffold split below the picture.',
-  watch: 'The test set is a group of compounds held back from training and used only to test the model. A random split picks them at random, so close relatives of each test compound usually stay in training and the test is too easy. A scaffold is a molecule\'s ring skeleton. A scaffold split holds back whole families that share a skeleton, which is closer to predicting new chemistry.',
+  change: 'Switch between random and scaffold split below the plot.',
+  watch: 'The test set is the group of compounds excluded from training and used only to estimate performance on new compounds. A random split places close analogues of most test compounds in the training set, so the estimate is optimistic. A scaffold split assigns compounds that share a ring scaffold to the same side, so the test compounds are structurally distinct from the training compounds, which is closer to prospective use.',
   build: function(api){
     var mode = 'rand', a = 0;
-    var mapP = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Chemical space map of every compound. Red: test compounds. Grey blue: studied compounds.</h4><canvas width="540" height="352" style="margin-top:4px"></canvas>');
-    var cnt = api.el('pn', 'left:608px;top:28px;width:324px;height:112px', '<h4>Test compounds with a seen scaffold</h4><div class="big" style="color:' + C.red + '"><span class="sv">0</span>%</div><div class="note" style="font-size:12px;color:#34373F">A scaffold is the ring skeleton of a compound.</div>');
+    var mapP = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Chemical space map. Red: test compounds. Grey: training compounds.</h4><canvas width="540" height="352" style="margin-top:4px"></canvas>');
+    var cnt = api.el('pn', 'left:608px;top:28px;width:324px;height:112px', '<h4>Test compounds sharing a scaffold with training</h4><div class="big" style="color:' + C.red + '"><span class="sv">0</span>%</div><div class="note" style="font-size:12px;color:#34373F">A scaffold is the ring skeleton of a compound.</div>');
     var hist = api.el('pn', 'left:608px;top:152px;width:324px;height:196px', '<h4>Similarity to the closest training compound</h4><canvas width="300" height="140"></canvas>');
     var r2p = api.el('pn', 'left:608px;top:360px;width:324px;height:76px', '<h4>Quick check, boosted trees</h4><div class="rq" style="font-size:13px">Computing</div>');
     var sel = api.addControl('<select><option value="rand">Random split</option><option value="scaf">Scaffold split</option></select>'); var selEl = qs('select', sel);
@@ -136,10 +136,10 @@ L0.add({ short: 'The test set', title: 'Hold compounds back to test a model',
     function render(){ mode = selEl.value; set(mode); setTimeout(quick, 30); }
     async function play(tok){
       mode = 'rand'; selEl.value = 'rand'; a = 0; drawMap(null); drawHist(0); qs('.sv', cnt).textContent = '0';
-      await api.beat('Every dot is a compound, placed by how similar its structure is to the others.', 2600);
-      drawMap(0); drawHist(1); counters(); await api.beat('A random split picks test compounds anywhere. Many have close relatives in the training set.', 3200);
+      await api.beat('Each point is a compound, placed by structural similarity.', 2600);
+      drawMap(0); drawHist(1); counters(); await api.beat('A random split selects test compounds anywhere. Many have close analogues in the training set.', 3200);
       mode = 'scaf'; selEl.value = 'scaf'; await api.anim(1600, function(t){ a = t; drawMap(0); drawHist(0.4 + 0.6 * t); qs('.sv', cnt).textContent = Math.round(lerp(stats().rand.seen, stats().scaf.seen, t) * 100); });
-      api.cap('A scaffold split holds out whole ring skeletons, so no test compound shares one with the training set.'); await api.sleep(3400);
+      api.cap('A scaffold split holds out whole scaffolds, so no test compound shares a scaffold with the training set.'); await api.sleep(3400);
       var s = stats(); var gap = D.key === 'HLM' ? 'In this Biogen set the compounds come from many vendors, so the two splits give similar scores.' : 'In this AstraZeneca set a random split leaks a lot, so a scaffold split is much stricter.';
       api.cap(gap); await api.sleep(3400);
     }
@@ -150,8 +150,8 @@ L0.add(targetStepDef());
 L0.add(censorStepDef());
 /* ---------- Step 4: underfitting to overfitting ---------- */
 L0.add({ short: 'Underfitting and overfitting', title: 'A flexible model can memorise noise',
-  change: 'Choose a feature and drag Tree depth below the plot.',
-  watch: 'A decision tree is a flowchart of yes or no questions. Depth is how many questions in a row it may ask. A tree with too few questions misses the trend (underfitting). A tree with too many fits the noise in the training compounds (overfitting), so it scores well on training data and worse on test data. Error here is RMSE, the typical size of a miss.',
+  change: 'Select a feature and drag Tree depth below the plot.',
+  watch: 'A decision tree predicts with a sequence of threshold questions on the features. Depth is the maximum number of questions in a row. A tree that is too shallow misses the trend (underfitting). A tree that is too deep fits noise in the training compounds (overfitting), so training error falls while test error rises. Error here is RMSE, the root mean squared error in the units of the target.',
   build: function(api){
     var G_ = 200, cur = null, lab = null, depthEl, featSel;
     var plot = api.el('pn', 'left:28px;top:28px;width:620px;height:408px', '<h4 class="pt">Measured value against the feature, with a decision tree fit</h4><canvas width="600" height="352" style="margin-top:2px"></canvas>');
@@ -182,8 +182,8 @@ L0.add({ short: 'Underfitting and overfitting', title: 'A flexible model can mem
     featSel.addEventListener('change', function(){ api.tok++; api.clearTexts(); prep(); setDepth(+depthEl.value); });
     function render(){ fillSel(); prep(); setDepth(+depthEl.value); }
     async function play(tok){
-      fillSel(); prep(); setDepth(0); await api.beat('Depth 0 predicts the same average for every compound.', 2400);
-      for (var d = 1; d <= 12; d++) { await go(d); if (d === 1) api.cap('One question splits the compounds in two groups with two averages.'); if (d === 3) api.cap('More questions follow the trend more closely.'); if (d === Math.min(12, lab.best + 1)) api.cap('Around here the test error is lowest. This is the right amount of flexibility.'); if (d === 9) api.cap('Now the line chases single dots, including noise.'); await api.sleep(d < 4 ? 900 : 650); }
+      fillSel(); prep(); setDepth(0); await api.beat('Depth 0 predicts the training mean for every compound.', 2400);
+      for (var d = 1; d <= 12; d++) { await go(d); if (d === 1) api.cap('One question splits the compounds into two groups with two means.'); if (d === 3) api.cap('Further questions follow the trend more closely.'); if (d === Math.min(12, lab.best + 1)) api.cap('The test error is lowest near this depth.'); if (d === 9) api.cap('The fit now follows individual points, including noise.'); await api.sleep(d < 4 ? 900 : 650); }
       await api.sleep(1200);
     }
     return { render: render, play: play };
@@ -192,7 +192,7 @@ L0.add({ short: 'Underfitting and overfitting', title: 'A flexible model can mem
 /* ---------- Step 5: how a model is scored ---------- */
 L0.add({ short: 'Scoring a model', title: 'R2, Spearman and RMSE measure different things',
   change: 'Drag Model quality below the plot.',
-  watch: 'Three numbers score a model. RMSE is the typical size of a miss, in the units of the target. R2 is the share of the spread in the lab values that the model explains: 1 is perfect and 0 is no better than the average. Spearman measures only whether the model puts compounds in the right order. Dots closer to the diagonal are better predictions.',
+  watch: 'Three metrics are reported. RMSE is the root mean squared error, in the units of the target. R2 is the fraction of the variance in the measured values explained by the predictions: 1 is a perfect fit and 0 equals predicting the training mean. Spearman is the rank correlation between predicted and measured values and ignores their scale. Points closer to the diagonal are better predictions.',
   build: function(api){
     var q = 100, pv = null, ys = null, idx = null, pm = 0;
     var plot = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Predicted against measured, test compounds</h4><canvas width="540" height="352" style="margin-top:2px"></canvas>');
@@ -211,22 +211,22 @@ L0.add({ short: 'Scoring a model', title: 'R2, Spearman and RMSE measure differe
       tiles.forEach(function(t, k){ t.querySelector('.note').textContent = notes[k]; }); qs('.qv', ctl).textContent = v < 5 ? 'average only' : (v > 195 ? 'perfect' : (Math.abs(v - 100) < 4 ? 'decision tree' : v + '')); }
     rg.addEventListener('input', function(){ api.tok++; api.clearTexts(); q = +rg.value; draw(q); });
     function render(){ prep(); q = +rg.value; draw(q); }
-    async function play(tok){ prep(); rg.value = 200; draw(200); await api.beat('A perfect model puts every dot on the diagonal. R2 is 1 and the error is 0.', 2800);
-      await api.anim(2600, function(t){ q = 200 - 100 * t; rg.value = q; draw(q); }); api.cap('A real decision tree misses by a lot. Vertical lines show each error.'); await api.sleep(3000);
-      await api.anim(2600, function(t){ q = 100 - 100 * t; rg.value = q; draw(q); }); api.cap('Predicting the average for everything gives R2 near 0. Every model must beat this.'); await api.sleep(3000);
+    async function play(tok){ prep(); rg.value = 200; draw(200); await api.beat('A perfect model places every point on the diagonal: R2 is 1 and the error is 0.', 2800);
+      await api.anim(2600, function(t){ q = 200 - 100 * t; rg.value = q; draw(q); }); api.cap('A decision tree on these features leaves large errors. Vertical lines show each error.'); await api.sleep(3000);
+      await api.anim(2600, function(t){ q = 100 - 100 * t; rg.value = q; draw(q); }); api.cap('Predicting the mean for every compound gives R2 near 0. A model has to exceed this.'); await api.sleep(3000);
       rg.value = 100; draw(100); }
     return { render: render, play: play };
   } });
 
 /* ---------- Step 6: second endpoint, logD feeds HLM ---------- */
 L0.add({ short: 'logD feeds HLM', title: 'One model can feed another',
-  change: 'Untick features in the options panel. The comparison reruns.',
-  watch: 'logD is how oily a compound is at body pH (7.4). It is cheap to measure, so there are thousands of values, while clearance has few. A model trained on logD data from another company predicts logD for every compound, and that prediction is added as one more feature for the clearance model. Using one model\'s output as another model\'s input is called stacking.',
+  change: 'Clear features in the options panel. The comparison reruns.',
+  watch: 'logD is cheap to measure, so thousands of values exist, whereas HLM clearance has far fewer. A model trained on a published logD set from another organisation predicts logD for every HLM compound, and that prediction is added as one more feature for the clearance model. Using the output of one model as an input feature of another is called stacking.',
   build: function(api){
     var ab = null;
     var flow = api.el('pn', 'left:28px;top:28px;width:904px;height:130px', '<svg viewBox="0 0 880 100" width="880" height="100"></svg>');
     var sc = api.el('pn', 'left:28px;top:172px;width:430px;height:264px', '<h4>logD_pred against measured HLM</h4><canvas width="410" height="212"></canvas>');
-    var res = api.el('pn', 'left:478px;top:172px;width:454px;height:264px', '<h4>Does it help? Boosted trees, same test compounds</h4><div class="ab" style="font-size:13px;color:#34373F">Press Run comparison.</div>');
+    var res = api.el('pn', 'left:478px;top:172px;width:454px;height:264px', '<h4>Effect of logD_pred: boosted trees, same test compounds</h4><div class="ab" style="font-size:13px;color:#34373F">Press Run comparison.</div>');
     var ctl = api.addControl('<button type="button" class="btn sm" data-run>Run comparison</button>');
     function drawFlow(on){
       var bw = 150, gap = 33, boxes = [['AstraZeneca logD', '4,200 measured compounds'], ['logD model', LOGD.r2 !== null ? 'boosted trees, test R2 ' + LOGD.r2.toFixed(2) : 'trains on load'], ['logD_pred', 'predicted for each HLM compound'], ['HLM model', 'features' + (on ? ' plus logD_pred' : '')], ['HLM prediction', 'log10 clearance']], s = '<defs><marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="' + C.red + '"/></marker></defs>';
@@ -250,15 +250,15 @@ L0.add({ short: 'logD feeds HLM', title: 'One model can feed another',
     function render(){ drawFlow(FSEL.logD_pred && D.key === 'HLM'); drawScatter(); run(false); }
     featListeners.push(function(){ if (L0.built) drawFlow(FSEL.logD_pred && D.key === 'HLM'); });
     async function play(tok){ render(); if (D.key !== 'HLM') { api.cap('Switch the endpoint to HLM clearance to follow logD into the HLM model.'); return; }
-      await api.beat('logD measures how lipophilic a compound is at blood pH. AstraZeneca published 4,200 measured values.', 3200); await api.beat('A model learns logD from those compounds, then predicts logD for every Biogen compound.', 3000);
-      api.cap('That prediction is one more feature, logD_pred. Tick it in Features (it is pulsing now) to give it to every model.'); qsa('.featchips label[title]').forEach(function(l){ l.classList.add('pulse'); setTimeout(function(){ l.classList.remove('pulse'); }, 4200); }); await api.sleep(4200); }
+      await api.beat('AstraZeneca published 4,200 measured logD values.', 3200); await api.beat('A model is trained on those compounds and predicts logD for every Biogen compound.', 3000);
+      api.cap('The prediction is one more feature, logD_pred. Select it in Features (it is pulsing) to give it to every model.'); qsa('.featchips label[title]').forEach(function(l){ l.classList.add('pulse'); setTimeout(function(){ l.classList.remove('pulse'); }, 4200); }); await api.sleep(4200); }
     return { render: render, play: play };
   } });
 
 /* ---------- Step 7: predict your own compound (RDKit in the browser) ---------- */
 L0.add({ short: 'Predict a compound', title: 'Predict a compound from its structure',
-  change: 'Edit the SMILES and press Predict.',
-  watch: 'Type a molecule as a SMILES line. The page draws it with RDKit, computes its features, predicts its logD with one model, then uses that logD to predict clearance with a second model.',
+  change: 'Edit the SMILES string and select Predict.',
+  watch: 'Enter a SMILES string. RDKit draws the structure and computes the features. One model predicts logD, and its output is used as a feature for a second model that predicts HLM clearance.',
   auto: false,
   build: function(api){
     var inp = api.el('pn', 'left:28px;top:28px;width:904px;height:70px', '<h4>SMILES</h4><div style="display:flex;gap:10px"><input type="text" class="si" spellcheck="false" style="font-family:Cascadia Mono,Consolas,monospace"><button type="button" class="btn sm" data-go style="white-space:nowrap">Predict</button></div>');
@@ -284,25 +284,23 @@ L0.add({ short: 'Predict a compound', title: 'Predict a compound from its struct
   } });
 
 L0.glossary([
-  ['Clearance', 'How fast the liver removes a compound from the blood. Fast clearance means the compound does not last long.'],
-  ['Molecule', 'A group of atoms joined by bonds.'],
-  ['Atom', 'The smallest piece of an element, such as carbon, oxygen or nitrogen.'],
-  ['Bond', 'The link between two atoms. A line in a drawing.'],
-  ['Lipophilic', 'Oil-loving: prefers oil to water. Hydrophilic means water-loving.'],
+  ['Descriptor', 'A computed property of a molecule, such as logP or TPSA, used as a model feature.'],
+  ['Fingerprint', 'A fixed-length bit vector that encodes the atom environments present in a molecule.'],
+  ['Tanimoto coefficient', 'The number of bits set in both fingerprints divided by the number set in either.'],
   ['Machine learning', 'Software that learns a pattern from examples instead of following hand-written rules.'],
-  ['Model', 'A formula with adjustable settings that turns features into a prediction.'],
+  ['Model', 'A function with adjustable parameters that maps features to a prediction.'],
   ['Feature', 'A number describing a molecule, such as logP or molecular weight.'],
-  ['Target', 'What we predict: log10 HLM clearance, or logD.'],
-  ['Training compounds', 'The compounds a model is allowed to study.'],
-  ['Test compounds', 'Compounds held back to test whether the model learned a real pattern or memorised.'],
+  ['Target', 'The value being predicted: log10 HLM clearance, or logD.'],
+  ['Training compounds', 'The compounds used to fit the model.'],
+  ['Test compounds', 'Compounds excluded from fitting, used to estimate performance on new compounds.'],
   ['Scaffold', 'The ring skeleton of a compound, with side chains removed.'],
   ['Scaffold split', 'Test compounds share no scaffold with the training set.'],
-  ['Overfitting', 'Memorising training data, noise included, so new compounds are predicted worse.'],
+  ['Overfitting', 'Fitting noise in the training data, which degrades predictions for new compounds.'],
   ['R2', 'Share of the spread in the answers explained on test compounds. 1 is perfect, 0 is no better than the average.'],
-  ['Spearman', 'How well the model ranks compounds, ignoring exact values.'],
+  ['Spearman', 'Rank correlation between predicted and measured values.'],
   ['RMSE', 'Typical error in the units of the endpoint.'],
   ['SMILES', 'A line of text that describes a structure, such as CC(=O)N.'],
-  ['logP', 'Preference of a compound for oil over water, from atom contributions.'],
+  ['logP', 'Logarithm of the octanol-water partition coefficient. Here the Crippen estimate from atom contributions.'],
   ['logD', 'logP corrected for ionisation at pH 7.4.'],
   ['TPSA', 'Polar surface area from nitrogen and oxygen atoms.'],
   ['HLM clearance', 'How fast human liver microsomes remove a compound. Higher means a shorter half-life.'],

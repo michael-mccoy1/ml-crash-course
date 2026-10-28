@@ -1,10 +1,10 @@
 # %% [markdown]
-# # 01: Tree Models (25 min)
-# **Idea:** repeatedly ask yes/no questions about features ("is logP > 3.1?") to split compounds into groups with similar `y`; predict the group mean.
+# # 01: Tree models
+# **Method:** a tree repeatedly splits the compounds on a threshold of one feature (for example logP > 3.1) into groups with similar `y`, and predicts the group mean.
 #
 # * **Decision tree** - one tree. Interpretable, but overfits.
 # * **Random forest** - hundreds of trees on random data/feature subsets, averaged (*bagging*). Reduces variance.
-# * **Gradient boosting** (LightGBM/XGBoost) - trees built *sequentially*, each fixing the errors of the last. Usually the strongest on tabular data.
+# * **Gradient boosting** (LightGBM/XGBoost) - trees built *sequentially*, each fitted to the residuals of the current model. Usually the strongest on tabular data.
 
 # %%
 import os, sys, subprocess
@@ -23,8 +23,8 @@ tr, te = c.split(df, "scaffold"); y = df.y.values
 X_all = np.hstack([desc, fp]); all_names = names + [f"ecfp_{i}" for i in range(fp.shape[1])]
 
 # %% [markdown]
-# ## 1. A single decision tree, readable by a human
-# Depth 3 on descriptors only. Read the rules aloud: which properties drive clearance?
+# ## 1. A single decision tree
+# Depth 3 on descriptors only. Read the rules: which properties drive clearance?
 
 # %%
 t = DecisionTreeRegressor(max_depth=3, random_state=0).fit(desc[tr], y[tr])
@@ -32,8 +32,8 @@ print(export_text(t, feature_names=names))
 print(c.metrics(y[te], t.predict(desc[te])))
 
 # %% [markdown]
-# ## 2. Overfitting in one plot
-# Let the tree grow deeper. Training score to perfect; test score stalls then falls.
+# ## 2. Overfitting
+# Increase the depth. The training score approaches 1. The test score stops rising and then falls.
 
 # %%
 depths = range(1, 25)
@@ -46,7 +46,7 @@ plt.plot(depths, rows[:, 0], label="train R²"); plt.plot(depths, rows[:, 1], la
 plt.xlabel("max_depth"); plt.ylabel("R²"); plt.legend(); plt.show()
 
 # %% [markdown]
-# **Your turn #1:** which depth would you pick, and why can't you choose it using the test set?  (Hint: validation set / cross-validation.)
+# **Exercise 1:** Which depth would you choose, and why can it not be chosen using the test set? Use a validation set or cross-validation.
 
 # %% [markdown]
 # ## 3. Random forest
@@ -66,7 +66,7 @@ gb.fit(X_all[tr], y[tr])
 c.log_result("LightGBM (desc+ECFP)", c.metrics(y[te], gb.predict(X_all[te])))
 
 # %% [markdown]
-# **Your turn #2:** try `desc` only, or `fp` only, for LightGBM. Which feature set matters more? (Pairs with the *"82% of the performance from two descriptors"* style of finding.)
+# **Exercise 2:** Train LightGBM on `desc` only and on `fp` only. Which feature set matters more?
 
 # %%
 for label, X in [("descriptors only", desc), ("ECFP only", fp)]:
@@ -81,7 +81,7 @@ imp = pd.Series(gb.booster_.feature_importance("gain"), index=all_names).sort_va
 imp[::-1].plot.barh(); plt.xlabel("total gain"); plt.show()
 
 # %% [markdown]
-# ## 6. Random vs scaffold split - the honesty check
+# ## 6. Random and scaffold splits
 
 # %%
 for kind in ["random", "scaffold"]:

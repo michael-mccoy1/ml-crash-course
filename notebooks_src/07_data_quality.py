@@ -1,6 +1,6 @@
 # %% [markdown]
 # # 07 Data quality: censored HLM values
-# 31% of the HLM values sit exactly at the assay floor. The assay cannot read clearance below that value, so every slower compound is reported as the floor. This notebook compares three ways to train on such data, all scored on the same unfiltered unseen scaffolds.
+# 31% of the HLM values sit exactly at the assay floor. The assay cannot read clearance below that value, so every slower compound is reported as the floor. This notebook compares three ways to train on such data, all scored on the same unfiltered test scaffolds.
 
 # %%
 import os, sys, subprocess
@@ -14,7 +14,7 @@ import common as c
 
 df = c.load("HLM"); fp, desc, names = c.get_features(df); X = np.hstack([desc, fp]); y = df.y.values
 floor = y.min(); cens = (y <= floor + 1e-6); tr, te = c.split(df, "scaffold")
-print(f"floor {floor:.3f}, censored {cens.mean():.1%}, censored in unseen set {cens[te].mean():.1%}")
+print(f"floor {floor:.3f}, censored {cens.mean():.1%}, censored in test set {cens[te].mean():.1%}")
 plt.hist(y, bins=50); plt.axvline(floor, color="r"); plt.xlabel("log10 HLM CLint"); plt.ylabel("compounds"); plt.show()
 
 # %% [markdown]
@@ -37,11 +37,11 @@ rows.append(("Drop censored from training", c.metrics(y[te], p2[te])["R2"], c.me
 clf = lgb.LGBMClassifier(n_estimators=400, learning_rate=0.03, colsample_bytree=0.3, verbose=-1, random_state=0).fit(X[tr], cens[tr])
 pc = clf.predict_proba(X)[:, 1]; p3 = pc * floor + (1 - pc) * p2
 rows.append(("Two models", c.metrics(y[te], p3[te])["R2"], c.metrics(y[unc_te], p2[unc_te])["R2"]))
-res = pd.DataFrame(rows, columns=["strategy", "R2 all unseen", "R2 measurable unseen"]).round(3)
-print("floor classifier accuracy on unseen:", round(float(((pc[te] > 0.5) == cens[te]).mean()), 3))
+res = pd.DataFrame(rows, columns=["strategy", "R2 all test", "R2 measurable test"]).round(3)
+print("floor classifier accuracy on test:", round(float(((pc[te] > 0.5) == cens[te]).mean()), 3))
 res
 
 # %% [markdown]
-# Reading the table: keeping everything looks fine on all unseen compounds but ranks the measurable ones poorly. Dropping the censored values ranks measurable compounds better but cannot say which compounds are stable. Two models give both answers separately.
+# Reading the table: keeping everything looks acceptable on all test compounds but ranks the measurable ones poorly. Dropping the censored values ranks measurable compounds better but cannot say which compounds are stable. Two models give both answers separately.
 #
 # **Discuss:** which number would you report to a project team that wants to prioritise stable compounds, and which to a team optimising potency?

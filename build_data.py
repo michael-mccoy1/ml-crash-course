@@ -229,7 +229,7 @@ def main():
     json.dump(extras, open(os.path.join(OUT, "extras.json"), "w"), separators=(",", ":"))
     for f in sorted(os.listdir(OUT)):
         print(f, round(os.path.getsize(os.path.join(OUT, f)) / 1024), "KB")
-    print("censored HLM:", round(100 * np.mean(cens), 1), "% | seen scaffolds in unseen set:", d_h["seen"], "| mean max similarity:", d_h["sim"]["random"]["mean"], d_h["sim"]["scaffold"]["mean"])
+    print("censored HLM:", round(100 * np.mean(cens), 1), "% | scaffolds shared with training, in test set:", d_h["seen"], "| mean max similarity:", d_h["sim"]["random"]["mean"], d_h["sim"]["scaffold"]["mean"])
 
 
 if __name__ == "__main__":
