@@ -4,6 +4,19 @@
    Challenge questions train a real model in the browser and check the result against a goal. */
 var QZ = { bank: [], cur: [], i: 0, score: 0, log: [], root: null, drawn: false };
 var QZ_DRAW = 10;
+/* Figures. Each question can name a schematic: q.fig = { name: 'treeDepth', o: { ... } }.
+   A schematic is a function in QZFIG that takes the options and returns an SVG string. QZSV holds small drawing helpers. */
+var QZFIG = {};
+var QZSV = {
+  C: { red: '#E1242A', dred: '#891515', char: '#34373F', bg: '#A1B1C4', silver: '#D1D8E0', light: '#EDF2F4', white: '#FFFFFF', mid: '#6F8196' },
+  svg: function(w, hh, inner, cap){ return '<svg class="qsvg" viewBox="0 0 ' + w + ' ' + hh + '" width="100%" style="max-width:' + w + 'px" role="img" aria-label="' + esc(cap || 'Schematic') + '" font-family="Aptos, Segoe UI, sans-serif" font-size="12"><defs><marker id="qsa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#34373F"/></marker></defs>' + inner + '</svg>'; },
+  text: function(x, y, t, o){ o = o || {}; return '<text x="' + x + '" y="' + y + '" text-anchor="' + (o.a || 'middle') + '" fill="' + (o.c || '#34373F') + '"' + (o.b ? ' font-weight="700"' : '') + (o.s ? ' font-size="' + o.s + '"' : '') + (o.i ? ' font-style="italic"' : '') + '>' + esc(t) + '</text>'; },
+  rect: function(x, y, w, hh, o){ o = o || {}; return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + hh + '" rx="' + (o.r === undefined ? 4 : o.r) + '" fill="' + (o.f || '#FFFFFF') + '" stroke="' + (o.s || '#34373F') + '" stroke-width="' + (o.w || 1.4) + '"' + (o.d ? ' stroke-dasharray="' + o.d + '"' : '') + '/>'; },
+  circle: function(x, y, r, o){ o = o || {}; return '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + (o.f || '#FFFFFF') + '" stroke="' + (o.s || '#34373F') + '" stroke-width="' + (o.w || 1.4) + '"' + (o.d ? ' stroke-dasharray="' + o.d + '"' : '') + '/>'; },
+  line: function(x1, y1, x2, y2, o){ o = o || {}; return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + (o.c || '#34373F') + '" stroke-width="' + (o.w || 1.4) + '"' + (o.d ? ' stroke-dasharray="' + o.d + '"' : '') + '/>'; },
+  arrow: function(x1, y1, x2, y2, o){ o = o || {}; return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + (o.c || '#34373F') + '" stroke-width="' + (o.w || 1.4) + '" marker-end="url(#qsa)"' + (o.d ? ' stroke-dasharray="' + o.d + '"' : '') + '/>'; },
+  path: function(d, o){ o = o || {}; return '<path d="' + d + '" fill="' + (o.f || 'none') + '" stroke="' + (o.c || '#34373F') + '" stroke-width="' + (o.w || 1.8) + '"' + (o.d ? ' stroke-dasharray="' + o.d + '"' : '') + '/>'; }
+};
 
 /* ---------- question builders ---------- */
 function qMC(topic, text, right, wrong, why){ return { t: 'mc', topic: topic, text: text, opts: [right].concat(wrong), ans: 0, why: why }; }
@@ -95,61 +108,61 @@ function qTune(topic, o){ o.t = 'tune'; o.topic = topic; return o; }
 })();
 
 /* ---------- challenge questions: train a real model and meet a goal ---------- */
-/* goal types: budget (test R2 at least r2 with at most leaves), gap (training R2 minus test R2 at least gap),
-   low (training R2 at most x), best (test R2 at least r2 with at most leaves, any settings) */
+/* goal types: budget (test R2 at least r2 with at most leaves in total), gap (training R2 minus test R2 at least gap),
+   low (training R2 below a limit) */
 (function(){
   var B = QZ.bank;
   B.push(qTune('Challenge: gradient boosting', { kind: 'boost', ds: 'HLM', init: { rounds: 100, depth: 5, lr: 0.1 }, goal: { type: 'budget', r2: 0.27, leaves: 80 },
-    text: 'On the HLM data, find boosting settings with a test R2 of at least 0.27 using no more than 80 leaves in total. Fewer leaves is a faster fit, on any computer.', hint: 'The score levels off long before 100 rounds. Try a high learning rate with shallow trees.',
-    why: 'Shallow trees with a high learning rate reach the plateau in a handful of rounds. Most of the extra leaves in a big model buy almost nothing.' }));
+    text: 'Gradient boosting on the HLM data. Reach a test R2 of at least 0.27 using at most 80 leaves in total.', hint: 'The test R2 levels off well before 100 rounds. Shallow trees with a high learning rate need few leaves.',
+    why: 'Shallow trees with a high learning rate reach the test R2 plateau within a few rounds. Additional leaves add almost no test R2.' }));
   B.push(qTune('Challenge: gradient boosting', { kind: 'boost', ds: 'HLM', init: { rounds: 300, depth: 6, lr: 0.05 }, goal: { type: 'budget', r2: 0.28, leaves: 600 },
-    text: 'On the HLM data, find boosting settings with a test R2 of at least 0.28 using no more than 600 leaves in total.', hint: 'Depth 6 overfits here. Depth 3 or 4 does better, and needs far fewer leaves.',
-    why: 'Deeper trees score worse on test compounds here, and cost more leaves.' }));
+    text: 'Gradient boosting on the HLM data. Reach a test R2 of at least 0.28 using at most 600 leaves in total.', hint: 'Depth 6 overfits on this data set. Depth 3 or 4 scores higher with far fewer leaves.',
+    why: 'On this data set deeper trees score lower on test compounds and cost more leaves.' }));
   B.push(qTune('Challenge: gradient boosting', { kind: 'boost', ds: 'logD', init: { rounds: 20, depth: 2, lr: 0.1 }, goal: { type: 'budget', r2: 0.33, leaves: 1600 },
-    text: 'On the logD data, find boosting settings with a test R2 of at least 0.33 using no more than 1,600 leaves in total.', hint: 'Start with 100 rounds, depth 4 and a learning rate of 0.1.',
-    why: 'The logD data has more compounds and more signal, so it supports more rounds and deeper trees than HLM.' }));
+    text: 'Gradient boosting on the logD data. Reach a test R2 of at least 0.33 using at most 1,600 leaves in total.', hint: 'Start from 100 rounds, depth 4 and a learning rate of 0.1.',
+    why: 'The logD set has more compounds and a stronger signal, so it supports more rounds and deeper trees than the HLM set.' }));
   B.push(qTune('Challenge: gradient boosting', { kind: 'boost', ds: 'logD', init: { rounds: 100, depth: 6, lr: 0.3 }, goal: { type: 'budget', r2: 0.31, leaves: 300 },
-    text: 'On the logD data, find the cheapest boosting model you can: a test R2 of at least 0.31 with no more than 300 leaves in total.', hint: 'Try about 30 rounds at depth 2 with a learning rate of 0.3.',
-    why: 'A third of the leaves of the default settings reach nearly the same score.' }));
+    text: 'Gradient boosting on the logD data. Reach a test R2 of at least 0.31 using at most 300 leaves in total.', hint: 'Try about 30 rounds at depth 2 with a learning rate of 0.3.',
+    why: 'A small fraction of the leaves of the default settings reaches nearly the same test R2.' }));
   B.push(qTune('Challenge: overfitting', { kind: 'boost', ds: 'HLM', init: { rounds: 20, depth: 2, lr: 0.1 }, goal: { type: 'gap', gap: 0.5 },
-    text: 'On the HLM data, make a boosting model overfit: find settings where the training R2 is at least 0.5 higher than the test R2.', hint: 'Deep trees, many rounds and a high learning rate all help a model overfit.',
-    why: 'Deep trees give tiny leaves that fit single compounds, noise included. The training score soars and the test score falls.' }));
+    text: 'Gradient boosting on the HLM data. Find settings where the training R2 exceeds the test R2 by at least 0.5.', hint: 'Deep trees, many rounds and a high learning rate increase the gap.',
+    why: 'Deep trees form leaves that fit individual compounds, noise included. Training R2 rises and test R2 falls.' }));
   B.push(qTune('Challenge: underfitting', { kind: 'boost', ds: 'HLM', init: { rounds: 100, depth: 4, lr: 0.1 }, goal: { type: 'low', train: 0.1 },
-    text: 'On the HLM data, make a boosting model underfit: find settings where even the training R2 is below 0.1.', hint: 'Use very few rounds and a very small learning rate.',
-    why: 'A model that is too weak or too short-trained misses the pattern even in the compounds it was shown.' }));
+    text: 'Gradient boosting on the HLM data. Find settings where the training R2 is below 0.1.', hint: 'Use few rounds and a very small learning rate.',
+    why: 'A model with too little capacity or too few updates does not fit even the training compounds.' }));
   B.push(qTune('Challenge: random forest', { kind: 'forest', ds: 'HLM', init: { trees: 5, depth: 3 }, goal: { type: 'budget', r2: 0.29, leaves: 1500 },
-    text: 'On the HLM data, find random forest settings with a test R2 of at least 0.29 using no more than 1,500 leaves in total.', hint: 'Try 20 trees of depth 6 or 7, then see what depth 8 does.',
-    why: 'A forest of moderately deep trees beats a very large one on cost, and the score stops rising after a few dozen trees.' }));
+    text: 'Random forest on the HLM data. Reach a test R2 of at least 0.29 using at most 1,500 leaves in total.', hint: 'Try 20 trees of depth 6 or 7, then compare depth 8.',
+    why: 'A forest of moderate-depth trees scores as well as a much larger forest at lower cost, and the test R2 stops rising after a few dozen trees.' }));
   B.push(qTune('Challenge: random forest', { kind: 'forest', ds: 'logD', init: { trees: 5, depth: 3 }, goal: { type: 'budget', r2: 0.34, leaves: 4000 },
-    text: 'On the logD data, find random forest settings with a test R2 of at least 0.34 using no more than 4,000 leaves in total.', hint: 'Between 5 and 20 trees of depth 8 do it.',
-    why: 'Each forest tree can be deep, because averaging cancels their noise. A single deep tree could not do this.' }));
+    text: 'Random forest on the logD data. Reach a test R2 of at least 0.34 using at most 4,000 leaves in total.', hint: 'Between 5 and 20 trees of depth 8 are sufficient.',
+    why: 'Averaging cancels the variance of the individual trees, so forest trees can be deeper than a single tree should be.' }));
   B.push(qTune('Challenge: random forest', { kind: 'forest', ds: 'HLM', init: { trees: 100, depth: 12 }, goal: { type: 'budget', r2: 0.285, leaves: 700 },
-    text: 'On the HLM data, find the cheapest random forest you can: a test R2 of at least 0.285 with no more than 700 leaves in total.', hint: 'Fewer, shallower trees. Try 10 trees of depth 6.',
-    why: 'A few shallow trees get most of the benefit of averaging.' }));
-  B.push(qTune('Challenge: single tree', { kind: 'tree', ds: 'HLM', init: { depth: 10, minleaf: 5 }, goal: { type: 'budget', r2: 0.24, leaves: 20 },
-    text: 'On the HLM data, find a single tree with a test R2 of at least 0.24 using no more than 20 leaves.', hint: 'Depth 4 gives the highest test R2. A deeper tree scores lower.',
-    why: 'A tree of depth 4 has at most 16 leaves and scores best. Deeper trees fit noise.' }));
-  B.push(qTune('Challenge: single tree', { kind: 'tree', ds: 'logD', init: { depth: 2, minleaf: 5 }, goal: { type: 'budget', r2: 0.26, leaves: 80 },
-    text: 'On the logD data, find a single tree with a test R2 of at least 0.26 using no more than 80 leaves.', hint: 'Try depth 6.',
-    why: 'logD has more compounds, so a deeper single tree pays off before it starts to overfit.' }));
-  B.push(qTune('Challenge: single tree', { kind: 'tree', ds: 'HLM', init: { depth: 3, minleaf: 5 }, goal: { type: 'gap', gap: 0.5 },
-    text: 'On the HLM data, grow a single tree that overfits: a training R2 at least 0.5 higher than its test R2.', hint: 'Remove the limits: a deep tree with a minimum leaf size of 1.',
-    why: 'With a minimum leaf size of 1 and enough depth, every training compound gets its own leaf. Training R2 reaches almost 1, and test R2 collapses.' }));
+    text: 'Random forest on the HLM data. Reach a test R2 of at least 0.285 using at most 700 leaves in total.', hint: 'Use fewer, shallower trees: try 10 trees of depth 6.',
+    why: 'A few shallow trees capture most of the variance reduction that averaging provides.' }));
+  B.push(qTune('Challenge: decision tree', { kind: 'tree', ds: 'HLM', init: { depth: 10, minleaf: 5 }, goal: { type: 'budget', r2: 0.24, leaves: 20 },
+    text: 'Decision tree on the HLM data. Reach a test R2 of at least 0.24 using at most 20 leaves.', hint: 'Depth 4 gives the highest test R2. A deeper tree scores lower.',
+    why: 'A tree of depth 4 has at most 16 leaves and the highest test R2. Deeper trees fit noise.' }));
+  B.push(qTune('Challenge: decision tree', { kind: 'tree', ds: 'logD', init: { depth: 2, minleaf: 5 }, goal: { type: 'budget', r2: 0.26, leaves: 80 },
+    text: 'Decision tree on the logD data. Reach a test R2 of at least 0.26 using at most 80 leaves.', hint: 'Try depth 6.',
+    why: 'The logD set has more compounds, so a deeper single tree improves the test R2 before it starts to overfit.' }));
+  B.push(qTune('Challenge: overfitting', { kind: 'tree', ds: 'HLM', init: { depth: 3, minleaf: 5 }, goal: { type: 'gap', gap: 0.5 },
+    text: 'Decision tree on the HLM data. Find settings where the training R2 exceeds the test R2 by at least 0.5.', hint: 'Remove the limits: use a large depth and a minimum leaf size of 1.',
+    why: 'With a minimum leaf size of 1 and sufficient depth, every training compound has its own leaf. Training R2 approaches 1 and test R2 collapses.' }));
   B.push(qTune('Challenge: minimum leaf size', { kind: 'tree', ds: 'HLM', init: { depth: 12, minleaf: 1 }, goal: { type: 'budget', r2: 0.23, leaves: 200 },
-    text: 'On the HLM data, a depth 12 tree with a minimum leaf size of 1 overfits. Fix it by changing the settings: reach a test R2 of at least 0.23 with no more than 200 leaves.', hint: 'Raise the minimum leaf size, or lower the depth.',
-    why: 'A larger minimum leaf size stops the tree cutting tiny groups, which is a second way to control the depth.' }));
+    text: 'Decision tree on the HLM data, starting from depth 12 and minimum leaf size 1, which overfits. Change the settings to reach a test R2 of at least 0.23 using at most 200 leaves.', hint: 'Increase the minimum leaf size or reduce the depth.',
+    why: 'A larger minimum leaf size prevents very small leaves and limits the depth in the same way as a depth limit.' }));
   B.push(qTune('Challenge: gradient boosting', { kind: 'boost', ds: 'HLM', init: { rounds: 400, depth: 8, lr: 0.3 }, goal: { type: 'budget', r2: 0.285, leaves: 500 },
-    text: 'On the HLM data, find boosting settings with a test R2 of at least 0.285 using no more than 500 leaves. This is close to the best score the data allows.', hint: 'Try about 50 rounds of depth 3 with a learning rate of 0.1.',
-    why: 'The best boosted models on these eight features score about 0.29. Very little is gained after that, whatever the settings.' }));
+    text: 'Gradient boosting on the HLM data. Reach a test R2 of at least 0.285 using at most 500 leaves. The test R2 on this data set is limited to about 0.29.', hint: 'Try about 50 rounds of depth 3 with a learning rate of 0.1.',
+    why: 'Boosted models on these eight features reach a test R2 of about 0.29. Other settings add little.' }));
   B.push(qTune('Challenge: learning rate', { kind: 'boost', ds: 'logD', init: { rounds: 10, depth: 4, lr: 0.01 }, goal: { type: 'budget', r2: 0.3, leaves: 200 },
-    text: 'On the logD data, the learning rate is far too small, so 10 rounds get nowhere. Reach a test R2 of at least 0.30 using no more than 200 leaves.', hint: 'Raise the learning rate. A rate of 0.3 with about 10 rounds is enough.',
-    why: 'A small learning rate needs many rounds. A larger one gets the same distance in fewer.' }));
-  B.push(qTune('Challenge: random forest', { kind: 'forest', ds: 'logD', init: { trees: 50, depth: 8 }, goal: { type: 'low', train: 0.3 },
-    text: 'On the logD data, build a random forest that underfits: a training R2 below 0.3.', hint: 'Shallow trees cannot learn much, however many you average.',
-    why: 'Averaging many trees that are each too shallow does not make a model that fits.' }));
-  B.push(qTune('Challenge: random forest', { kind: 'forest', ds: 'HLM', init: { trees: 5, depth: 5 }, goal: { type: 'gap', gap: 0.35 },
-    text: 'On the HLM data, build a random forest whose training R2 is at least 0.35 higher than its test R2.', hint: 'Make every tree very deep.',
-    why: 'Even a forest overfits when its trees are deep enough, although averaging softens it.' }));
+    text: 'Gradient boosting on the logD data, starting from 10 rounds at a learning rate of 0.01, which underfits. Reach a test R2 of at least 0.30 using at most 200 leaves.', hint: 'Increase the learning rate. A rate of 0.3 with about 10 rounds is sufficient.',
+    why: 'A small learning rate needs many rounds. A larger rate covers the same distance in fewer rounds.' }));
+  B.push(qTune('Challenge: underfitting', { kind: 'forest', ds: 'logD', init: { trees: 50, depth: 8 }, goal: { type: 'low', train: 0.3 },
+    text: 'Random forest on the logD data. Find settings where the training R2 is below 0.3.', hint: 'Shallow trees limit the fit however many are averaged.',
+    why: 'Averaging many trees that are each too shallow does not remove the bias of the individual trees.' }));
+  B.push(qTune('Challenge: overfitting', { kind: 'forest', ds: 'HLM', init: { trees: 5, depth: 5 }, goal: { type: 'gap', gap: 0.35 },
+    text: 'Random forest on the HLM data. Find settings where the training R2 exceeds the test R2 by at least 0.35.', hint: 'Use deep trees.',
+    why: 'A forest also overfits when its trees are deep, although averaging reduces the gap.' }));
 })();
 
 /* ---------- running a challenge model ---------- */
@@ -170,9 +183,10 @@ function qzPass(g, r){
   return r.tr <= g.train;
 }
 function qzGoalText(g){
-  if (g.type === 'budget') return 'Goal: test R2 at least ' + g.r2.toFixed(2) + ' with at most ' + g.leaves.toLocaleString() + ' leaves.';
-  if (g.type === 'gap') return 'Goal: training R2 minus test R2 at least ' + g.gap.toFixed(2) + '.';
-  return 'Goal: training R2 at most ' + g.train.toFixed(2) + '.';
+  var lv = ' Leaves: the total number of terminal nodes in all trees, a measure of fitting cost.';
+  if (g.type === 'budget') return 'Goal: test R2 of at least ' + g.r2.toFixed(2) + ' with at most ' + g.leaves.toLocaleString() + ' leaves.' + lv;
+  if (g.type === 'gap') return 'Goal: training R2 minus test R2 of at least ' + g.gap.toFixed(2) + '.';
+  return 'Goal: training R2 below ' + g.train.toFixed(2) + '.';
 }
 
 /* ---------- the page ---------- */
@@ -190,9 +204,10 @@ function qzTopbar(){
 function qzRender(){
   var root = QZ.root; if (!root) return; var q = QZ.cur[QZ.i];
   if (!q) return qzFinish();
-  var html = '<div class="qwrap">' + qzTopbar() + '<div class="qcard"><div class="qtopic">' + esc(q.topic) + '</div><h3 class="qtext">' + esc(q.text) + '</h3><div class="qbody"></div><div class="qfb" hidden></div><div class="qact"></div></div></div>';
+  var html = '<div class="qwrap">' + qzTopbar() + '<div class="qcard"><div class="qtopic">' + esc(q.topic) + '</div><h3 class="qtext">' + esc(q.text) + '</h3><div class="qfig" hidden></div><div class="qbody"></div><div class="qfb" hidden></div><div class="qact"></div></div></div>';
   root.innerHTML = '<div class="qpage">' + html + '</div>';
-  var body = qs('.qbody', root), act = qs('.qact', root), fb = qs('.qfb', root), done = false;
+  var body = qs('.qbody', root), act = qs('.qact', root), fb = qs('.qfb', root), done = false, fig = qs('.qfig', root);
+  if (q.fig && QZFIG[q.fig.name]) { try { fig.innerHTML = QZFIG[q.fig.name](q.fig.o || {}); fig.hidden = false; } catch (e) { console.error(e); } }
   function finish(ok, extra){ if (done) return; done = true; QZ.log[QZ.i] = ok; if (ok) QZ.score++; fb.hidden = false; fb.className = 'qfb ' + (ok ? 'ok' : 'no'); fb.innerHTML = '<b>' + (ok ? 'Correct.' : 'Incorrect.') + '</b> ' + (extra || '') + ' ' + esc(q.why || ''); act.innerHTML = '<button type="button" class="btn" data-next>' + (QZ.i === QZ.cur.length - 1 ? 'See my score' : 'Next question') + '</button>'; qs('[data-next]', act).addEventListener('click', function(){ QZ.i++; qzRender(); window.scrollTo({ top: 0 }); }); qs('.qtop', root).outerHTML = qzTopbar(); }
   if (q.t === 'mc' || q.t === 'multi') {
     var multi = q.t === 'multi'; body.innerHTML = (multi ? '<div class="qhint">Select every answer that applies.</div>' : '') + q.view.map(function(oi, k){ return '<label class="qopt"><input type="' + (multi ? 'checkbox' : 'radio') + '" name="qo" value="' + oi + '"><span>' + esc(q.opts[oi]) + '</span></label>'; }).join('');
@@ -216,22 +231,82 @@ function qzRender(){
     body.addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b || done) return; var k = b.dataset.up !== undefined ? +b.dataset.up : (b.dataset.dn !== undefined ? +b.dataset.dn : -1); if (k < 0) return; var j = b.dataset.up !== undefined ? k - 1 : k + 1, t = order[k]; order[k] = order[j]; order[j] = t; drawOrder(false); });
     act.innerHTML = '<button type="button" class="btn" data-check>Check order</button>';
     qs('[data-check]', act).addEventListener('click', function(){ var ok = order.every(function(v, i){ return v === i; }); drawOrder(true); finish(ok, ok ? '' : 'The right order is: ' + q.steps.map(function(s, i){ return (i + 1) + ', ' + s; }).join(' ')); });
-  } else if (q.t === 'tune') { qzTune(q, body, act, finish, fb); }
+  } else if (q.t === 'tune') { qzTune(q, body, act, finish, fb, fig); }
 }
 
-function qzTune(q, body, act, finish, fb){
+/* live schematic for a challenge: the model being configured, and the attempts against the goal */
+function qzTreeGlyph(cx, y0, depth, w, col){
+  var C = QZSV.C, d = Math.min(depth, 3), out = '', lv = [[cx]], k, i, vs = 15;
+  for (k = 1; k <= d; k++) { var prev = lv[k - 1], cur = []; prev.forEach(function(x){ var off = w / Math.pow(2, k + 1); cur.push(x - off, x + off); }); lv.push(cur); }
+  for (k = 0; k < d; k++) lv[k].forEach(function(x, i2){ lv[k + 1].slice(2 * i2, 2 * i2 + 2).forEach(function(x2){ out += QZSV.line(x, y0 + k * vs, x2, y0 + (k + 1) * vs, { c: C.bg, w: 1.2 }); }); });
+  for (k = 0; k <= d; k++) lv[k].forEach(function(x){ out += QZSV.circle(x, y0 + k * vs, k === d ? 2.8 : 2.4, { f: k === d ? C.red : C.char, s: k === d ? C.red : C.char, w: 1 }); });
+  return out;
+}
+function qzTuneFig(q, s, tries){
+  var S = QZSV, C = S.C, g = q.goal, o = '', last = tries.length ? tries[tries.length - 1].r : null, W = 600, H = 240;
+  /* left: the model */
+  o += S.text(150, 16, 'Model with the current settings', { b: true, s: 12 });
+  var y0 = 42, cap;
+  if (q.kind === 'boost') {
+    var n = Math.min(s.rounds, 5), x0 = 150 - (n - 1) * 26;
+    for (var i = 0; i < n; i++) { o += qzTreeGlyph(x0 + i * 52, y0, s.depth, 36); o += S.text(x0 + i * 52, y0 + 66, 'tree ' + (i + 1), { s: 11 }); if (i < n - 1) o += S.arrow(x0 + i * 52 + 22, y0 + 20, x0 + (i + 1) * 52 - 22, y0 + 20, { c: C.mid, w: 1.1 }); }
+    if (s.rounds > n) o += S.text(150, y0 + 82, 'and ' + (s.rounds - n) + ' further rounds', { s: 11, c: C.mid });
+    o += S.text(150, y0 + 108, 'Each tree is fitted to the residuals of the sum so far.', { s: 11 });
+    o += S.text(150, y0 + 124, 'prediction = mean + learning rate times the sum of the trees', { s: 11, c: C.mid });
+    cap = [s.rounds + ' rounds, depth ' + s.depth + ', learning rate ' + (+s.lr).toFixed(2), 'at most ' + (s.rounds * Math.pow(2, s.depth)).toLocaleString() + ' leaves'];
+  } else if (q.kind === 'forest') {
+    var m = Math.min(s.trees, 5), xs = 150 - (m - 1) * 26;
+    for (var j = 0; j < m; j++) { o += qzTreeGlyph(xs + j * 52, y0, s.depth, 36); o += S.text(xs + j * 52, y0 + 66, 'tree ' + (j + 1), { s: 11 }); o += S.arrow(xs + j * 52, y0 + 72, 150, y0 + 100, { c: C.bg, w: 1 }); }
+    o += S.rect(110, y0 + 100, 80, 20, { f: C.light, s: C.char }); o += S.text(150, y0 + 114, 'mean', { s: 12 });
+    o += S.text(150, y0 + 138, 'Each tree is fitted to a bootstrap sample.', { s: 11 });
+    cap = [s.trees + ' trees' + (s.trees > m ? ' (first ' + m + ' drawn)' : '') + ', depth ' + s.depth, 'at most ' + (s.trees * Math.pow(2, s.depth)).toLocaleString() + ' leaves'];
+  } else {
+    o += qzTreeGlyph(150, y0 + 6, s.depth, 120);
+    o += S.text(150, y0 + 82, s.depth > 3 ? 'drawn to depth 3 of ' + s.depth : 'depth ' + s.depth, { s: 11, c: C.mid });
+    o += S.text(150, y0 + 108, 'Minimum leaf size ' + s.minleaf + ': a split that leaves fewer compounds in a leaf is rejected.', { s: 11 });
+    cap = ['depth ' + s.depth + ', minimum leaf size ' + s.minleaf, 'at most ' + Math.pow(2, s.depth).toLocaleString() + ' leaves'];
+  }
+  o += S.text(150, 200, cap[0], { s: 11.5, b: true }) + S.text(150, 215, cap[1], { s: 11.5, b: true });
+  if (last) o += S.text(150, 232, 'Last run: ' + last.leaves.toLocaleString() + ' leaves, test R2 ' + last.te.toFixed(2) + ', training R2 ' + last.tr.toFixed(2), { s: 11, c: C.dred });
+  /* right: attempts against the goal */
+  var L = 360, R = 590, T = 34, B = 190, px, py;
+  o += S.line(300, 8, 300, 224, { c: C.silver, w: 1 });
+  if (g.type === 'budget') {
+    var xmax = Math.log10(100000); px = function(v){ return L + Math.log10(Math.max(1, v)) / xmax * (R - L); }; py = function(v){ return B - clamp(v, 0, 0.45) / 0.45 * (B - T); };
+    o += S.text(445, 16, 'Attempts and goal region', { b: true, s: 12 });
+    o += S.rect(L, py(0.45), px(g.leaves) - L, py(g.r2) - py(0.45), { f: '#EAF5EE', s: '#2E7D4F', d: '4 3', w: 1.2, r: 0 });
+    o += S.text(L + 6, py(0.45) + 14, 'goal region', { a: 'start', s: 11, c: '#1E6B40' });
+    [0, 0.1, 0.2, 0.3, 0.4].forEach(function(v){ o += S.line(L, py(v), R, py(v), { c: C.silver, w: 0.8 }) + S.text(L - 6, py(v) + 4, v.toFixed(1), { a: 'end', s: 11, c: C.mid }); });
+    [1, 10, 100, 1000, 10000, 100000].forEach(function(v){ o += S.text(px(v), B + 15, v >= 1000 ? (v / 1000) + 'k' : String(v), { s: 11, c: C.mid }); });
+    o += S.text((L + R) / 2, B + 32, 'leaves (log scale)', { s: 11.5 }) + '<g transform="translate(322 ' + ((T + B) / 2) + ') rotate(-90)">' + S.text(0, 0, 'test R2', { s: 11.5 }) + '</g>';
+    tries.forEach(function(t, k){ o += S.circle(px(t.r.leaves), py(t.r.te), 5, { f: t.ok ? '#2E7D4F' : C.red, s: '#fff', w: 1 }) + S.text(px(t.r.leaves), py(t.r.te) - 8, String(k + 1), { s: 10.5, c: C.char }); });
+  } else {
+    px = function(v){ return L + clamp(v, 0, 1) * (R - L); };
+    var y01 = function(v){ return B - (clamp(v, 0, 1)) * (B - T); };
+    o += S.text(445, 16, 'Attempts and goal region', { b: true, s: 12 });
+    if (g.type === 'gap') { o += '<polygon points="' + px(g.gap) + ',' + y01(0) + ' ' + px(1) + ',' + y01(0) + ' ' + px(1) + ',' + y01(1 - g.gap) + '" fill="#EAF5EE" stroke="#2E7D4F" stroke-dasharray="4 3"/>'; o += S.text(R - 4, y01(0) - 8, 'goal region', { a: 'end', s: 11, c: '#1E6B40' }); o += S.line(px(0), y01(0), px(1), y01(1), { c: C.bg, w: 1, d: '4 3' }); }
+    else { o += S.rect(L, T, px(g.train) - L, B - T, { f: '#EAF5EE', s: '#2E7D4F', d: '4 3', w: 1.2, r: 0 }); o += S.text(L + 6, T + 14, 'goal region', { a: 'start', s: 11, c: '#1E6B40' }); }
+    [0, 0.25, 0.5, 0.75, 1].forEach(function(v){ o += S.line(L, y01(v), R, y01(v), { c: C.silver, w: 0.8 }) + S.text(L - 6, y01(v) + 4, v.toFixed(2).replace(/0$/, ''), { a: 'end', s: 11, c: C.mid }) + S.text(px(v), B + 15, v.toFixed(2).replace(/0$/, ''), { s: 11, c: C.mid }); });
+    o += S.text((L + R) / 2, B + 32, 'training R2', { s: 11.5 }) + '<g transform="translate(322 ' + ((T + B) / 2) + ') rotate(-90)">' + S.text(0, 0, 'test R2', { s: 11.5 }) + '</g>';
+    tries.forEach(function(t, k){ o += S.circle(px(t.r.tr), y01(Math.max(0, t.r.te)), 5, { f: t.ok ? '#2E7D4F' : C.red, s: '#fff', w: 1 }) + S.text(px(t.r.tr), y01(Math.max(0, t.r.te)) - 8, String(k + 1), { s: 10.5 }); });
+  }
+  return S.svg(W, H, o, 'Model configuration and attempts against the goal');
+}
+
+function qzTune(q, body, act, finish, fb, fig){
   var s = Object.assign({}, q.init), tries = [], passed = false, hintShown = false, ctl = [];
   if (q.kind === 'boost') ctl = [['rounds', 'Rounds', 1, 400, 1], ['depth', 'Tree depth', 1, 8, 1], ['lr', 'Learning rate', 0.01, 1, 0.01]];
   else if (q.kind === 'forest') ctl = [['trees', 'Trees', 1, 150, 1], ['depth', 'Tree depth', 1, 14, 1]];
   else ctl = [['depth', 'Tree depth', 1, 14, 1], ['minleaf', 'Minimum leaf size', 1, 50, 1]];
   body.innerHTML = '<div class="qgoal">' + esc(qzGoalText(q.goal)) + '</div><div class="qctl">' + ctl.map(function(c){ return '<label>' + c[1] + ' <output data-o="' + c[0] + '">' + s[c[0]] + '</output><input type="range" data-k="' + c[0] + '" min="' + c[2] + '" max="' + c[3] + '" step="' + c[4] + '" value="' + s[c[0]] + '"></label>'; }).join('') + '</div><div class="qrunrow"><button type="button" class="btn" data-run>Train</button><span class="qrs"></span></div><div class="qtries"></div><div class="qhintbox" hidden></div>';
-  qsa('input[type=range]', body).forEach(function(r){ r.addEventListener('input', function(){ s[r.dataset.k] = +r.value; qs('[data-o="' + r.dataset.k + '"]', body).textContent = r.value; }); });
+  qsa('input[type=range]', body).forEach(function(r){ r.addEventListener('input', function(){ s[r.dataset.k] = +r.value; qs('[data-o="' + r.dataset.k + '"]', body).textContent = r.value; if (window.__drawFig) window.__drawFig(); }); });
   var run = qs('[data-run]', body), st = qs('.qrs', body), box = qs('.qtries', body);
+  function drawFig(){ fig.innerHTML = qzTuneFig(q, s, tries); fig.hidden = false; } window.__drawFig = drawFig; drawFig();
   function drawTries(){ box.innerHTML = tries.length ? '<table class="qt"><thead><tr><th>Settings</th><th>Test R2</th><th>Training R2</th><th>Leaves</th><th></th></tr></thead><tbody>' + tries.slice().reverse().map(function(t){ return '<tr class="' + (t.ok ? 'ok' : '') + '"><td>' + esc(t.label) + '</td><td>' + t.r.te.toFixed(3) + '</td><td>' + t.r.tr.toFixed(3) + '</td><td>' + t.r.leaves.toLocaleString() + '</td><td>' + (t.ok ? 'goal met' : 'goal not met') + '</td></tr>'; }).join('') + '</tbody></table>' : ''; }
   function label(){ return q.kind === 'boost' ? s.rounds + ' rounds, depth ' + s.depth + ', rate ' + (+s.lr).toFixed(2) : (q.kind === 'forest' ? s.trees + ' trees, depth ' + s.depth : 'depth ' + s.depth + ', min leaf ' + s.minleaf); }
   run.addEventListener('click', async function(){
     if (passed) return; run.disabled = true; st.textContent = 'Training'; await tick();
-    try { var r = await qzRun(q, s), ok = qzPass(q.goal, r); tries.push({ label: label(), r: r, ok: ok }); drawTries(); st.textContent = ok ? '' : 'Goal not met. Change a setting and train again.';
+    try { var r = await qzRun(q, s), ok = qzPass(q.goal, r); tries.push({ label: label(), r: r, ok: ok }); drawTries(); drawFig(); st.textContent = ok ? '' : 'Goal not met. Change a setting and train again.';
       if (ok) { passed = true; run.disabled = true; act.innerHTML = ''; finish(true, 'Your model met the goal with ' + r.leaves.toLocaleString() + ' leaves in ' + Math.max(1, Math.round(r.ms)) + ' ms.'); } else run.disabled = false;
     } catch (e) { console.error(e); st.textContent = 'The model could not be trained. Try again.'; run.disabled = false; }
   });

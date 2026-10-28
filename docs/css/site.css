@@ -338,3 +338,6 @@ details.lvl-beginner,details.lvl-intermediate,details.lvl-advanced,details.lvl-p
 
 nav.tabs .in{gap:22px}
 nav.tabs button{font-size:.92rem}
+.qfig{margin:0 0 16px;border:1px solid var(--silver);border-radius:6px;background:var(--panel);padding:10px 12px;text-align:center}
+.qfig[hidden]{display:none}
+.qfig svg{display:block;margin:0 auto}
