@@ -364,3 +364,16 @@ nav.tabs button{padding:13px 10px}
 nav.tabs button+button::before{content:"";position:absolute;left:0;top:50%;height:16px;margin-top:-8px;border-left:1px solid var(--silver)}
 nav.tabs button[aria-selected="true"]::after{left:10px;right:10px}
 @media(min-width:700px){.lead,.try{text-align:justify;text-justify:inter-word;hyphens:auto;-webkit-hyphens:auto}}
+nav.tabs{position:static}
+nav.tabs .in{display:flex;flex-direction:column;gap:0;overflow:visible;padding:4px 24px 0;justify-content:flex-start}
+nav.tabs .tg{display:flex;align-items:center;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--silver)}
+nav.tabs .tg:last-child{border-bottom:0}
+nav.tabs .tl{flex:0 0 112px;font-size:.66rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--mid)}
+nav.tabs button{padding:8px 12px}
+nav.tabs .tg button:first-of-type::before{display:none}
+nav.tabs button.qzt{border:1px solid var(--red);border-radius:4px;margin:4px 0 4px 12px;padding:3px 12px;color:var(--red);font-weight:600}
+nav.tabs button.qzt::before{display:none}
+nav.tabs button.qzt[aria-selected="true"]{background:var(--red);color:#fff}
+nav.tabs button.qzt[aria-selected="true"]::after{display:none}
+nav.tabs button.qzt b,nav.tabs button.qzt[aria-selected="true"] b{color:inherit}
+@media(max-width:700px){nav.tabs .tl{flex:0 0 100%;padding-top:6px}nav.tabs .in{padding:0 14px}nav.tabs button{padding:6px 9px}}
