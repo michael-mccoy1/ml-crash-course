@@ -150,7 +150,7 @@ LESSONS.mlpk.add({ level: 'intermediate', short: 'Surrogate models', title: 'Sur
       api.cap('The simulator has six inputs. Each simulation gives AUC0-48 h and Cmax.'); await api.sleep(3000);
       api.cap('Boosted trees trained on 450 simulations reproduce the held-out simulations closely.'); await api.sleep(3200);
       for (var k = 0; k < 4; k++) { api.checkTok(tok); nsel = k; setSeg('data-n', k); draw(); api.cap('Training on ' + MB1.res.sizes[k] + ' simulations.'); await api.sleep(1700); }
-      nsel = 4; setSeg('data-n', 4); kind = 'mlp'; setSeg('data-k', 1); draw(); api.cap('The neural network reaches a similar accuracy. Outside the sampled ranges both models lose accuracy.'); await api.sleep(3600); api.cap(null);
+      nsel = 4; setSeg('data-n', 4); kind = 'mlp'; setSeg('data-k', 1); draw(); api.cap('The neural network reaches a similar accuracy. Outside the sampled ranges the error of both models increases.'); await api.sleep(3600); api.cap(null);
     }
     return { render: render, play: play };
   } });
@@ -246,7 +246,7 @@ LESSONS.mlpk.add({ level: 'intermediate', short: 'Covariate screening', title: '
       var ev = methods.map(function(m){ var tp = tr.filter(function(t){ return m.sel.indexOf(names.indexOf(t)) >= 0; }).length, fp = m.sel.filter(function(j){ return tr.indexOf(names[j]) < 0; }).length; return { n: m.n, tp: tp, fp: fp, fn: tr.length - tp, sel: m.sel.map(function(j){ return names[j]; }) }; });
       var html = '<table style="width:100%;border-collapse:collapse"><tr style="font-weight:700;text-align:right"><td style="text-align:left">Method, ' + (tg ? 'log V' : 'log CL') + ', true covariates ' + tr.join(' and ') + ', seed ' + seedI + '</td><td>True found</td><td>False positives</td><td>Selected</td></tr>' + ev.map(function(e){ return '<tr style="text-align:right;border-top:1px solid ' + C.silver + '"><td style="text-align:left">' + esc(e.n) + '</td><td>' + e.tp + ' of ' + tr.length + '</td><td>' + e.fp + '</td><td style="text-align:left;padding-left:14px">' + (e.sel.join(', ') || 'none') + '</td></tr>'; }).join('') + '</table>';
       if (rep) html += '<p style="margin:8px 0 2px"><b>Over ' + rep.n + ' seeds</b> at these settings (tree ensembles with fewer trees and rounds for speed): ' + rep.rows.map(function(r){ return esc(r.n.split(',')[0]) + ': all true found in ' + Math.round(100 * r.all) + '% of seeds, mean false positives ' + r.fp.toFixed(2); }).join('; ') + '.</p>';
-      else html += '<p style="margin:8px 0 2px;color:' + C.mid + '">All data are simulated. The true covariates are marked in dark red. CRCL is correlated with AGE, WT and SEX, so a covariate with no effect of its own can look important.</p>';
+      else html += '<p style="margin:8px 0 2px;color:' + C.mid + '">All data are simulated. The true covariates are marked in dark red. CRCL is correlated with AGE, WT and SEX, so a covariate with no effect of its own can receive a high importance.</p>';
       qs('.cr', rp).innerHTML = html; qs('.ct', lp).textContent = 'Importance and selection of covariates for ' + (tg ? 'log volume of distribution' : 'log clearance') + ', ' + N + ' simulated subjects';
     }
     async function repeat(){
@@ -269,7 +269,7 @@ LESSONS.mlpk.add({ level: 'intermediate', short: 'Covariate screening', title: '
       N = 200; sigma = 0.15; NN = 4; tg = 0; crit = 'BIC'; rep = null; nI.value = 200; sI.value = 0.15; kI.value = 4; qs('.nv', ctl).textContent = 200; qs('.sv', ctl).textContent = '0.15'; qs('.kv', ctl).textContent = 4; qsa('[data-t] button', ctl).forEach(function(z){ z.classList.toggle('on', +z.dataset.v === 0); }); draw();
       api.cap('Weight and creatinine clearance are the covariates that act on clearance in the simulated model.'); await api.sleep(3200);
       N = 50; nI.value = 50; qs('.nv', ctl).textContent = 50; draw(); api.cap('With 50 subjects a method can miss a true covariate or select a covariate with no effect.'); await api.sleep(3600);
-      N = 600; nI.value = 600; qs('.nv', ctl).textContent = 600; draw(); api.cap('With 600 subjects the true covariates are recovered more reliably. CRCL, which is correlated with WT and AGE, remains the hard case.'); await api.sleep(3800); api.cap(null);
+      N = 600; nI.value = 600; qs('.nv', ctl).textContent = 600; draw(); api.cap('With 600 subjects the true covariates are recovered more reliably. CRCL, which is correlated with WT and AGE, remains difficult to separate from them.'); await api.sleep(3800); api.cap(null);
     }
     return { render: render, play: play };
   } });
