@@ -85,17 +85,17 @@ LESSONS.mlpk.add({ level: 'intermediate', short: 'Sparse sampling', title: 'Spar
     var nS = 3, di = 1, ntr = 300, cvA = 0.1, seedI = 1, si = 0;
     var sp = api.el('pn', 'left:28px;top:20px;width:444px;height:260px', '<h4 class="st">AUC from the sampled concentrations</h4><canvas width="416" height="198"></canvas>');
     var cp = api.el('pn', 'left:488px;top:20px;width:444px;height:260px', '<h4>Cmax from the sampled concentrations</h4><canvas width="416" height="198"></canvas>');
-    var ep = api.el('pn', 'left:28px;top:292px;width:444px;height:228px', '<h4 class="et">One test subject</h4><canvas width="416" height="162"></canvas>');
+    var ep = api.el('pn', 'left:28px;top:292px;width:444px;height:228px', '<h4 class="et">One test subject</h4><canvas width="416" height="184"></canvas>');
     var tp = api.el('pn', 'left:488px;top:292px;width:444px;height:228px;overflow:auto', '<div class="tb" style="font-size:12.5px;line-height:1.45;color:' + C.char + '"></div>');
     var ctl = api.addControl('Samples ' + mlbSeg('data-n', ['2', '3', '4'], 1) + ' Times ' + mlbSeg('data-d', MEE_DN, 1) + ' Training subjects <input class="t" type="range" min="50" max="800" step="50" value="300" style="width:100px"> <b class="tv">300</b> Assay CV <input class="c" type="range" min="0.05" max="0.4" step="0.05" value="0.1" style="width:80px"> <b class="cv">10%</b> <button type="button" class="btn sm ghost" data-seed>New subjects</button> <button type="button" class="btn sm" data-next>Next subject</button>');
     var tI = qs('.t', ctl), cI = qs('.c', ctl);
     function drawCurve(R){
-      var g = cv(qs('canvas', ep)), x = g.x, L = 40, T = 16, Rr = g.w - 10, B = g.h - 28, s = R.test[si], c = R.Cte[si], nc = R.nca[si], tmax = 24, ymax = 0, k;
+      var g = cv(qs('canvas', ep)), x = g.x, L = 40, T = 16, Rr = g.w - 10, B = g.h - 36, s = R.test[si], c = R.Cte[si], nc = R.nca[si], tmax = 24, ymax = 0, k;
       for (k = 0; k <= 96; k++) ymax = Math.max(ymax, s.conc(k / 4) * 100 / s.dose); ymax *= 1.15;
       function px(t){ return L + t / tmax * (Rr - L); } function py(v){ return B - v / ymax * (B - T); }
       x.clearRect(0, 0, g.w, g.h); x.lineWidth = 1; x.font = '10.5px Aptos, "Segoe UI", sans-serif';
-      [0, 6, 12, 18, 24].forEach(function(t){ x.strokeStyle = C.light; x.beginPath(); x.moveTo(px(t), T); x.lineTo(px(t), B); x.stroke(); x.fillStyle = C.mid; x.textAlign = 'center'; x.fillText(String(t), px(t), B + 13); });
-      for (k = 0; k <= 4; k++) { var v = ymax * k / 4; x.strokeStyle = C.light; x.beginPath(); x.moveTo(L, py(v)); x.lineTo(Rr, py(v)); x.stroke(); x.fillStyle = C.mid; x.textAlign = 'right'; x.fillText(mleFmt(v), L - 4, py(v) + 4); }
+      [0, 6, 12, 18, 24].forEach(function(t){ x.strokeStyle = C.light; x.beginPath(); x.moveTo(px(t), T); x.lineTo(px(t), B); x.stroke(); x.fillStyle = C.mid; x.textAlign = 'center'; x.fillText(String(t), px(t), B + 15); });
+      for (k = 0; k <= 4; k++) { var v = ymax * k / 4; x.strokeStyle = C.light; x.beginPath(); x.moveTo(L, py(v)); x.lineTo(Rr, py(v)); x.stroke(); x.fillStyle = C.mid; x.textAlign = 'right'; x.fillText(mleFmt(v), L - 4, k === 0 ? py(v) + 1 : py(v) + 4); }
       x.strokeStyle = C.char; x.lineWidth = 1.8; x.beginPath(); for (k = 0; k <= 96; k++) { var t = k / 4, y = s.conc(t) * 100 / s.dose; if (k) x.lineTo(px(t), py(y)); else x.moveTo(px(t), py(y)); } x.stroke(); x.lineWidth = 1;
       x.setLineDash([3, 3]); x.strokeStyle = C.bg; R.times.forEach(function(t){ x.beginPath(); x.moveTo(px(t), T); x.lineTo(px(t), B); x.stroke(); }); x.setLineDash([]);
       x.fillStyle = C.red; R.times.forEach(function(t, i){ x.beginPath(); x.arc(px(t), py(c[i]), 4, 0, 6.2832); x.fill(); });
@@ -186,14 +186,14 @@ LESSONS.mlpk.add({ level: 'advanced', short: 'Population PK and ML', title: 'Pop
   watch: 'A population PK covariate model relates individual clearance to subject characteristics. The usual form is parametric: ln CL = theta0 + theta1 ln(WT/70) + theta2 ln(CRCL/100), with the covariates chosen in advance. A boosted-trees model receives all covariates and no functional form. The data are simulated, so the truth is known. Clearance is CL = 5 L/h times (WT/70)^0.75 times G(CRCL) times exp(eta), eta normal with SD 0.25. In the power-law form G = (CRCL/100)^0.3. In the threshold form G = h(CRCL)/h(100), with h(c) = 0.55 + 0.45 q/(1 + q) and q = (c/80)^16. Clearance is then about 45% lower below a CRCL of 80 mL/min than above it, with a steep transition, which a log-linear term cannot represent. The covariates are weight (WT), age (AGE), sex (SEX), creatinine clearance (CRCL, from the Cockcroft-Gault expression), albumin (ALB) and two noise variables (N1, N2). The simulated individual clearance estimate carries an additional error of the SD set by estimation noise. Between-subject variability and this noise are not explained by any covariate, so the expected error against the observed clearance cannot fall below sqrt(0.25^2 + noise^2) in ln units, for either model. On a finite test set the value fluctuates around that limit. The error against the true typical clearance, which is known only in a simulation, shows how close each model is to the covariate relation. Both models are scored on 400 test subjects. The parametric model returns exponents, which are interpretable. The boosted-trees model returns predictions and split-gain importance, which ranks covariates and does not give an exponent or a direction.',
   build: function(api){
     var ntr = 200, form = 1, sigma = 0.15, seedI = 1;
-    var cp = api.el('pn', 'left:28px;top:20px;width:444px;height:260px', '<h4>Clearance against creatinine clearance</h4><canvas width="416" height="198"></canvas>');
-    var lp = api.el('pn', 'left:488px;top:20px;width:444px;height:260px', '<h4>Error against true typical clearance</h4><canvas width="416" height="198"></canvas>');
+    var cp = api.el('pn', 'left:28px;top:20px;width:444px;height:260px', '<h4>Clearance against creatinine clearance</h4><canvas width="416" height="214"></canvas>');
+    var lp = api.el('pn', 'left:488px;top:20px;width:444px;height:260px', '<h4>Error against true typical clearance</h4><canvas width="416" height="214"></canvas>');
     var ip = api.el('pn', 'left:28px;top:292px;width:444px;height:228px', '<h4>Importance in the boosted-trees model</h4><canvas width="416" height="162"></canvas>');
     var tp = api.el('pn', 'left:488px;top:292px;width:444px;height:228px;overflow:auto', '<div class="tb" style="font-size:12.5px;line-height:1.45;color:' + C.char + '"></div>');
     var ctl = api.addControl('Covariate form ' + mlbSeg('data-f', ['Power', 'Threshold'], 1) + ' Training subjects <input class="t" type="range" min="25" max="800" step="25" value="200" style="width:110px"> <b class="tv">200</b> Estimation noise <input class="s" type="range" min="0.05" max="0.4" step="0.05" value="0.15" style="width:80px"> <b class="sv">0.15</b> <button type="button" class="btn sm ghost" data-seed>New subjects</button>');
     var tI = qs('.t', ctl), sI = qs('.s', ctl);
     function drawCurve(R){
-      var g = cv(qs('canvas', cp)), x = g.x, L = 40, T = 14, Rr = g.w - 10, B = g.h - 32, c, pts = R.P.pool, M = R.M, k, ymax = 8.5;
+      var g = cv(qs('canvas', cp)), x = g.x, L = 40, T = 52, Rr = g.w - 10, B = g.h - 38, c, pts = R.P.pool, M = R.M, k, ymax = 8.5;
       function px(v){ return L + (v - 20) / 230 * (Rr - L); } function py(v){ return B - v / ymax * (B - T); }
       x.clearRect(0, 0, g.w, g.h); x.lineWidth = 1; x.font = '10.5px Aptos, "Segoe UI", sans-serif';
       [50, 100, 150, 200, 250].forEach(function(v){ x.strokeStyle = C.light; x.beginPath(); x.moveTo(px(v), T); x.lineTo(px(v), B); x.stroke(); x.fillStyle = C.mid; x.textAlign = 'center'; x.fillText(String(v), px(v), B + 13); });
@@ -204,19 +204,19 @@ LESSONS.mlpk.add({ level: 'advanced', short: 'Population PK and ML', title: 'Pop
       line(function(v){ return Math.exp(M.beta[0] + M.beta[2] * Math.log(v / 100)); }, C.char, 1.8, [5, 3]);
       line(function(v){ return Math.exp(M.gb.predict([70, 50, 0, v, 4.2, 0, 0])); }, C.red, 1.8);
       x.font = '10.5px Aptos, "Segoe UI", sans-serif'; x.textAlign = 'left';
-      [[C.bg, 'True typical CL'], [C.char, 'Log-linear fit'], [C.red, 'Boosted trees']].forEach(function(e, i){ x.fillStyle = e[0]; x.fillRect(L + 8, T + 6 + i * 13, 12, 3); x.fillStyle = C.char; x.fillText(e[1], L + 25, T + 10 + i * 13); });
+      [[C.bg, 'True typical CL'], [C.char, 'Log-linear fit'], [C.red, 'Boosted trees']].forEach(function(e, i){ x.fillStyle = e[0]; x.fillRect(L + 8, 8 + i * 13, 12, 3); x.fillStyle = C.char; x.fillText(e[1], L + 25, 12 + i * 13); });
       x.fillStyle = C.char; x.textAlign = 'center'; x.font = '600 11.5px Aptos, "Segoe UI", sans-serif'; x.fillText('CRCL (mL/min), CL (L/h) at WT 70 kg, age 50, ALB 4.2', (L + Rr) / 2, g.h - 4);
     }
     function drawLC(){
-      var g = cv(qs('canvas', lp)), x = g.x, L = 44, T = 14, Rr = g.w - 12, B = g.h - 32, d = mleCurve2(form, sigma, seedI), ymax = Math.max.apply(null, d.map(function(e){ return Math.max(e.p, e.g); })) * 1.1, lx0 = Math.log(25), lx1 = Math.log(800), R0 = mleRun2(ntr, form, sigma, seedI);
+      var g = cv(qs('canvas', lp)), x = g.x, L = 44, T = 40, Rr = g.w - 12, B = g.h - 38, d = mleCurve2(form, sigma, seedI), ymax = Math.max.apply(null, d.map(function(e){ return Math.max(e.p, e.g); })) * 1.1, lx0 = Math.log(25), lx1 = Math.log(800), R0 = mleRun2(ntr, form, sigma, seedI);
       function px(n){ return L + (Math.log(n) - lx0) / (lx1 - lx0) * (Rr - L); } function py(v){ return B - v / ymax * (B - T); }
       x.clearRect(0, 0, g.w, g.h); x.lineWidth = 1; x.font = '10.5px Aptos, "Segoe UI", sans-serif';
-      MEE_SIZES.forEach(function(n){ x.strokeStyle = C.light; x.beginPath(); x.moveTo(px(n), T); x.lineTo(px(n), B); x.stroke(); x.fillStyle = C.mid; x.textAlign = 'center'; x.fillText(String(n), px(n), B + 13); });
-      var st = ymax > 0.5 ? 0.1 : 0.05; for (var v = 0; v <= ymax; v += st) { x.strokeStyle = C.light; x.beginPath(); x.moveTo(L, py(v)); x.lineTo(Rr, py(v)); x.stroke(); x.fillStyle = C.mid; x.textAlign = 'right'; x.fillText(v.toFixed(2), L - 4, py(v) + 4); }
+      MEE_SIZES.forEach(function(n){ x.strokeStyle = C.light; x.beginPath(); x.moveTo(px(n), T); x.lineTo(px(n), B); x.stroke(); x.fillStyle = C.mid; x.textAlign = 'center'; x.fillText(String(n), px(n), B + 15); });
+      var st = ymax > 0.5 ? 0.1 : 0.05; for (var v = 0; v <= ymax; v += st) { x.strokeStyle = C.light; x.beginPath(); x.moveTo(L, py(v)); x.lineTo(Rr, py(v)); x.stroke(); x.fillStyle = C.mid; x.textAlign = 'right'; x.fillText(v.toFixed(2), L - 4, v === 0 ? py(v) + 1 : py(v) + 4); }
       function line(key, col, dash){ x.strokeStyle = col; x.lineWidth = 2; x.setLineDash(dash || []); x.beginPath(); d.forEach(function(e, i){ if (i) x.lineTo(px(e.n), py(e[key])); else x.moveTo(px(e.n), py(e[key])); }); x.stroke(); x.setLineDash([]); x.fillStyle = col; d.forEach(function(e){ x.beginPath(); x.arc(px(e.n), py(e[key]), 3, 0, 6.2832); x.fill(); }); x.lineWidth = 1; }
       line('p', C.char, [5, 3]); line('g', C.red);
       x.strokeStyle = C.char; x.setLineDash([2, 3]); x.beginPath(); x.moveTo(px(R0.ntr), T); x.lineTo(px(R0.ntr), B); x.stroke(); x.setLineDash([]);
-      [[C.char, 'Log-linear fit'], [C.red, 'Boosted trees']].forEach(function(e, i){ x.fillStyle = e[0]; x.fillRect(Rr - 98, T + 6 + i * 13, 12, 3); x.fillStyle = C.char; x.textAlign = 'left'; x.fillText(e[1], Rr - 82, T + 10 + i * 13); });
+      [[C.char, 'Log-linear fit'], [C.red, 'Boosted trees']].forEach(function(e, i){ x.fillStyle = e[0]; x.fillRect(Rr - 98, 8 + i * 13, 12, 3); x.fillStyle = C.char; x.textAlign = 'left'; x.fillText(e[1], Rr - 82, 12 + i * 13); });
       x.fillStyle = C.char; x.textAlign = 'center'; x.font = '600 11.5px Aptos, "Segoe UI", sans-serif'; x.fillText('Training subjects', (L + Rr) / 2, g.h - 4); x.save(); x.translate(11, (T + B) / 2); x.rotate(-Math.PI / 2); x.fillText('RMSE, ln units', 0, 0); x.restore();
     }
     function drawImp(R){
