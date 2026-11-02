@@ -51,8 +51,8 @@ LESSONS.mlpk.add({ level: 'beginner', short: 'Model families and tasks', title: 
   watch: 'The model families in lessons 02 to 05 map onto tasks in PK, PBPK and MIDD workflows. A family is well matched to a task when its inputs, outputs and data requirements fit the task, for example a table of descriptors to a clearance value. The matrix rates seven tasks against seven families. The ratings describe fit to the task, not a ranking of accuracy, and the reason for each rating is shown when the task is selected.',
   build: function(api){
     var cur = 0;
-    var mp = api.el('pn', 'left:28px;top:20px;width:904px;height:310px;overflow:hidden', '<div class="mx"></div>');
-    var rp = api.el('pn', 'left:28px;top:340px;width:904px;height:180px;overflow:auto', '<div class="rt" style="font-size:13px;line-height:1.45;color:' + C.char + '"></div>');
+    var mp = api.el('pn', 'left:28px;top:20px;width:904px;height:282px;overflow:hidden', '<div class="mx"></div>');
+    var rp = api.el('pn', 'left:28px;top:314px;width:904px;height:206px;overflow:auto', '<div class="rt" style="font-size:13px;line-height:1.45;color:' + C.char + '"></div>');
     function dot(r, on){ if (r === 'P') return '<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:' + C.red + ';border:2px solid ' + C.red + '"></span>'; if (r === 'S') return '<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid ' + C.red + '"></span>'; return '<span style="display:inline-block;width:10px;height:2px;background:' + C.silver + ';vertical-align:middle"></span>'; }
     function draw(){
       var hd = '<tr><th style="text-align:left;padding:2px 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:' + C.mid + ';background:' + C.light + '">Task</th>' + MP_FAM.map(function(f){ return '<th style="padding:2px 3px;font-size:11px;font-weight:700;line-height:1.15;color:' + C.char + ';background:' + C.light + ';width:92px">' + esc(f.n) + '</th>'; }).join('') + '</tr>';
@@ -77,8 +77,8 @@ LESSONS.mlpk.add({ level: 'beginner', short: 'Predicted parameters', title: 'Pre
     var DOSE = 10, TEND = 48, BW = 70, KA = 1, cur = -1, logY = false, sims = {}, busy = false;
     var sp = api.el('pn', 'left:28px;top:20px;width:290px;height:214px;overflow:hidden', '<h4 class="nm"></h4><div class="struct" style="height:150px"></div><div class="smi" style="font:11px Cascadia Mono,Consolas,monospace;color:' + C.mid + ';word-break:break-all;margin-top:2px;max-height:34px;overflow:hidden"></div>');
     var tp = api.el('pn', 'left:28px;top:246px;width:290px;height:274px;overflow:auto', '<div class="tb" style="font-size:12.5px;color:' + C.char + '"></div>');
-    var cp = api.el('pn', 'left:338px;top:20px;width:594px;height:296px', '<h4>Simulated plasma concentration, 10 mg oral dose</h4><canvas width="566" height="254"></canvas>');
-    var ap = api.el('pn', 'left:338px;top:326px;width:594px;height:194px;overflow:auto', '<div class="as" style="font-size:12px;line-height:1.45;color:' + C.char + '"></div>');
+    var cp = api.el('pn', 'left:338px;top:20px;width:594px;height:262px', '<h4>Simulated plasma concentration, 10 mg oral dose</h4><canvas width="566" height="220"></canvas>');
+    var ap = api.el('pn', 'left:338px;top:292px;width:594px;height:228px;overflow:auto', '<div class="as" style="font-size:12px;line-height:1.45;color:' + C.char + '"></div>');
     var ctl = api.addControl('Test compound <select class="sel" style="width:230px"></select> <button type="button" class="btn sm ghost" data-next>Next compound</button> Axis ' + mpSegHTML('data-ax', ['Linear', 'Logarithmic'], 0));
     var sel = qs('.sel', ctl);
     function sim(e){
@@ -131,9 +131,9 @@ LESSONS.mlpk.add({ level: 'beginner', short: 'Error propagation', title: 'Error 
   watch: 'A prediction error in an ADME parameter propagates to the predicted exposure. The test RMSE of the boosted-trees model for HLM is taken as the standard deviation of a lognormal error in CLint, in log10 units. One thousand errors are drawn with a fixed seed, and each is converted to hepatic clearance with the well-stirred model and to AUC with a one-compartment intravenous model, AUC = dose divided by CL. The histogram shows the AUC fold error relative to the AUC at the measured CLint. Extraction saturates as CLint rises, so the same error in CLint changes hepatic clearance little for a high-extraction compound and by the full fold error for a low-extraction compound. The other inputs are assumptions: fraction unbound in plasma 1, blood to plasma ratio 1, hepatic blood flow 20.7 mL/min/kg, 70 kg body weight, and no renal clearance.',
   build: function(api){
     var N = 1000, DOSE = 100, sd = 0.55, ref = 2, rows = null;
-    var hp = api.el('pn', 'left:28px;top:20px;width:444px;height:318px', '<h4>AUC fold error, 1000 draws</h4><canvas width="416" height="276"></canvas>');
-    var cp = api.el('pn', 'left:488px;top:20px;width:444px;height:318px', '<h4>Hepatic clearance against CLint</h4><canvas width="416" height="276"></canvas>');
-    var np = api.el('pn', 'left:28px;top:350px;width:904px;height:170px;overflow:auto', '<div class="ns" style="font-size:12.5px;line-height:1.5;color:' + C.char + '"></div>');
+    var hp = api.el('pn', 'left:28px;top:20px;width:444px;height:290px', '<h4>AUC fold error, 1000 draws</h4><canvas width="416" height="248"></canvas>');
+    var cp = api.el('pn', 'left:488px;top:20px;width:444px;height:290px', '<h4>Hepatic clearance against CLint</h4><canvas width="416" height="248"></canvas>');
+    var np = api.el('pn', 'left:28px;top:322px;width:904px;height:198px;overflow:auto', '<div class="ns" style="font-size:12.5px;line-height:1.5;color:' + C.char + '"></div>');
     var ctl = api.addControl('Error SD, log10 units <input class="sd" type="range" min="0.05" max="1.2" step="0.01" style="width:160px"> <b class="sdv"></b> &nbsp; Measured log10 CLint <input class="rf" type="range" step="0.05" style="width:160px"> <b class="rfv"></b>');
     var sdI = qs('.sd', ctl), rfI = qs('.rf', ctl), sdV = qs('.sdv', ctl), rfV = qs('.rfv', ctl);
     var GAUSS = null;
