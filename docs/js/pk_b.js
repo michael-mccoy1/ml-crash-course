@@ -27,85 +27,100 @@ var PKB = { fits: {}, sim: null };
 
 /* ---------- 1. PBPK structure ---------- */
 LESSONS.pk.add({ level: 'intermediate', short: 'PBPK structure', title: 'PBPK model structure',
-  change: 'Select an organ. Set logP, fup and CLint, then select Simulate.',
-  watch: 'A whole-body PBPK model represents each organ as a well-mixed compartment with a physiological volume and blood flow. Here every tissue is perfusion-limited: the tissue and the venous blood leaving it are in instantaneous equilibrium, with the ratio set by a partition coefficient Kp. The gut drains to the liver through the portal vein, and the liver eliminates drug by the well-stirred model. The physiology is fixed. The drug-specific parameters are listed in the tables with the model families in this course that could predict each one. Only intrinsic clearance has data in this course.',
+  change: 'Select a test compound and an organ. Compare the simulation that uses the predicted CLint with the one that uses the measured value.',
+  watch: 'A whole-body PBPK model represents each organ as a well-mixed compartment with a physiological volume and blood flow. Every tissue is perfusion-limited: the tissue and the venous blood leaving it are in instantaneous equilibrium, with the ratio set by a partition coefficient Kp. The gut drains to the liver through the portal vein, and the liver eliminates drug by the well-stirred model. The physiology is fixed (ICRP Publication 89 volumes and flows for a 73 kg adult male, scaled to 70 kg; tissue composition from Ruark 2014 and Poulin and Theil 2002). The Kp method and its unbound-in-tissue default are as implemented in the course engine and have not been checked against the primary paper. The drug-specific inputs come from a model. Hepatic intrinsic clearance is predicted by the boosted-trees model of lesson 01 and lesson 02, trained on the HLM training compounds. logP is computed from the structure. Fraction unbound, blood to plasma ratio, ka and F have no data in this course and are set to 1, with renal clearance 0. Each test compound is simulated twice with the same model, once with the predicted CLint and once with the measured one, for a 10 mg oral dose over 48 h. The difference between the two curves is the effect of the prediction error. The validation number is the fold error of AUC and Cmax, shown for the compound and over all quantified test compounds.',
   build: function(api){
     var ORG = [['brain', 'Brain'], ['heart', 'Heart'], ['kidney', 'Kidney'], ['muscle', 'Muscle'], ['adipose', 'Adipose'], ['skin', 'Skin'], ['bone', 'Bone'], ['rest', 'Rest'], ['gut', 'Gut'], ['liver', 'Liver']],
-        PH = PKE.pbpk.reference, sel = 'liver', logAxis = true, fresh = false;
+        PH = PKE.pbpk.reference, sel = 'liver', logAxis = false, cur = -1, DOSE = 10, TEND = 48, BW = 70, KA = 1, busy = false, agg = null;
     var dp = api.el('pn', 'left:28px;top:20px;width:904px;height:236px', '<h4>Whole-body model: organs in parallel between arterial and venous blood</h4><div class="pkd" style="margin-top:2px"></div>');
-    var tp = api.el('pn', 'left:28px;top:264px;width:520px;height:256px;overflow:auto', '<h4>Parameters of the model</h4><div class="pkt" style="font-size:11.5px;line-height:1.35;color:' + C.char + '"></div>');
-    var rp = api.el('pn', 'left:564px;top:264px;width:368px;height:256px', '<div class="pkr" style="font-size:12px;line-height:1.45;color:' + C.char + '"></div><canvas width="336" height="146" style="margin-top:2px"></canvas>');
-    var ctl = api.addControl('logP <input type="range" class="c-lp" min="-1" max="5" step="0.1" value="2" style="width:100px"><b class="v-lp"></b> fup <input type="range" class="c-fu" min="0.02" max="1" step="0.01" value="0.5" style="width:100px"><b class="v-fu"></b> log10 CLint (mL/min/kg) <input type="range" class="c-ci" min="-1" max="3" step="0.1" value="1" style="width:100px"><b class="v-ci"></b> <button type="button" class="btn sm" data-sim>Simulate</button> <span class="seg" data-ax><button type="button" data-v="0">Linear</button><button type="button" data-v="1" class="on">Log</button></span> <span class="st" style="font-size:12px"></span>');
-    function par(){ return { logP: +qs('.c-lp', ctl).value, fup: +qs('.c-fu', ctl).value, ci: +qs('.c-ci', ctl).value }; }
-    function model(){ var p = par(); return PKE.pbpk.model({ logP: p.logP, fup: p.fup, bp: 1, clintU: PKE.pbpk.clintUFromHLM(p.ci, 70, 1), clr: 0, bw: 70 }); }
-    function flowOf(n){ var F = PKE.pbpk.referenceScaled(70).flows; return n === 'liver' ? F.liverTotal : F[n]; }
+    var tp = api.el('pn', 'left:28px;top:264px;width:520px;height:256px;overflow:auto', '<h4 class="pkth"></h4><div class="pkt" style="font-size:11.5px;line-height:1.35;color:' + C.char + '"></div>');
+    var rp = api.el('pn', 'left:564px;top:264px;width:368px;height:256px;overflow:auto', '<div class="pkr" style="font-size:11.5px;line-height:1.35;color:' + C.char + '"></div><canvas width="336" height="150" style="margin-top:2px"></canvas><div class="pkq" style="font-size:11.5px;line-height:1.35;color:' + C.char + '"></div>');
+    var ctl = api.addControl('Test compound <select class="sel" style="width:250px"></select> <button type="button" class="btn sm ghost" data-next>Next compound</button> <span class="seg" data-ax><button type="button" data-v="0" class="on">Linear</button><button type="button" data-v="1">Log</button></span>');
+    var sel0 = qs('.sel', ctl);
+    function flowOf(n){ var F = PKE.pbpk.referenceScaled(BW).flows; return n === 'liver' ? F.liverTotal : F[n]; }
     function diagram(){
-      var P = PKE.pbpk.referenceScaled(70), V = P.volumes, F = P.flows, w = 62, x0 = 130, dx = 74, y0 = 74, h = 62, aY = 30, vY = 166, s = '', i;
+      var P = PKE.pbpk.referenceScaled(BW), V = P.volumes, F = P.flows, w = 62, x0 = 130, dx = 74, y0 = 74, h = 62, aY = 30, vY = 166, s = '', i;
       s += '<line x1="50" y1="' + aY + '" x2="' + (x0 + 9 * dx + w) + '" y2="' + aY + '" stroke="' + C.red + '" stroke-width="3"/><line x1="' + (x0 + 9 * dx + w) + '" y1="' + vY + '" x2="50" y2="' + vY + '" stroke="' + C.mid + '" stroke-width="3"/>';
       s += '<line x1="50" y1="' + vY + '" x2="50" y2="' + (y0 + h) + '" stroke="' + C.mid + '" stroke-width="2"/><line x1="50" y1="' + y0 + '" x2="50" y2="' + aY + '" stroke="' + C.red + '" stroke-width="2"/>';
       s += '<rect x="10" y="' + y0 + '" width="80" height="' + h + '" rx="4" fill="#fff" stroke="' + C.char + '" stroke-width="1.4"/><text x="50" y="' + (y0 + 20) + '" text-anchor="middle" font-weight="700" fill="' + C.char + '">Lung</text><text x="50" y="' + (y0 + 38) + '" text-anchor="middle" font-size="10.5" fill="' + C.char + '">V ' + pkbNice(V.lung, 1) + ' L</text><text x="50" y="' + (y0 + 52) + '" text-anchor="middle" font-size="10.5" fill="' + C.char + '">Q ' + pkbNice(F.cardiacOutput, 0) + ' L/h</text>';
       s += '<text x="' + (x0 - 6) + '" y="' + (aY - 8) + '" text-anchor="start" font-size="11" fill="' + C.red + '">arterial blood</text><text x="' + (x0 - 6) + '" y="' + (vY + 16) + '" text-anchor="start" font-size="11" fill="' + C.mid + '">venous blood</text>';
-      s += '<line x1="104" y1="' + (vY + 14) + '" x2="104" y2="' + (vY + 2) + '" stroke="' + C.char + '" stroke-width="1.6" marker-end="url(#pkba)"/><text x="104" y="' + (vY + 26) + '" text-anchor="middle" font-size="10.5" fill="' + C.char + '">IV dose</text>';
       ORG.forEach(function(o, k){
         var x = x0 + k * dx, cx = x + w / 2, on = o[0] === sel, vol = o[0] === 'liver' ? V.liver : V[o[0]], q = flowOf(o[0]);
-        if (o[0] !== 'gut') s += '<line x1="' + cx + '" y1="' + aY + '" x2="' + cx + '" y2="' + y0 + '" stroke="' + C.red + '" stroke-width="1.4" marker-end="url(#pkba)"/>'; else s += '<line x1="' + cx + '" y1="' + aY + '" x2="' + cx + '" y2="' + y0 + '" stroke="' + C.red + '" stroke-width="1.4" marker-end="url(#pkba)"/>';
+        s += '<line x1="' + cx + '" y1="' + aY + '" x2="' + cx + '" y2="' + y0 + '" stroke="' + C.red + '" stroke-width="1.4" marker-end="url(#pkba)"/>';
         if (o[0] === 'liver') s += '<line x1="' + (cx + 14) + '" y1="' + aY + '" x2="' + (cx + 14) + '" y2="' + y0 + '" stroke="' + C.red + '" stroke-width="1.4" marker-end="url(#pkba)"/>';
         if (o[0] !== 'gut') s += '<line x1="' + cx + '" y1="' + (y0 + h) + '" x2="' + cx + '" y2="' + vY + '" stroke="' + C.mid + '" stroke-width="1.4"/>';
         s += '<g data-org="' + o[0] + '" style="cursor:pointer" tabindex="0"><rect x="' + x + '" y="' + y0 + '" width="' + w + '" height="' + h + '" rx="4" fill="' + (on ? '#FBE9E9' : '#fff') + '" stroke="' + (on ? C.red : C.char) + '" stroke-width="' + (on ? 2.4 : 1.4) + '"/><text x="' + cx + '" y="' + (y0 + 18) + '" text-anchor="middle" font-weight="700" fill="' + C.char + '">' + o[1] + '</text><text x="' + cx + '" y="' + (y0 + 36) + '" text-anchor="middle" font-size="10.5" fill="' + C.char + '">V ' + pkbNice(vol, vol < 0.1 ? 3 : 1) + ' L</text><text x="' + cx + '" y="' + (y0 + 51) + '" text-anchor="middle" font-size="10.5" fill="' + C.char + '">Q ' + pkbNice(q, q >= 100 ? 0 : 1) + ' L/h</text></g>';
-        if (o[0] === 'liver') s += '<text x="' + (cx - 4) + '" y="' + (y0 + h + 15) + '" text-anchor="end" font-size="10.5" fill="' + C.dred + '">CLint</text>';
-        if (o[0] === 'kidney') s += '<text x="' + (cx - 4) + '" y="' + (y0 + h + 15) + '" text-anchor="end" font-size="10.5" fill="' + C.mid + '">renal CL</text>';
-        if (o[0] === 'gut') s += '<line x1="' + (x + w) + '" y1="' + (y0 + h / 2) + '" x2="' + (x + dx) + '" y2="' + (y0 + h / 2) + '" stroke="' + C.char + '" stroke-width="1.6" marker-end="url(#pkba)"/>';
+        if (o[0] === 'liver') s += '<text x="' + (cx - 4) + '" y="' + (y0 + h + 15) + '" text-anchor="end" font-size="10.5" font-weight="700" fill="' + C.red + '">CLint (ML)</text>';
+        if (o[0] === 'kidney') s += '<text x="' + (cx - 4) + '" y="' + (y0 + h + 15) + '" text-anchor="end" font-size="10.5" fill="' + C.mid + '">renal CL = 0</text>';
+        if (o[0] === 'gut') s += '<line x1="' + (x + w) + '" y1="' + (y0 + h / 2) + '" x2="' + (x + dx) + '" y2="' + (y0 + h / 2) + '" stroke="' + C.char + '" stroke-width="1.6" marker-end="url(#pkba)"/><line x1="' + (cx - 16) + '" y1="' + (y0 + h + 13) + '" x2="' + (cx - 16) + '" y2="' + (y0 + h + 3) + '" stroke="' + C.char + '" stroke-width="1.6" marker-end="url(#pkba)"/><text x="' + (cx - 16) + '" y="' + (y0 + h + 24) + '" text-anchor="middle" font-size="10.5" fill="' + C.char + '">oral dose</text>';
       });
       qs('.pkd', dp).innerHTML = '<svg viewBox="0 0 880 200" width="100%" style="max-width:880px;display:block;margin:0 auto" font-family="Aptos, Segoe UI, sans-serif" font-size="12"><defs><marker id="pkba" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="' + C.char + '"/></marker></defs>' + s + '</svg>';
     }
+    function sim(e){
+      PKB.psims = PKB.psims || {}; if (PKB.psims[e.i]) return PKB.psims[e.i]; var ds = MP.ds, o = {}, kinds = { measured: ds.Y[e.i], predicted: MP.F[e.i] }, logp = ds.COL.logP[e.i];
+      Object.keys(kinds).forEach(function(k){
+        var m = PKE.pbpk.model({ logP: logp, fup: 1, bp: 1, clintU: PKE.pbpk.clintUFromHLM(kinds[k], BW, 1), clr: 0, ka: KA, F: 1, bw: BW }), r = PKE.pbpk.simulate(m, { route: 'oral', dose: DOSE }, TEND, null, 200), cm = 0;
+        r.plasma.forEach(function(c){ if (c > cm) cm = c; });
+        o[k] = { t: r.t, c: r.plasma, auc: r.aucPlasma[r.aucPlasma.length - 1], cmax: cm, log10: kinds[k], logP: logp };
+      });
+      return (PKB.psims[e.i] = o);
+    }
+    function aggregate(){
+      if (agg) return agg; var ds = MP.ds, ids = ds.TEST.filter(function(i){ return !ds.cens[i]; }), fe = ids.map(function(i){ var a = PKE.fromHLM(ds.Y[i], { bw: BW }).clhPlasmaLh, b = PKE.fromHLM(MP.F[i], { bw: BW }).clhPlasmaLh, r = b / a; return r >= 1 ? r : 1 / r; }).sort(function(x, y){ return x - y; });
+      return (agg = { n: fe.length, med: fe[Math.floor(fe.length / 2)], p90: fe[Math.floor(fe.length * 0.9)], w2: fe.filter(function(x){ return x <= 2; }).length / fe.length });
+    }
     function table(){
-      var rows = [['Physiology (fixed)', 'Organ volumes', 'ICRP Publication 89, 73 kg adult male, scaled to 70 kg', 'Not predicted'], ['', 'Blood flows', 'Same source; flows scale with weight to the power 0.75', 'Not predicted'], ['', 'Tissue composition', 'Water, neutral lipid, phospholipid fractions (Ruark 2014; Poulin and Theil 2002)', 'Not predicted'],
-        ['Drug-specific', 'Hepatic CLint', 'HLM log10 CLint, mL/min/kg, through IVIVE', 'Trees, networks, pre-trained models (lessons 02 to 05). Data in this course.'], ['', 'fup, blood:plasma ratio', 'Assumed here (fup set above, ratio 1)', 'Same families on other endpoints. No data in this course.'], ['', 'Kp per tissue', 'Poulin and Theil mixture model from logP and fup', 'Could be predicted directly. No data in this course.'],
-        ['', 'ka and F', 'Not used for the IV dose here', 'Permeability and solubility endpoints. No data in this course.'], ['', 'Renal clearance', 'Set to 0 here', 'Same families. No data in this course.']];
-      qs('.pkt', tp).innerHTML = '<table style="width:100%;border-collapse:collapse;table-layout:fixed"><colgroup><col style="width:15%"><col style="width:19%"><col style="width:34%"><col style="width:32%"></colgroup><tr style="font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:' + C.mid + '"><td></td><td>Parameter</td><td>Value or source</td><td>ML in this course</td></tr>' + rows.map(function(r){ return '<tr style="border-top:1px solid ' + C.silver + ';vertical-align:top"><td style="padding:4px 6px 4px 0;font-weight:700;color:' + (r[0] === 'Drug-specific' ? C.dred : C.char) + '">' + r[0] + '</td><td style="padding:4px 6px 4px 0;font-weight:600">' + r[1] + '</td><td style="padding:4px 6px 4px 0">' + r[2] + '</td><td style="padding:4px 0">' + r[3] + '</td></tr>'; }).join('') + '</table>' +
-        '<p style="margin:6px 0 0;color:' + C.mid + '">Physiology source: ' + esc(PH.source) + '. The Kp method and its unbound-in-tissue default are as implemented in the course engine and have not been checked against the primary paper.</p>';
+      var e = MP.list[cur], r = PKB.psims && PKB.psims[e.i]; if (!r) return;
+      var badge = function(t, c){ return '<span style="display:inline-block;padding:0 5px;border-radius:3px;font-size:10px;font-weight:700;color:#fff;background:' + c + '">' + t + '</span>'; };
+      var rows = [['logP', badge('computed', C.mid), 'RDKit Crippen', r.measured.logP.toFixed(2)], ['log10 CLint (mL/min/kg)', badge('ML prediction', C.red), 'Boosted trees. Measured ' + r.measured.log10.toFixed(2), '<b style="color:' + C.red + '">' + r.predicted.log10.toFixed(2) + '</b>'], ['fup, blood to plasma', badge('assumed', C.mid), 'No data in this course', '1, 1'], ['ka (per h), F', badge('assumed', C.mid), 'No data in this course', '1, 1'], ['Renal clearance', badge('assumed', C.mid), 'Set to 0', '0'], ['Volumes, flows, tissues', badge('fixed', C.char), 'Physiology, 70 kg adult', 'diagram']];
+      qs('.pkth', tp).textContent = 'Inputs for compound ' + (e.i + 1);
+      qs('.pkt', tp).innerHTML = '<table style="width:100%;border-collapse:collapse;table-layout:fixed"><colgroup><col style="width:29%"><col style="width:22%"><col style="width:35%"><col style="width:14%"></colgroup><tr style="font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:' + C.mid + '"><td>Input</td><td>Source</td><td>Detail</td><td style="text-align:right">Value</td></tr>' + rows.map(function(x){ return '<tr style="border-top:1px solid ' + C.silver + ';vertical-align:middle"><td style="padding:3px 6px 3px 0;font-weight:600">' + x[0] + '</td><td style="padding:3px 6px 3px 0">' + x[1] + '</td><td style="padding:3px 6px 3px 0">' + x[2] + '</td><td style="padding:3px 0;text-align:right">' + x[3] + '</td></tr>'; }).join('') + '</table>';
     }
     function details(){
-      var p = par(), P = PKE.pbpk.referenceScaled(70), kp = PKE.pbpk.kpPT(p.logP, p.fup), v = sel === 'liver' ? P.volumes.liver : P.volumes[sel], q = flowOf(sel), nm = ORG.filter(function(o){ return o[0] === sel; })[0][1], k = kp[sel], tau = v * k / q;
-      var tot = Object.keys(P.volumes).reduce(function(a, b){ return a + P.volumes[b]; }, 0);
-      qs('.pkr', rp).innerHTML = '<b style="font-size:13px">' + nm + '</b>: volume ' + pkbNice(v, 2) + ' L (' + (100 * v / tot).toFixed(1) + '% of the model volume), blood flow ' + pkbNice(q, 1) + ' L/h (' + (100 * q / P.flows.cardiacOutput).toFixed(1) + '% of cardiac output). Kp ' + pkbNice(k, 2) + ' at logP ' + p.logP.toFixed(1) + ' and fup ' + p.fup.toFixed(2) + '. Equilibration time constant V Kp / Q: ' + (tau < 1 ? (tau * 60).toFixed(0) + ' min' : tau.toFixed(1) + ' h') + '.';
+      var e = MP.list[cur], p = PKB.psims && PKB.psims[e.i], P = PKE.pbpk.referenceScaled(BW), kp = PKE.pbpk.kpPT(p ? p.measured.logP : 2, 1), v = sel === 'liver' ? P.volumes.liver : P.volumes[sel], q = flowOf(sel), nm = ORG.filter(function(o){ return o[0] === sel; })[0][1], k = kp[sel], tau = v * k / q;
+      qs('.pkr', rp).innerHTML = '<b>' + nm + '</b>: V ' + pkbNice(v, 2) + ' L, Q ' + pkbNice(q, 1) + ' L/h, Kp ' + pkbNice(k, 2) + ', V Kp / Q ' + (tau < 1 ? (tau * 60).toFixed(0) + ' min' : tau.toFixed(1) + ' h') + '.';
     }
     function chart(){
-      var el = qs('canvas', rp), S = PKB.sim;
-      if (!S) { var g0 = cv(el); g0.x.fillStyle = C.mid; g0.x.font = '12px Aptos, "Segoe UI", sans-serif'; g0.x.textAlign = 'center'; g0.x.fillText('Select Simulate to run a 10 mg IV bolus over 24 h.', g0.w / 2, g0.h / 2); return; }
-      var org = S.res.organs[sel] || S.res.organs.liver, pl = S.res.venousPlasma, cmax = Math.max.apply(null, pl.concat(org)), cmin = cmax / 1e4, pts1 = [], pts2 = [], i, f = function(c){ return logAxis ? Math.log10(Math.max(c, cmin)) : c; };
-      for (i = 0; i < S.res.t.length; i++) { pts1.push([S.res.t[i], f(pl[i])]); pts2.push([S.res.t[i], f(org[i])]); }
-      var o = { xl: 'time (h)', yl: logAxis ? 'mg/L, log scale' : 'mg/L', x0: 0, x1: S.tEnd };
-      if (logAxis) { var lo = Math.floor(Math.log10(cmin)), hi = Math.ceil(Math.log10(cmax)); o.y0 = lo; o.y1 = hi; o.yticks = pkbLogTicks(lo, hi); } else o.y0 = 0;
-      lineChart(el, [{ pts: pts1, color: C.red, w: 2.6, nodot: true, label: 'venous plasma' }, { pts: pts2, color: C.char, w: 2.4, nodot: true, label: ORG.filter(function(x){ return x[0] === sel; })[0][1] + ' tissue' }], o);
+      var el = qs('canvas', rp), e = MP.list[cur], r = PKB.psims && PKB.psims[e.i]; if (!r) return;
+      var f = function(v){ return v > 0 ? Math.log10(Math.max(v * 1000, 0.1)) : -1; }, sM = r.measured.t.map(function(t, j){ return [t, logAxis ? f(r.measured.c[j]) : r.measured.c[j] * 1000]; }), sP = r.predicted.t.map(function(t, j){ return [t, logAxis ? f(r.predicted.c[j]) : r.predicted.c[j] * 1000]; }), o = { xl: 'time after dose (h)', yl: logAxis ? 'ug/L, log scale' : 'ug/L', x0: 0, x1: TEND };
+      if (logAxis) { var mx = Math.max.apply(null, sM.concat(sP).map(function(q){ return q[1]; })), hi = Math.ceil(mx); o.y0 = -1; o.y1 = hi; o.yticks = []; for (var tv = -1; tv <= hi; tv++) o.yticks.push({ v: tv, t: tv < 0 ? '0.1' : String(Math.pow(10, tv)) }); } else o.y0 = 0;
+      lineChart(el, [{ pts: sM, color: C.char, w: 2.4, nodot: true, label: 'measured CLint' }, { pts: sP, color: C.red, w: 2.4, nodot: true, label: 'predicted CLint' }], o);
+      var fa = r.predicted.auc / r.measured.auc, fc = r.predicted.cmax / r.measured.cmax, A = aggregate();
+      qs('.pkq', rp).innerHTML = '<b>AUC fold error ' + (fa >= 1 ? fa : 1 / fa).toFixed(2) + '</b> (' + (fa >= 1 ? 'over' : 'under') + '-predicted), <b>Cmax fold error ' + (fc >= 1 ? fc : 1 / fc).toFixed(2) + '</b>. Over ' + A.n + ' quantified test compounds, the AUC fold error has median ' + A.med.toFixed(2) + ' and 90th percentile ' + A.p90.toFixed(2) + ', and ' + (100 * A.w2).toFixed(0) + '% are within 2-fold.';
     }
-    function status(t){ qs('.st', ctl).textContent = t || ''; }
-    function readouts(){ var p = par(); qs('.v-lp', ctl).textContent = p.logP.toFixed(1); qs('.v-fu', ctl).textContent = p.fup.toFixed(2); qs('.v-ci', ctl).textContent = p.ci.toFixed(1); }
-    function all(){ readouts(); diagram(); table(); details(); chart(); }
-    async function simulate(){
-      var btn = qs('[data-sim]', ctl); btn.disabled = true; status('Simulating'); await tick(); await tick();
-      try { var m = model(), dt = PKE.pbpk.stableDt(m), tEnd = 24, n = Math.ceil(tEnd / dt), res = PKE.pbpk.simulate(m, { route: 'iv', dose: 10 }, tEnd, dt, Math.max(1, Math.ceil(n / 420))); PKB.sim = { res: res, tEnd: tEnd, p: par() }; status('Done. Mass balance error ' + res.massError.toExponential(1) + '.'); fresh = true; chart(); }
-      catch (e) { console.error(e); status('The simulation failed.'); } finally { btn.disabled = false; }
+    function all(){ diagram(); table(); details(); chart(); }
+    async function pick(k){
+      if (busy) return; cur = k; sel0.value = String(k); busy = true; var e = MP.list[cur];
+      PKB.psims = PKB.psims || {};
+      if (!PKB.psims[e.i]) { api.busy('Simulating'); await tick(); await tick(); try { sim(e); } finally { api.idle(); } }
+      busy = false; all();
     }
-    qs('[data-sim]', ctl).addEventListener('click', simulate);
-    ['.c-lp', '.c-fu', '.c-ci'].forEach(function(c){ qs(c, ctl).addEventListener('input', function(){ readouts(); details(); if (PKB.sim) status('Parameters changed. Select Simulate to update the curves.'); }); });
-    qsa('[data-ax] button', ctl).forEach(function(b){ b.addEventListener('click', function(){ logAxis = +b.dataset.v === 1; qsa('[data-ax] button', ctl).forEach(function(x){ x.classList.toggle('on', x === b); }); chart(); }); });
-    dp.addEventListener('click', function(e){ var g = e.target.closest ? e.target.closest('[data-org]') : null; if (!g) return; sel = g.dataset.org; diagram(); details(); chart(); });
-    dp.addEventListener('keydown', function(e){ if (e.key !== 'Enter') return; var g = e.target.closest ? e.target.closest('[data-org]') : null; if (g) { sel = g.dataset.org; diagram(); details(); chart(); } });
+    async function render(){
+      await mpReady(api);
+      if (cur < 0) { var ae = MP.list.map(function(e, k){ return [Math.abs(MP.F[e.i] - MP.ds.Y[e.i]), k]; }).sort(function(a, b){ return a[0] - b[0]; }); cur = ae[Math.floor(ae.length / 2)][1]; }
+      if (!sel0.options.length) MP.list.forEach(function(e, k){ var o = document.createElement('option'); o.value = k; o.textContent = 'Compound ' + (e.i + 1) + ', measured log10 CLint ' + MP.ds.Y[e.i].toFixed(2); sel0.appendChild(o); });
+      await pick(cur);
+    }
+    sel0.addEventListener('change', function(){ pick(+sel0.value); });
+    qs('[data-next]', ctl).addEventListener('click', function(){ if (MP.list) pick((cur + 1) % MP.list.length); });
+    qsa('[data-ax] button', ctl).forEach(function(b){ b.addEventListener('click', function(){ logAxis = +b.dataset.v === 1; qsa('[data-ax] button', ctl).forEach(function(x){ x.classList.toggle('on', x === b); }); if (cur >= 0) chart(); }); });
+    dp.addEventListener('click', function(e){ var g = e.target.closest ? e.target.closest('[data-org]') : null; if (!g || cur < 0) return; sel = g.dataset.org; diagram(); details(); });
+    dp.addEventListener('keydown', function(e){ if (e.key !== 'Enter') return; var g = e.target.closest ? e.target.closest('[data-org]') : null; if (g && cur >= 0) { sel = g.dataset.org; diagram(); details(); } });
     async function play(tok){
-      sel = 'liver'; qs('.c-lp', ctl).value = 2; qs('.c-fu', ctl).value = 0.5; qs('.c-ci', ctl).value = 1; all(); api.cap('Organs sit in parallel between the arterial and venous blood. The gut drains to the liver through the portal vein.'); await api.sleep(3600);
-      sel = 'adipose'; all(); api.cap('Each tissue has a volume, a blood flow and a partition coefficient Kp. Adipose has a large volume and a small flow, so it equilibrates slowly.'); await api.sleep(3800);
-      sel = 'liver'; all(); api.cap('Hepatic elimination uses the intrinsic clearance, the model input that the HLM data inform.'); await api.sleep(3400);
-      await simulate(); api.cap('A 10 mg IV bolus. Tissue curves lag plasma by an amount set by V Kp / Q.'); await api.sleep(3600); api.cap(null);
+      sel = 'liver'; await render(); api.cap('Organs sit in parallel between the arterial and venous blood. The physiology is fixed.'); await api.sleep(3400); api.checkTok(tok);
+      sel = 'adipose'; diagram(); details(); api.cap('Each tissue has a volume, a blood flow and a partition coefficient Kp. Adipose has a large volume and a small flow, so it equilibrates slowly.'); await api.sleep(3800); api.checkTok(tok);
+      sel = 'liver'; diagram(); details(); api.cap('The drug-specific input that has data in this course is hepatic CLint. It is predicted by a model and compared with the measured value.'); await api.sleep(3800); api.checkTok(tok);
+      logAxis = true; qsa('[data-ax] button', ctl).forEach(function(x){ x.classList.toggle('on', +x.dataset.v === 1); }); chart(); api.cap('The two simulations differ only in the CLint input. On a log axis the terminal slopes show the difference in clearance.'); await api.sleep(3800);
+      logAxis = false; qsa('[data-ax] button', ctl).forEach(function(x){ x.classList.toggle('on', +x.dataset.v === 0); }); chart(); api.cap(null);
     }
-    return { render: all, play: play };
+    return { render: render, play: play };
   } });
-GUIDE.steps['pk/PBPK structure'] = { notice: 'The physiology is fixed. The drug-specific parameters in the table are the quantities a machine learning model predicts.', q: 'Which parameters of this model are inputs that machine learning could supply?', a: 'Hepatic CLint, fraction unbound, blood to plasma ratio, the partition coefficients, ka and F, and renal clearance. The organ volumes and flows are physiology.' };
+GUIDE.steps['pk/PBPK structure'] = { notice: 'Only hepatic CLint is predicted by a model in this step. The other drug-specific inputs are assumed.', q: 'How is the effect of a CLint prediction error on the simulated exposure measured?', a: 'The compound is simulated with the predicted and with the measured CLint, and the fold error of AUC and Cmax is reported, for the compound and over all quantified test compounds.' };
 
 /* ---------- 2. Compartmental fit ---------- */
 LESSONS.pk.add({ level: 'intermediate', short: 'Compartmental fit', title: 'NCA and compartmental fits',
   change: 'Select a data set, a subject and a model. Compare the non-compartmental and fitted estimates.',
-  watch: 'Two ways to extract parameters from a measured profile. Non-compartmental analysis (NCA) uses the trapezoidal rule and the terminal slope and assumes no model. A compartmental fit chooses a model and minimises the difference between the model and the data. The fits here minimise the sum of squared differences of log concentration, which approximates a proportional error model. Both use the same public data: Theoph (oral theophylline, 12 subjects, 132 observations) and Indometh (intravenous indomethacin, 6 subjects, 66 observations). The Indometh dose is not verified in the public sources, so Indometh results are given for an assumed dose of 1 mg and all clearances and volumes scale in proportion to the true dose. The fits are the same optimisation that trains a machine learning model: a loss, parameters, and an optimiser. Machine learning in this step. A model trained on other compounds predicts CL and V before any profile exists, and a sequence model can replace the compartmental model (lesson 11, Sequence models for profiles). Predicted parameters are validated against the NCA values of subjects held out of training (lesson 11, Validation design).',
+  watch: 'Two ways to extract parameters from a measured profile. Non-compartmental analysis (NCA) uses the trapezoidal rule and the terminal slope and assumes no model. A compartmental fit chooses a model and minimises the difference between the model and the data. The fits here minimise the sum of squared differences of log concentration, which approximates a proportional error model. Both use the same public data: Theoph (oral theophylline, 12 subjects, 132 observations) and Indometh (intravenous indomethacin, 6 subjects, 66 observations). The Indometh dose is not verified in the public sources, so Indometh results are given for an assumed dose of 1 mg and all clearances and volumes scale in proportion to the true dose. A boosted-trees model (lesson 02) is trained to predict the NCA CL/F and V/F of a Theoph subject from weight and dose per kg. Each subject is held out in turn and the model is trained on the other 11 (leave-one-out). Its error is compared with two baselines: the mean of the other subjects, and a log-linear fit on weight. Twelve subjects and two covariates are too few to train a model, and the comparison shows how much the covariates add to the mean. Indometh has no recorded covariates, so no covariate model can be fitted to it. Lesson 11 covers models that predict parameters before any profile exists (Predicted parameters as PBPK inputs) and sequence models that replace the compartmental model (Sequence models for profiles).',
   build: function(api){
     var DATA = null, ds = 'theoph', sub = 0, mdl = 1;
     var ap = api.el('pn', 'left:28px;top:20px;width:292px;height:500px;overflow:auto', '<h4>Estimates</h4><div class="pkf" style="font-size:11.5px;line-height:1.4;color:' + C.char + '"></div>');
@@ -141,6 +156,25 @@ LESSONS.pk.add({ level: 'intermediate', short: 'Compartmental fit', title: 'NCA 
       var v1 = e(th[0]), k10 = e(th[1]), k12 = e(th[2]), k21 = e(th[3]), s = k10 + k12 + k21, disc = Math.sqrt(s * s - 4 * k10 * k21), beta = (s - disc) / 2, cl = k10 * v1;
       return { cl: cl, v: cl / beta, thalf: Math.LN2 / beta, auc: d / cl, extra: 'Vss ' + pkbNice(v1 * (1 + k12 / k21), 2) + ' L, alpha half-life ' + pkbNice(Math.LN2 / ((s + disc) / 2), 2) + ' h' };
     }
+    function ncaTheoph(s){ return PKE.nca(s.t.slice(), s.conc.slice(), s.doseMg, { nTerminal: 3 }); }
+    function loo(){
+      if (PKB.loo) return PKB.loo;
+      var S = DATA.theoph.subjects, n = S.length, nc = S.map(ncaTheoph), X = S.map(function(s){ return [s.wt, s.doseMgPerKg]; }), tg = { cl: nc.map(function(q){ return Math.log(q.clF); }), v: nc.map(function(q){ return Math.log(q.vzF); }) }, out = { n: n, nca: nc, pred: { trees: { cl: [], v: [] }, mean: { cl: [], v: [] }, allo: { cl: [], v: [] } } }, i, j;
+      ['cl', 'v'].forEach(function(key){
+        for (i = 0; i < n; i++) {
+          var tr = [], Xtr = [], ytr = [];
+          for (j = 0; j < n; j++) if (j !== i) { Xtr.push(X[j]); ytr.push(tg[key][j]); }
+          out.pred.trees[key].push(mlbBoost(Xtr, ytr, { rounds: 100, lr: 0.1, depth: 2, minLeaf: 2 }).predict(X[i]));
+          var m = mean(ytr); out.pred.mean[key].push(m);
+          var xl = Xtr.map(function(r){ return Math.log(r[0] / 70); }), xm = mean(xl), sxy = 0, sxx = 0;
+          xl.forEach(function(v, k){ sxy += (v - xm) * (ytr[k] - m); sxx += (v - xm) * (v - xm); });
+          var b = sxx > 0 ? sxy / sxx : 0; out.pred.allo[key].push(m + b * (Math.log(X[i][0] / 70) - xm));
+        }
+      });
+      out.tg = tg;
+      out.stat = function(model, key){ var e = out.pred[model][key].map(function(v, k){ return Math.abs(v - tg[key][k]); }); return { gmfe: Math.exp(mean(e)), within2: e.filter(function(x){ return x <= Math.LN2; }).length }; };
+      return (PKB.loo = out);
+    }
     function getFit(i, kind){ var key = ds + i + kind; if (!PKB.fits[key]) PKB.fits[key] = fit(DATA[ds].subjects[i], kind); return PKB.fits[key]; }
     function kinds(){ return ds === 'theoph' ? ['oral1'] : (mdl === 1 ? ['iv1'] : ['iv1', 'iv2']); }
     function draw(){
@@ -157,20 +191,27 @@ LESSONS.pk.add({ level: 'intermediate', short: 'Compartmental fit', title: 'NCA 
       var gr = lineChart(qs('canvas', rs), [{ pts: [[0, 0], [tEnd, 0]], color: C.bg, w: 1.4, nodot: true, dash: [4, 4] }], { xl: 'time (h)', yl: 'ln residual', x0: 0, x1: tEnd, y0: -rmax, y1: rmax });
       if (gr && gr.sx) ks.forEach(function(kd){ gr.x.fillStyle = cols[kd]; u.t.forEach(function(t, k){ gr.x.beginPath(); gr.x.arc(gr.sx(t), gr.sy(resid[kd][k]), 3.4, 0, 6.3); gr.x.fill(); }); });
       /* table */
-      var fmt = function(v){ return pkbNice(v, 2); }, unit = ds === 'theoph' ? '/F' : '', rows = [['AUC0-inf (mg h/L)', fmt(n.aucInf)], ['CL' + unit + ' (L/h)', fmt(n.clF)], ['V' + unit + ' (L), Vz', fmt(n.vzF)], ['Terminal half-life (h)', fmt(n.thalf)]];
-      var html = '<div class="ol">Non-compartmental (' + (ds === 'theoph' ? 'oral' : 'IV') + ')</div><table style="width:100%;border-collapse:collapse">' + rows.map(function(x){ return '<tr style="border-top:1px solid ' + C.silver + '"><td style="padding:2px 4px 2px 0">' + x[0] + '</td><td style="text-align:right;font-weight:700">' + x[1] + '</td></tr>'; }).join('') + '</table>';
-      ks.forEach(function(kd){ var f = getFit(sub, kd), q = summary(f), rm = Math.sqrt(f.sse / f.n); html += '<div class="ol" style="margin-top:10px">' + (kd === 'oral1' ? 'Fit: one compartment, oral' : (kd === 'iv1' ? 'Fit: one compartment' : 'Fit: two compartments')) + '</div><table style="width:100%;border-collapse:collapse">' + [['AUC0-inf (mg h/L)', fmt(q.auc)], ['CL' + unit + ' (L/h)', fmt(q.cl)], ['V' + unit + ' (L)' + (kd === 'iv2' ? ', Vz' : ''), fmt(q.v)], ['Terminal half-life (h)', fmt(q.thalf)], ['Residual SD of ln c', rm.toFixed(3)]].map(function(x){ return '<tr style="border-top:1px solid ' + C.silver + '"><td style="padding:2px 4px 2px 0">' + x[0] + '</td><td style="text-align:right;font-weight:700;color:' + cols[kd] + '">' + x[1] + '</td></tr>'; }).join('') + '</table>' + (q.extra ? '<div style="font-size:11px;color:' + C.mid + '">' + q.extra + '</div>' : ''); });
-      html += '<p style="margin:10px 0 0;font-size:11.5px">' + (ds === 'theoph' ? 'Theoph: oral dose in mg from the data set. Observations at t = 0 are excluded from the fit because the model has concentration 0 there and the objective uses logarithms. CL/F and V/F are apparent values because bioavailability is not identifiable from oral data alone.' : 'Indometh: dose assumed to be 1 mg because it is not verified in the public sources. CL and V therefore scale in proportion to the true dose, while the half-lives do not. NCA extrapolates the first two observations back to t = 0.') + '</p>';
+      var fmt = function(v){ return pkbNice(v, 2); }, unit = ds === 'theoph' ? '/F' : '', nm = { oral1: 'One compartment', iv1: 'One compartment', iv2: 'Two compartments' };
+      var qs2 = ks.map(function(kd){ var f = getFit(sub, kd); return { kd: kd, q: summary(f), rm: Math.sqrt(f.sse / f.n) }; });
+      var head = '<tr style="font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:' + C.mid + '"><td></td><td style="text-align:right;padding:2px 3px">NCA</td>' + qs2.map(function(o){ return '<td style="text-align:right;padding:2px 3px;color:' + cols[o.kd] + '">' + nm[o.kd] + '</td>'; }).join('') + '</tr>';
+      var line = function(l, a, fn){ return '<tr style="border-top:1px solid ' + C.silver + '"><td style="padding:2px 3px 2px 0">' + l + '</td><td style="text-align:right;font-weight:700;padding:2px 3px">' + a + '</td>' + qs2.map(function(o){ return '<td style="text-align:right;font-weight:700;padding:2px 3px;color:' + cols[o.kd] + '">' + fn(o) + '</td>'; }).join('') + '</tr>'; };
+      var html = '<div class="ol">Subject ' + s.id + ', ' + (ds === 'theoph' ? 'oral' : 'IV') + '</div><table style="width:100%;border-collapse:collapse;font-size:11px">' + head + line('AUC0-inf (mg h/L)', fmt(n.aucInf), function(o){ return fmt(o.q.auc); }) + line('CL' + unit + ' (L/h)', fmt(n.clF), function(o){ return fmt(o.q.cl); }) + line('V' + unit + ' (L)', fmt(n.vzF), function(o){ return fmt(o.q.v); }) + line('Half-life (h)', fmt(n.thalf), function(o){ return fmt(o.q.thalf); }) + line('Residual SD of ln c', 'n/a', function(o){ return o.rm.toFixed(3); }) + '</table>' + qs2.map(function(o){ return o.q.extra ? '<div style="font-size:10.5px;color:' + C.mid + '">' + nm[o.kd] + ': ' + o.q.extra + '</div>' : ''; }).join('');
+      if (ds === 'theoph') {
+        var L = loo(), tr = L.pred.trees, nq = L.nca[sub], fe = function(pr, ob){ var r = Math.exp(pr - ob); return r >= 1 ? r : 1 / r; }, sT = L.stat('trees', 'cl'), sM = L.stat('mean', 'cl'), sA = L.stat('allo', 'cl'), vT = L.stat('trees', 'v'), vM = L.stat('mean', 'v'), vA = L.stat('allo', 'v');
+        html += '<div class="ol" style="margin-top:10px">ML, boosted trees, leave-one-out</div><table style="width:100%;border-collapse:collapse">' + [['CL/F predicted (L/h)', fmt(Math.exp(tr.cl[sub])) + ', fold error ' + fe(tr.cl[sub], L.tg.cl[sub]).toFixed(2)], ['V/F predicted (L)', fmt(Math.exp(tr.v[sub])) + ', fold error ' + fe(tr.v[sub], L.tg.v[sub]).toFixed(2)]].map(function(x){ return '<tr style="border-top:1px solid ' + C.silver + '"><td style="padding:2px 4px 2px 0">' + x[0] + '</td><td style="text-align:right;font-weight:700;color:' + C.red + '">' + x[1] + '</td></tr>'; }).join('') + '</table>' +
+          '<div style="font-size:11px;line-height:1.35;color:' + C.char + ';margin-top:6px">Geometric mean fold error over the 12 subjects, against the NCA value:<table style="width:100%;border-collapse:collapse;margin-top:3px"><tr style="font-weight:700;color:' + C.mid + '"><td></td><td style="text-align:right">CL/F</td><td style="text-align:right">V/F</td></tr><tr style="border-top:1px solid ' + C.silver + '"><td>Boosted trees</td><td style="text-align:right">' + sT.gmfe.toFixed(2) + '</td><td style="text-align:right">' + vT.gmfe.toFixed(2) + '</td></tr><tr style="border-top:1px solid ' + C.silver + '"><td>Mean of the other 11</td><td style="text-align:right">' + sM.gmfe.toFixed(2) + '</td><td style="text-align:right">' + vM.gmfe.toFixed(2) + '</td></tr><tr style="border-top:1px solid ' + C.silver + '"><td>Log-linear on weight</td><td style="text-align:right">' + sA.gmfe.toFixed(2) + '</td><td style="text-align:right">' + vA.gmfe.toFixed(2) + '</td></tr></table></div>';
+      } else html += '<div style="font-size:11px;line-height:1.35;color:' + C.char + ';margin-top:10px">No covariates are recorded for Indometh, so no covariate model can be fitted. The dose is assumed to be 1 mg.</div>';
       qs('.pkf', ap).innerHTML = html;
       /* agreement across subjects */
       var N = DATA[ds].subjects.length, pairs = [], mx = 0;
-      for (i = 0; i < N; i++) { var si = DATA[ds].subjects[i], ni = ncaOf(si), fk = ds === 'theoph' ? 'oral1' : (mdl === 1 ? 'iv1' : 'iv2'), fq = summary(getFit(i, fk)); pairs.push([ni.clF, fq.cl, si.id]); mx = Math.max(mx, ni.clF, fq.cl); }
-      qs('.pkh3', ag).textContent = 'CL' + unit + ' across ' + N + ' subjects: NCA against fit';
+      for (i = 0; i < N; i++) { var si = DATA[ds].subjects[i], ni = ncaOf(si), fk = ds === 'theoph' ? 'oral1' : (mdl === 1 ? 'iv1' : 'iv2'), fq = summary(getFit(i, fk)); pairs.push([ni.clF, fq.cl, si.id]); mx = Math.max(mx, ni.clF, fq.cl); if (ds === 'theoph') mx = Math.max(mx, Math.exp(loo().pred.trees.cl[i])); }
+      qs('.pkh3', ag).textContent = 'CL' + unit + ' across ' + N + ' subjects';
       var a = cv(qs('canvas', ag)), bx = { l: 40, r: a.w - 12, t: 12, b: a.h - 36 }, top = Math.ceil(mx * 1.1);
       var sxa = function(v){ return bx.l + v / top * (bx.r - bx.l); }, sya = function(v){ return bx.b - v / top * (bx.b - bx.t); };
       axes(a, bx, [0, top], [0, top], 'CL' + unit + ' by NCA (L/h)', 'CL' + unit + ' by fit (L/h)', 4);
       a.x.strokeStyle = C.bg; a.x.setLineDash([4, 4]); a.x.beginPath(); a.x.moveTo(sxa(0), sya(0)); a.x.lineTo(sxa(top), sya(top)); a.x.stroke(); a.x.setLineDash([]);
       pairs.forEach(function(p){ a.x.fillStyle = p[2] === s.id ? C.red : C.char; a.x.beginPath(); a.x.arc(sxa(p[0]), sya(p[1]), p[2] === s.id ? 5.5 : 3.8, 0, 6.3); a.x.fill(); });
+      if (ds === 'theoph') { var Lp = loo(); a.x.strokeStyle = C.red; a.x.lineWidth = 1.6; Lp.nca.forEach(function(q, k){ var xv = q.clF, yv = Math.exp(Lp.pred.trees.cl[k]); a.x.strokeRect(sxa(xv) - 3.5, sya(Math.min(yv, top)) - 3.5, 7, 7); }); a.x.fillStyle = C.char; a.x.font = '10.5px Aptos, "Segoe UI", sans-serif'; a.x.textAlign = 'left'; a.x.fillText('filled: compartmental fit', bx.l + 6, bx.t + 12); a.x.fillText('squares: boosted trees, leave-one-out', bx.l + 6, bx.t + 25); }
     }
     function fillSubjects(){ var sel = qs('.sbj', ctl); sel.innerHTML = DATA[ds].subjects.map(function(s, i){ return '<option value="' + i + '">' + s.id + '</option>'; }).join(''); sel.value = String(sub); qs('.mwrap', ctl).style.display = ds === 'indometh' ? '' : 'none'; }
     async function render(){
@@ -184,30 +225,29 @@ LESSONS.pk.add({ level: 'intermediate', short: 'Compartmental fit', title: 'NCA 
       await render(); ds = 'theoph'; sub = 0; fillSubjects(); qsa('[data-ds] button', ctl).forEach(function(x){ x.classList.toggle('on', x.dataset.v === 'theoph'); }); await render();
       api.cap('NCA and the one-compartment fit give similar clearance for an oral profile when the terminal phase is well sampled.'); await api.sleep(3800);
       for (var k = 1; k < 4; k++) { api.checkTok(tok); sub = k; fillSubjects(); await render(); await api.sleep(1400); }
-      api.cap('Across subjects the two estimates track each other. The scatter shows where they differ.'); await api.sleep(3400);
+      api.cap('Across subjects the two estimates track each other. The squares are boosted-trees predictions of CL/F for each subject, made without that subject in the training set.'); await api.sleep(4200);
       ds = 'indometh'; sub = 0; mdl = 1; fillSubjects(); qsa('[data-ds] button', ctl).forEach(function(x){ x.classList.toggle('on', x.dataset.v === 'indometh'); }); qsa('[data-md] button', ctl).forEach(function(x){ x.classList.toggle('on', x.dataset.v === '1'); }); await render();
       api.cap('An IV profile with a distribution phase: the one-compartment residuals have a pattern.'); await api.sleep(3800);
       mdl = 2; qsa('[data-md] button', ctl).forEach(function(x){ x.classList.toggle('on', x.dataset.v === '2'); }); await render(); api.cap('A second compartment removes the pattern in the residuals.'); await api.sleep(3600); api.cap(null);
     }
     return { render: render, play: play };
   } });
-GUIDE.steps['pk/Compartmental fit'] = { notice: 'Residuals with a pattern show that the model structure is wrong, not the parameter values.', q: 'Why is only dose-normalised information reported for Indometh?', a: 'The dose is not verified in the public sources. Clearances and volumes scale with the dose, while rate constants and half-lives do not.' };
+GUIDE.steps['pk/Compartmental fit'] = { notice: 'With 12 subjects, a leave-one-out error is the only error estimate available for a covariate model.', q: 'How is the error of a model that predicts CL/F from covariates measured with 12 subjects?', a: 'Each subject is predicted by a model trained on the other 11. The errors are collected over all subjects and compared with the mean of the other subjects as a baseline.' };
 
 /* ---------- 3. Population variability ---------- */
 LESSONS.pk.add({ level: 'intermediate', short: 'Population variability', title: 'Population variability',
-  change: 'Set the between-subject variability, the weight distribution and the number of subjects. Compare variability with uncertainty.',
-  watch: 'A population model describes how parameters differ between individuals. Each individual parameter is the typical value, scaled by a covariate effect and by a lognormal random effect whose standard deviation is omega. Body weight is the usual covariate, scaled to a 70 kg reference with an exponent of 0.75 on clearance and 1 on volume. This is a convention (Anderson and Holford 2008, Annu Rev Pharmacol Toxicol 48:303-332) and not a universal law. The typical values here are illustrative, not data. The figure separates two quantities. Variability is real difference between individuals and does not shrink with more data. Uncertainty is lack of knowledge of the typical value, as when it is predicted by a machine learning model with an error, and shrinks as the prediction improves.',
+  change: 'Set the variability, the weight distribution and the number of training subjects. Switch between the allometric fit and boosted trees.',
+  watch: 'A population model describes how a parameter differs between individuals: a typical value that depends on covariates, multiplied by a lognormal random effect with standard deviation omega. Here the true clearance of a 70 kg subject is 6 L/h, scaled by (weight / 70) to the power 0.75, with omega of CL as set. A covariate model for the typical value is learned from simulated subjects whose observed ln CL carries the random effect and an estimation error of SD 0.15. Two learners are compared: a log-linear fit, which estimates the allometric exponent, and boosted trees on weight (lesson 02). Both are scored on 400 subjects not used for fitting, against the observed ln CL and against the true typical value. The AUC and Cmax distributions are then simulated for those 400 subjects from the selected model, with the held-out residual SD as its random effect. The weight exponent of 0.75 is a convention (Anderson and Holford 2008, Annu Rev Pharmacol Toxicol 48:303-332), and the typical values are illustrative, not data. Variability does not shrink with more training subjects. The error of the learned typical value does.',
   build: function(api){
-    var CLT = 6, VT = 40, KAT = 1, DOSE = 100, TEND = 24;
-    var lp = api.el('pn', 'left:28px;top:20px;width:236px;height:500px;overflow:auto', '<h4>Population</h4>' + optRange('pk3ocl', 'Omega of CL (SD of ln CL)', 0, 0.8, 0.05, 0.3) + optRange('pk3ov', 'Omega of V', 0, 0.6, 0.05, 0.2) + optRange('pk3oka', 'Omega of ka', 0, 0.8, 0.05, 0.4) + optRange('pk3wm', 'Median weight (kg)', 50, 100, 1, 70) + optRange('pk3ws', 'Weight SD (kg)', 0, 25, 1, 12) + optRange('pk3n', 'Subjects', 20, 500, 10, 200) + '<div class="og"><div class="ol">Weight effect</div>' + seg([['1', 'Allometric'], ['0', 'None']], '1', 'data-wt') + '</div><div class="og"><div class="ol">Typical values (illustrative)</div><div class="hint">70 kg subject, oral dose 100 mg: CL 6 L/h, V 40 L, ka 1 per h, F 1. These are not data.</div></div>');
-    var sp = api.el('pn', 'left:280px;top:20px;width:652px;height:248px', '<h4>Concentration after an oral dose: individuals, median and 5th to 95th percentile</h4><canvas width="622" height="200"></canvas>');
-    var h1 = api.el('pn', 'left:280px;top:278px;width:206px;height:244px', '<h4>AUC</h4><canvas width="176" height="150"></canvas><div class="s1" style="font-size:11.5px;line-height:1.35;color:' + C.char + '"></div>');
-    var h2 = api.el('pn', 'left:496px;top:278px;width:206px;height:244px', '<h4>Cmax</h4><canvas width="176" height="150"></canvas><div class="s2" style="font-size:11.5px;line-height:1.35;color:' + C.char + '"></div>');
-    var up = api.el('pn', 'left:712px;top:278px;width:220px;height:244px', '<h4>Uncertainty of the typical CL</h4><canvas width="190" height="150"></canvas><div class="s3" style="margin-top:2px"></div>');
-    var ctl = api.addControl('Uncertainty of typical CL (SD of ln) <input type="range" class="c-un" min="0" max="1" step="0.05" value="0.4" style="width:150px"><b class="v-un"></b>');
-    var allo = true, cache = null;
-    function P(){ return { ocl: +$('pk3ocl').value, ov: +$('pk3ov').value, oka: +$('pk3oka').value, wm: +$('pk3wm').value, ws: +$('pk3ws').value, n: +$('pk3n').value, un: +qs('.c-un', ctl).value }; }
-    function normals(n, seed){ var r = rng(seed), out = []; for (var i = 0; i < n; i++) { var u = Math.max(r(), 1e-12), v = r(); out.push(Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)); } return out; }
+    var CLT = 6, VT = 40, KAT = 1, DOSE = 100, TEND = 24, EPS = 0.15, NTEST = 400, A = 0.75;
+    var lp = api.el('pn', 'left:28px;top:20px;width:236px;height:500px;overflow:auto', '<h4>Population</h4>' + optRange('pk3ocl', 'Omega of CL (SD of ln CL)', 0, 0.8, 0.05, 0.3) + optRange('pk3ov', 'Omega of V', 0, 0.6, 0.05, 0.2) + optRange('pk3oka', 'Omega of ka', 0, 0.8, 0.05, 0.4) + optRange('pk3wm', 'Median weight (kg)', 50, 100, 1, 70) + optRange('pk3ws', 'Weight SD (kg)', 5, 25, 1, 12) + optRange('pk3n', 'Training subjects', 20, 500, 10, 100) + '<div class="og"><div class="ol">Covariate model</div>' + seg([['0', 'Allometric fit'], ['1', 'Boosted trees']], '1', 'data-md') + '</div><div class="og"><div class="ol">Typical values (illustrative)</div><div class="hint">70 kg subject, oral dose 100 mg: CL 6 L/h, V 40 L, ka 1 per h, F 1. These are not data.</div></div>');
+    var sp = api.el('pn', 'left:280px;top:20px;width:652px;height:262px', '<h4>Clearance against weight: training subjects and fitted typical values</h4><canvas width="622" height="216"></canvas>');
+    var h1 = api.el('pn', 'left:280px;top:292px;width:206px;height:230px', '<h4>AUC</h4><canvas width="176" height="140"></canvas><div class="s1" style="font-size:11.5px;line-height:1.35;color:' + C.char + '"></div>');
+    var h2 = api.el('pn', 'left:496px;top:292px;width:206px;height:230px', '<h4>Cmax</h4><canvas width="176" height="140"></canvas><div class="s2" style="font-size:11.5px;line-height:1.35;color:' + C.char + '"></div>');
+    var tb = api.el('pn', 'left:712px;top:292px;width:220px;height:230px', '<h4>Error on 400 test subjects</h4><div class="s3" style="font-size:11.5px;line-height:1.35;color:' + C.char + '"></div>');
+    var md = 1;
+    function P(){ return { ocl: +$('pk3ocl').value, ov: +$('pk3ov').value, oka: +$('pk3oka').value, wm: +$('pk3wm').value, ws: +$('pk3ws').value, n: +$('pk3n').value }; }
+    function wts(n, seed, p){ var z = mlbNormal(seed), out = [], i; for (i = 0; i < n; i++) out.push(Math.min(120, Math.max(35, p.wm + p.ws * z()))); return out; }
     function pct(a, q){ var s = a.slice().sort(function(x, y){ return x - y; }), k = (s.length - 1) * q, lo = Math.floor(k), hi = Math.ceil(k); return s[lo] + (s[hi] - s[lo]) * (k - lo); }
     function hist(el, vals, bins, color, xl){
       var g = cv(el), lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), w = (hi - lo) / bins || 1, cnt = new Array(bins).fill(0), box = { l: 46, r: g.w - 8, t: 8, b: g.h - 38 };
@@ -215,42 +255,47 @@ LESSONS.pk.add({ level: 'intermediate', short: 'Population variability', title: 
       var mx = Math.max.apply(null, cnt); axes(g, box, [lo, hi], [0, mx], xl, 'subjects', 2, { xdec: lo < 10 ? 1 : 0, ydec: 0 });
       cnt.forEach(function(c, k){ var x0 = box.l + k / bins * (box.r - box.l), x1 = box.l + (k + 1) / bins * (box.r - box.l), y = box.b - c / mx * (box.b - box.t); g.x.fillStyle = color; g.x.fillRect(x0 + 1, y, x1 - x0 - 2, box.b - y); });
     }
+    function gm(a){ return Math.exp(mean(a.map(Math.log))); }
     function draw(){
-      var p = P(), n = p.n, z = normals(n, 31), W = z.map(function(v){ return Math.min(120, Math.max(35, p.wm + p.ws * v)); }), pop = PKE.population(n, 2026, { CL: { typical: CLT, omega: p.ocl }, V: { typical: VT, omega: p.ov }, ka: { typical: KAT, omega: p.oka } }), i, k, T = [], nt = 97;
-      for (k = 0; k < nt; k++) T.push(TEND * k / (nt - 1));
-      var prof = [], aucs = [], cmaxs = [];
-      for (i = 0; i < n; i++) { var f = allo ? Math.pow(W[i] / 70, 0.75) : 1, fv = allo ? W[i] / 70 : 1, cl = pop[i].CL * f, v = pop[i].V * fv, ka = pop[i].ka, m = PKE.oneComp({ dose: DOSE, V: v, CL: cl, ka: ka, F: 1, route: 'oral' }); prof.push(T.map(function(t){ return m.conc(t); })); aucs.push(DOSE / cl); cmaxs.push(m.summary.cmax); }
-      var med = [], lo = [], hi = [];
-      for (k = 0; k < nt; k++) { var col = prof.map(function(r){ return r[k]; }); med.push(pct(col, 0.5)); lo.push(pct(col, 0.05)); hi.push(pct(col, 0.95)); }
-      var top = Math.ceil(Math.max.apply(null, hi) * 1.1 * 10) / 10, series = [], step = Math.max(1, Math.floor(n / 40));
-      for (i = 0; i < n; i += step) series.push({ pts: T.map(function(t, kk){ return [t, prof[i][kk]]; }), color: 'rgba(111,129,150,0.35)', w: 1, nodot: true });
-      series.push({ pts: T.map(function(t, kk){ return [t, med[kk]]; }), color: C.red, w: 3, nodot: true, label: 'median' });
-      var g = lineChart(qs('canvas', sp), series, { xl: 'time (h)', yl: 'plasma concentration (mg/L)', x0: 0, x1: TEND, y0: 0, y1: top });
-      if (g && g.sx) { g.x.fillStyle = 'rgba(225,36,42,0.13)'; g.x.beginPath(); T.forEach(function(t, kk){ var x = g.sx(t), y = g.sy(hi[kk]); kk ? g.x.lineTo(x, y) : g.x.moveTo(x, y); }); for (var kb = nt - 1; kb >= 0; kb--) g.x.lineTo(g.sx(T[kb]), g.sy(lo[kb])); g.x.closePath(); g.x.fill(); g.x.fillStyle = C.char; g.x.font = '11px Aptos, "Segoe UI", sans-serif'; g.x.textAlign = 'right'; g.x.fillText('grey: ' + Math.min(n, Math.ceil(n / step)) + ' individuals. Shaded: 5th to 95th percentile of all ' + n + '.', g.box.r - 4, g.box.t + 12); }
+      var p = P(), n = p.n, zE = mlbNormal(11), zT = mlbNormal(12), i;
+      var Wtr = wts(n, 31, p), ytr = Wtr.map(function(w){ return Math.log(CLT) + A * Math.log(w / 70) + p.ocl * zE() + EPS * zE(); });
+      var Wte = wts(NTEST, 41, p), etaTe = Wte.map(function(){ return zT(); }), epsTe = Wte.map(function(){ return zT(); });
+      var truthL = function(w){ return Math.log(CLT) + A * Math.log(w / 70); };
+      var yte = Wte.map(function(w, k){ return truthL(w) + p.ocl * etaTe[k] + EPS * epsTe[k]; });
+      /* log-linear fit of ln CL on ln(weight / 70) */
+      var xm = mean(Wtr.map(function(w){ return Math.log(w / 70); })), ym = mean(ytr), sxy = 0, sxx = 0;
+      Wtr.forEach(function(w, k){ var dx = Math.log(w / 70) - xm; sxy += dx * (ytr[k] - ym); sxx += dx * dx; });
+      var b = sxx > 0 ? sxy / sxx : 0, a0 = ym - b * xm, allo = function(w){ return a0 + b * Math.log(w / 70); };
+      var bt = mlbBoost(Wtr.map(function(w){ return [w]; }), ytr, { rounds: 100, lr: 0.1, depth: 2 }), trees = function(w){ return bt.predict([w]); };
+      var f = md ? trees : allo;
+      var rm = function(fn, ref){ return Math.sqrt(mean(Wte.map(function(w, k){ var d = fn(w) - ref[k]; return d * d; }))); }, truthTe = Wte.map(truthL);
+      var rA = rm(allo, yte), rT = rm(trees, yte), tA = rm(allo, truthTe), tT = rm(trees, truthTe), floor = Math.sqrt(p.ocl * p.ocl + EPS * EPS);
+      /* chart: clearance (L/h) against weight */
+      var xs = [], k; for (k = 0; k <= 60; k++) xs.push(35 + 85 * k / 60);
+      var series = [{ pts: xs.map(function(w){ return [w, CLT * Math.pow(w / 70, A)]; }), color: C.bg, w: 2.4, nodot: true, label: 'true typical' }, { pts: xs.map(function(w){ return [w, Math.exp(allo(w))]; }), color: C.char, w: 2.4, nodot: true, label: 'allometric fit', dash: [6, 4] }, { pts: xs.map(function(w){ return [w, Math.exp(trees(w))]; }), color: C.red, w: 2.6, nodot: true, label: 'boosted trees' }];
+      var ymax = Math.min(40, Math.ceil(Math.max.apply(null, ytr.map(Math.exp)) * 1.05));
+      var g = lineChart(qs('canvas', sp), series, { xl: 'weight (kg)', yl: 'CL (L/h)', x0: 35, x1: 120, y0: 0, y1: ymax });
+      if (g && g.sx) { var step = Math.max(1, Math.floor(n / 250)); g.x.fillStyle = 'rgba(111,129,150,0.45)'; for (i = 0; i < n; i += step) { var yy = Math.exp(ytr[i]); if (yy <= ymax) { g.x.beginPath(); g.x.arc(g.sx(Wtr[i]), g.sy(yy), 2.4, 0, 6.3); g.x.fill(); } } }
+      /* simulated exposure for the test subjects with the selected model */
+      var sres = Math.sqrt(mean(Wte.map(function(w, kk){ var d = yte[kk] - f(w); return d * d; }))), zv = mlbNormal(51), zk = mlbNormal(52), zr = mlbNormal(53), aucs = [], cmaxs = [], aucT = [];
+      Wte.forEach(function(w){ var cl = Math.exp(f(w) + sres * zr()), v = VT * (w / 70) * Math.exp(p.ov * zv()), ka = KAT * Math.exp(p.oka * zk()), m = PKE.oneComp({ dose: DOSE, V: v, CL: cl, ka: ka, F: 1, route: 'oral' }); aucs.push(DOSE / cl); cmaxs.push(m.summary.cmax); });
+      Wte.forEach(function(w, kk){ aucT.push(DOSE / Math.exp(truthL(w) + p.ocl * etaTe[kk])); });
       hist(qs('canvas', h1), aucs, 14, C.char, 'AUC (mg h/L)'); hist(qs('canvas', h2), cmaxs, 14, C.red, 'Cmax (mg/L)');
-      var gm = function(a){ return Math.exp(mean(a.map(Math.log))); }, cvp = function(a){ var l = a.map(Math.log), m = mean(l), sd = Math.sqrt(mean(l.map(function(x){ return (x - m) * (x - m); }))); return 100 * Math.sqrt(Math.exp(sd * sd) - 1); };
-      qs('.s1', h1).innerHTML = 'Geometric mean ' + pkbNice(gm(aucs), 1) + '<br>5th to 95th: ' + pkbNice(pct(aucs, 0.05), 1) + ' to ' + pkbNice(pct(aucs, 0.95), 1) + '<br>Geometric CV ' + cvp(aucs).toFixed(0) + '%';
-      qs('.s2', h2).innerHTML = 'Geometric mean ' + pkbNice(gm(cmaxs), 2) + '<br>5th to 95th: ' + pkbNice(pct(cmaxs, 0.05), 2) + ' to ' + pkbNice(pct(cmaxs, 0.95), 2) + '<br>Geometric CV ' + cvp(cmaxs).toFixed(0) + '%';
-      /* uncertainty: median profile of a 70 kg subject for typical CL drawn from lognormal(un) against the individual band */
-      var un = p.un, zz = normals(30, 77), ul = [];
-      qs('.v-un', ctl).textContent = un.toFixed(2);
-      zz.forEach(function(v){ var cl = CLT * Math.exp(un * v), m = PKE.oneComp({ dose: DOSE, V: VT, CL: cl, ka: KAT, F: 1, route: 'oral' }); ul.push({ pts: T.map(function(t){ return [t, m.conc(t)]; }), color: 'rgba(225,36,42,0.35)', w: 1.2, nodot: true }); });
-      var typ = PKE.oneComp({ dose: DOSE, V: VT, CL: CLT, ka: KAT, F: 1, route: 'oral' });
-      ul.push({ pts: T.map(function(t){ return [t, typ.conc(t)]; }), color: C.char, w: 2.4, nodot: true });
-      lineChart(qs('canvas', up), ul, { xl: 'time (h)', yl: 'mg/L', x0: 0, x1: TEND, y0: 0, y1: Math.ceil(Math.max.apply(null, hi) * 1.1 * 10) / 10 });
-      qs('.s3', up).innerHTML = '<div style="font-size:10.5px;line-height:1.25;color:' + C.char + '">Red: 30 draws, SD ' + un.toFixed(2) + ' in ln units. Dark: point estimate. Uncertainty, not variability.</div>';
+      qs('.s1', h1).innerHTML = 'Geometric mean ' + pkbNice(gm(aucs), 1) + ' (true model ' + pkbNice(gm(aucT), 1) + ')<br>5th to 95th: ' + pkbNice(pct(aucs, 0.05), 1) + ' to ' + pkbNice(pct(aucs, 0.95), 1);
+      qs('.s2', h2).innerHTML = 'Geometric mean ' + pkbNice(gm(cmaxs), 2) + '<br>5th to 95th: ' + pkbNice(pct(cmaxs, 0.05), 2) + ' to ' + pkbNice(pct(cmaxs, 0.95), 2) + '<br>Residual SD of ln CL: ' + sres.toFixed(2);
+      var row = function(l, x, y, on){ return '<tr style="border-top:1px solid ' + C.silver + (on ? ';background:#FBE9E9' : '') + '"><td style="padding:3px 4px 3px 0">' + l + '</td><td style="text-align:right;padding:3px 4px">' + x.toFixed(3) + '</td><td style="text-align:right;padding:3px 0 3px 4px">' + y.toFixed(3) + '</td></tr>'; };
+      qs('.s3', tb).innerHTML = '<table style="width:100%;border-collapse:collapse"><tr style="font-weight:700;font-size:10.5px;color:' + C.mid + '"><td></td><td style="text-align:right;padding:2px 4px">vs observed</td><td style="text-align:right;padding:2px 0 2px 4px">vs true typical</td></tr>' + row('Allometric fit', rA, tA, !md) + row('Boosted trees', rT, tT, md) + '</table><div style="margin-top:6px">RMSE of ln CL on 400 test subjects. The floor against observed values is ' + floor.toFixed(3) + ' (omega and estimation error). The fitted exponent is ' + b.toFixed(2) + ' (true 0.75).</div>';
     }
     function sync(){ qsa('input[type=range]', lp).forEach(function(r){ var o = $('o-' + r.id); if (o) o.textContent = r.value; }); }
     ['pk3ocl', 'pk3ov', 'pk3oka', 'pk3wm', 'pk3ws', 'pk3n'].forEach(function(id){ $(id).addEventListener('input', function(){ sync(); draw(); }); });
-    qs('.c-un', ctl).addEventListener('input', draw);
-    qsa('[data-wt] button', lp).forEach(function(b){ b.addEventListener('click', function(){ allo = b.dataset.v === '1'; qsa('[data-wt] button', lp).forEach(function(x){ x.classList.toggle('on', x === b); }); draw(); }); });
+    qsa('[data-md] button', lp).forEach(function(bn){ bn.addEventListener('click', function(){ md = +bn.dataset.v; qsa('[data-md] button', lp).forEach(function(x){ x.classList.toggle('on', x === bn); }); draw(); }); });
     function setv(id, v){ var e = $(id); e.value = v; var o = $('o-' + id); if (o) o.textContent = v; }
     async function play(tok){
-      setv('pk3ocl', 0.3); setv('pk3ov', 0.2); setv('pk3oka', 0.4); setv('pk3ws', 12); qs('.c-un', ctl).value = 0.4; allo = true; qsa('[data-wt] button', lp).forEach(function(x){ x.classList.toggle('on', x.dataset.v === '1'); }); draw();
-      api.cap('Individuals differ in CL, V and ka. The shaded band is the 5th to 95th percentile of the population.'); await api.sleep(3600);
-      await api.anim(2400, function(t){ setv('pk3ocl', +(0.3 + 0.4 * t).toFixed(2)); draw(); }); api.cap('Raising omega of CL widens the AUC distribution. The median profile does not move.'); await api.sleep(3400);
-      await api.anim(2000, function(t){ qs('.c-un', ctl).value = (0.4 * (1 - t)).toFixed(2); draw(); }); api.cap('Uncertainty of the typical value can be reduced by a better prediction. Variability between individuals cannot.'); await api.sleep(3800); api.cap(null);
+      setv('pk3ocl', 0.3); setv('pk3n', 20); md = 1; qsa('[data-md] button', lp).forEach(function(x){ x.classList.toggle('on', x.dataset.v === '1'); }); draw();
+      api.cap('With 20 training subjects the fitted curves differ from the true typical clearance.'); await api.sleep(3600);
+      await api.anim(2600, function(t){ setv('pk3n', Math.round((20 + 380 * t) / 10) * 10); draw(); }); api.cap('More training subjects reduce the error against the true typical value. The scatter around it stays at the size of omega.'); await api.sleep(3800);
+      md = 0; qsa('[data-md] button', lp).forEach(function(x){ x.classList.toggle('on', x.dataset.v === '0'); }); draw(); api.cap('The log-linear fit contains the true functional form, so its error is lower than that of the trees here.'); await api.sleep(3800); api.cap(null);
     }
     return { render: function(){ sync(); draw(); }, play: play };
   } });
-GUIDE.steps['pk/Population variability'] = { notice: 'The spread of individuals stays when the uncertainty of the typical value goes to zero.', q: 'How does uncertainty of a predicted typical clearance differ from between-subject variability?', a: 'Uncertainty is lack of knowledge of the typical value and shrinks with a better prediction. Variability is real difference between individuals and does not.' };
+GUIDE.steps['pk/Population variability'] = { notice: 'The scatter of individuals stays when the covariate model improves. The error of the typical value does not.', q: 'Which part of the spread in AUC can a better covariate model reduce?', a: 'The error of the typical value. The between-subject variability is a property of the population and remains.' };
