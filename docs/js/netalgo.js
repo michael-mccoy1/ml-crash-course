@@ -147,7 +147,7 @@ function naDeep(act, depth, scale){
 }
 L8.add({ short: 'Initialisation', title: 'Starting weights',
   change: 'Choose an activation. Drag Depth and Weight scale and watch the signal and the gradient.',
-  watch: 'A network starts from random weights, and their size matters. Each layer multiplies the signal by its weights. If the weights are too small the signal shrinks layer by layer until it is almost zero. If they are too large it grows, or a saturating activation such as tanh or sigmoid flattens. The gradient travels back through the same layers, so it shrinks or grows in the same way. This is the vanishing or exploding gradient. A weight scale of 1 here is the standard choice for the activation: He initialisation for ReLU, which draws weights with variance 2 divided by the number of inputs, and Xavier initialisation for tanh and sigmoid, which uses 1 divided by the number of inputs when a layer has as many outputs as inputs, as here.',
+  watch: 'A network starts from random weights, and the scale of those weights sets the scale of the signal at each layer. Each layer multiplies the signal by its weights. If the weights are too small the signal shrinks layer by layer until it is almost zero. If they are too large it grows, or a saturating activation such as tanh or sigmoid flattens. The gradient travels back through the same layers, so it shrinks or grows in the same way. This is the vanishing or exploding gradient. A weight scale of 1 here is the standard choice for the activation: He initialisation for ReLU, which draws weights with variance 2 divided by the number of inputs, and Xavier initialisation for tanh and sigmoid, which uses 1 divided by the number of inputs when a layer has as many outputs as inputs, as here.',
   build: function(api){
     var p1 = api.el('pn', 'left:28px;top:28px;width:446px;height:408px', '<h4>Size of the signal at each layer</h4><canvas class="c1" width="420" height="330"></canvas>');
     var p2 = api.el('pn', 'left:486px;top:28px;width:446px;height:408px', '<h4>Size of the gradient at each layer, against the last layer</h4><canvas class="c2" width="420" height="330"></canvas>');
@@ -247,7 +247,7 @@ L8.add({ short: 'Next-token loss', title: 'The next-token loss',
 
 /* ---------- Step 7: counting parameters ---------- */
 L8.add({ short: 'Counting parameters', title: 'Counting parameters',
-  change: 'Change the model size. The lesson 04 GPT is loaded for you, and its real parameter count sits beside the formula.',
+  change: 'Change the model size. The lesson 04 GPT is loaded, and its parameter count is shown beside the formula.',
   watch: 'A parameter is one learned number. A transformer keeps most of them in two places per layer: the attention weights, which are four square matrices of the model width d, and the feed-forward network, which has two matrices between d and f times d. The count per layer grows with d squared, so doubling the width roughly quadruples it. The embedding table holds one vector of d numbers per token, and a learned position table holds one per position. The output layer maps d back to the vocabulary, and it can share the embedding table. Storing the weights as 32-bit numbers takes 4 bytes each.',
   build: function(api){
     var lp = api.el('pn', 'left:28px;top:28px;width:560px;height:408px', '<h4>Parameters by part</h4><div class="bk"></div>');

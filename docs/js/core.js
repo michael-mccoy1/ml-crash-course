@@ -200,7 +200,9 @@ function goStep(id){ var t = $(id); if (!t) return; openAncestors(t); setTimeout
 function kickVisible(L){ L.steps.forEach(function(s){ if (s.sec) { var r = s.sec.getBoundingClientRect(); s.visible = r.height > 0 && r.top < innerHeight && r.bottom > 0; } if (s.visible && s.armed && s.dirty && s.handlers && s.handlers.render) { s.dirty = false; s.safe(function(){ return s.handlers.render(); }); } }); }
 /* the bookmark rail: marks the step in view */
 var railBusy = false;
-window.addEventListener('scroll', function(){ if (railBusy) return; railBusy = true; requestAnimationFrame(function(){ railBusy = false; var root = $('lesson-' + ACTIVE), L = LESSONS[ACTIVE]; if (!root || !L || !L.built) return; var best = null; qsa('.rail a.ra', root).forEach(function(a){ a.classList.remove('on'); var t = $(a.dataset.t); if (t && t.getBoundingClientRect().height > 0 && t.getBoundingClientRect().top <= 140) best = a; }); if (best) best.classList.add('on'); }); }, { passive: true });
+window.addEventListener('scroll', function(){ if (railBusy) return; railBusy = true; requestAnimationFrame(function(){ railBusy = false; var root = $('lesson-' + ACTIVE), L = LESSONS[ACTIVE]; if (!root || !L || !L.built) return; var best = null; qsa('.rail a.ra', root).forEach(function(a){ a.classList.remove('on'); var t = $(a.dataset.t); if (t && t.getBoundingClientRect().height > 0 && t.getBoundingClientRect().top <= 140) best = a; }); if (best) best.classList.add('on'); var rl = qs('.rail', root), fs = qs('section.step', root); if (rl && fs) rl.classList.toggle('show', fs.getBoundingClientRect().top < window.innerHeight * 0.6); }); }, { passive: true });
+window.addEventListener('resize', function(){ window.dispatchEvent(new Event('scroll')); });
+document.addEventListener('click', function(e){ if (e.target.closest && e.target.closest('nav.tabs')) setTimeout(function(){ window.dispatchEvent(new Event('scroll')); }, 400); });
 function buildLesson(L){
   var root = $('lesson-' + L.id), n = L.steps.length + (L.gloss ? 1 : 0), startsBeginner = L.steps.some(function(st){ return levelOf(st) === 'beginner'; });
   if (L.optsClosed === undefined) L.optsClosed = startsBeginner; 

@@ -377,3 +377,6 @@ nav.tabs button.qzt[aria-selected="true"]{background:var(--red);color:#fff}
 nav.tabs button.qzt[aria-selected="true"]::after{display:none}
 nav.tabs button.qzt b,nav.tabs button.qzt[aria-selected="true"] b{color:inherit}
 @media(max-width:700px){nav.tabs .tl{flex:0 0 100%;padding-top:6px}nav.tabs .in{padding:0 14px}nav.tabs button{padding:6px 9px}}
+
+.rail{top:24px;max-height:calc(100vh - 48px);opacity:0;pointer-events:none;transition:opacity .2s}
+.rail.show{opacity:1;pointer-events:auto}

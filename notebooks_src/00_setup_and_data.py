@@ -54,7 +54,7 @@ print("ECFP:", fp.shape, " descriptors:", desc.shape)
 # %% [markdown]
 # ## Splits matter as much as models
 # * **Random split** - test compounds have close analogs in training. Optimistic.
-# * **Scaffold split** - whole chemical series are held out. Closer to prospective prediction on a new series, which the paper argues is what matters.
+# * **Scaffold split** - whole chemical series are held out. Closer to prospective prediction on a new series, which the paper argues is the relevant test.
 #
 # We use the **scaffold split** as the main benchmark throughout.
 

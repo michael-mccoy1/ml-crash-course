@@ -66,7 +66,7 @@ gb.fit(X_all[tr], y[tr])
 c.log_result("LightGBM (desc+ECFP)", c.metrics(y[te], gb.predict(X_all[te])))
 
 # %% [markdown]
-# **Exercise 2:** Train LightGBM on `desc` only and on `fp` only. Which feature set matters more?
+# **Exercise 2:** Train LightGBM on `desc` only and on `fp` only. Which feature set gives the higher test score?
 
 # %%
 for label, X in [("descriptors only", desc), ("ECFP only", fp)]:
