@@ -31,7 +31,7 @@ async function pkdReady(api){
    III dR/dt = kin (1 + H) - kout R      stimulation of production
    IV  dR/dt = kin - kout (1 + H) R      stimulation of loss
    Baseline R0 = kin / kout. The equations are in the form given in the Pumas indirect response tutorial, which cites the paper;
-   the paper itself was not read. */
+   The four forms match the Phoenix and Mlxtran documentation. The paper itself was not read. */
 var PKD_IDR = [
   { n: 'I: inhibition of production', s: 1, f: function(H, R, kin, kout){ return kin * (1 - H) - kout * R; }, q: function(H, R0){ return R0 * (1 - H); } },
   { n: 'II: inhibition of loss', s: 1, f: function(H, R, kin, kout){ return kin - kout * (1 - H) * R; }, q: function(H, R0){ return R0 / Math.max(1 - H, 0.02); } },

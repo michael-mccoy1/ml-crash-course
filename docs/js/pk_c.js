@@ -165,7 +165,7 @@ GUIDE.steps['pk/Sensitivity'] = { notice: 'The fraction reaching the gut tissue,
 /* ---------- 2. Absorption and distribution ---------- */
 /* Transit compartment absorption (Savic et al. 2007, J Pharmacokinet Pharmacodyn 34:711-726): n transit compartments in series with rate ktr, followed by an absorption
    compartment with first-order rate; ktr = (n + 1) / MTT, where MTT is the mean transit time. Here the absorption compartment also has rate ktr, so that the mean absorption time is MTT.
-   The primary paper was not read; the parameterisation is from the PKPDsim vignette on absorption models and a Certara poster that cite it. */
+   The primary paper was not read. The parameterisation ktr = (n + 1) / MTT matches the PKPDsim vignette, a Certara poster and a PAGE 2007 slide set that cite it. Setting the absorption rate equal to ktr is a simplification made here. */
 function pkcAbsorb(n, mtt, V, CL, dose, tEnd){
   /* states: n transit compartments (0 to n-1), the absorption compartment (n), the central compartment (n + 1); n + 1 compartments before the central one, each with rate ktr */
   var ktr = (n + 1) / mtt, ke = CL / V, g = function(t, y){ var d = new Array(n + 2).fill(0), i; d[0] = -ktr * y[0]; for (i = 1; i <= n; i++) d[i] = ktr * (y[i - 1] - y[i]); d[n + 1] = ktr * y[n] - ke * y[n + 1]; return d; };
