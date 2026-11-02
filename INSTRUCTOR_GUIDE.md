@@ -24,7 +24,7 @@
 | 03 Neural networks | Linear neuron, hidden layer, nonlinearity, network capacity | Weight and bias, neuron activation, workbench, network size, learning rate, regularisation, partial dependence, message passing |
 | 04 GPT | Tokenisation, token embeddings, next-token prediction, context length | Vocabulary, workbench, sampling and temperature, generation and validity, transformer architecture, attention weights, design test |
 | 05 Pre-trained models | Labelled and unlabelled data, masked prediction, effect of pre-training, transfer strategies | Learning curve from scratch, self-supervised task, functional group prediction, GROVER, frozen embeddings, fine-tuning the GPT and Chemprop |
-| 06 Model comparison | Metric behaviour, assay repeatability ceiling, accuracy and training time | Leaderboard, accuracy against training time, reading a result |
+| 06 Model comparison | Metric behaviour, assay repeatability ceiling, accuracy and training time | Leaderboard, accuracy against training time, reading a result, ensembles of model types |
 | 07 Role of AI | AI, machine learning and generative AI, prediction and generation, applicability domain, assessing a prediction | Extrapolation, assay noise, generative model failures, capabilities and limits, checks before use |
 | 08 Tree algorithms | Split criterion, histogram binning, bootstrap sampling | Exact and binned search, depth and leaf size, bagging and variance, fitting a 3D shape, data requirements, boosting losses, hyperparameter tuning, boosting libraries |
 | 09 Network algorithms | Gradient descent in one dimension, finite-difference gradient, parameter count | Optimisers, backpropagation, parameter count of a GPT, network size and data, weight initialisation, weight decay, scaled dot-product attention, cross-entropy and perplexity |
@@ -39,7 +39,7 @@
 * **03:** fit the linear neuron, then train the workbench with 120 epochs. Ask why dropout is used when it raises training error.
 * **04:** compare the output before and after Train. Ask why generated molecules are checked with RDKit.
 * **05:** compare Head only with Everything in the fine-tuning workbench. Read the Chemprop curves at 50 and 1,000 compounds.
-* **06:** read the leaderboard. Ask which result is least trustworthy and why.
+* **06:** read the leaderboard. Ask which result is least trustworthy and why. In the ensembles step, include and exclude models and compare the simple and weighted averages with the best single model.
 * **07:** drag the training range in Extrapolation until the score outside it falls to zero. Raise the assay noise and read the ceiling.
 * **08:** compare exact and binned search. Run the tuning grid and compare the cell chosen on validation with the best cell on test.
 * **09:** run the three optimisers on the raw and the centred feature. Step through backpropagation. Compare the network sizes at 100, 1,000 and 10,000 points.

@@ -103,6 +103,7 @@ var GUIDE = {
     'netalgo/Counting parameters': { notice: 'Attention and feed-forward hold most of the parameters.', q: 'Doubling the width multiplies the layer parameters by about how much?', a: 'Four, because the matrices grow with the width squared.' },
     'compare/Leaderboard': { notice: 'Red bars are yours.', q: 'Why are your scores lower than the reference runs?', a: 'They use thousands of extra features and train longer.' },
     'compare/Accuracy against time': { notice: 'Up is more accurate. Left is faster.', q: 'What if a model is both slower and less accurate?', a: 'There is no reason to choose it.' },
+    'compare/Model-type ensembles': { notice: 'The weights are fitted on training compounds, not on the test compounds.', q: 'Why is the simple average of five models not better than the best single model here?', a: 'The errors of the models are correlated (mean 0.79 here), so averaging removes little error, and the less accurate models raise the average. Weights fitted on held-out compounds give an RMSE of 0.463 against 0.470 for the best single model.' },
     'compare/Discussion': { notice: 'Compare the scores with the assay noise ceiling.', q: 'Which score is the least reliable estimate of test performance?', a: 'Any score from one split or a small test set.' }
   }
 };

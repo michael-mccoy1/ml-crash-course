@@ -22,7 +22,7 @@ Each lesson has four sections that open and close: **Beginner** (core machine le
 | 03 Neural networks | Linear neuron, hidden layer, nonlinearity, network capacity, workbench, learning rate, regularisation, partial dependence, message passing, comparison with trees, seeds and ensembles |
 | 04 GPT | Tokenisation, token embeddings, next-token prediction, context length, workbench, sampling and temperature, validity, transformer architecture, attention weights, design test |
 | 05 Pre-trained models | Labelled and unlabelled data, masked prediction, effect of pre-training, transfer strategies, GROVER, frozen embeddings, fine-tuning a GPT and Chemprop |
-| 06 Model comparison | Metric behaviour, assay repeatability ceiling, accuracy and training time, leaderboard, reading a result |
+| 06 Model comparison | Metric behaviour, assay repeatability ceiling, accuracy and training time, leaderboard, ensembles of model types, reading a result |
 | 07 Role of AI | AI, machine learning and generative AI, prediction and generation, applicability domain, assessing a prediction, extrapolation, assay noise, failures of generative models, checks before use |
 | 08 Tree algorithms | Split criterion, histogram binning, bootstrap sampling, exact and binned search, depth and leaf size, bagging, boosting losses, tuning, library designs, fitting a 3D double helix, data requirements |
 | 09 Network algorithms | Gradient descent, finite-difference gradients, parameter count, optimisers, backpropagation, initialisation, weight decay, attention, cross-entropy, network size against data |

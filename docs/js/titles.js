@@ -88,6 +88,7 @@ var STEP_TITLES = {
     'Fast or accurate': 'Accuracy and training time',
     'Leaderboard': 'Leaderboard',
     'Accuracy against time': 'Accuracy against training time',
+    'Model-type ensembles': 'Ensembles of model types',
     'Discussion': 'Reading a result'
   },
   ai: {

@@ -8,7 +8,7 @@ var STEP_LEVELS = {
   nn: { intermediate: ['What a weight is', 'One neuron', 'Workbench', 'One compound'], advanced: ['Layers and neurons', 'Learning rate', 'Dropout and early stopping', 'Filtering the data', 'What it learned', 'Is it useful'], pro: ['Inside a neuron', 'Chemprop', 'Seeds and ensembles'] },
   gpt: { intermediate: ['Tokens', 'Workbench', 'Next token', 'Generate and check'], advanced: ['Embeddings', 'The stack', 'Filtering the data', 'Is it useful'], pro: ['Attention'] },
   pre: { intermediate: ['Why pre-train', 'Learning without labels'], advanced: ['Which groups are present', 'The model and its size', 'Fixed features', 'Using it in practice'], pro: ['Fine-tune', 'Fine-tune Chemprop'] },
-  compare: { intermediate: ['Leaderboard', 'Accuracy against time', 'Discussion'] },
+  compare: { intermediate: ['Leaderboard', 'Accuracy against time', 'Discussion'], advanced: ['Model-type ensembles'] },
   ai: { beginner: ['What AI means', 'Predict or generate'], intermediate: ['Outside the training range', 'Lab noise', 'How generative AI goes wrong', 'Can it or cannot it'], advanced: ['Using it in a project'] },
   treealgo: { advanced: ['Split search', 'Growing a tree', 'Bagging', 'Fitting a helix', 'Trees and data'], pro: ['Boosting math', 'Tuning', 'Library designs'] },
   pk: { beginner: ['Concentration-time profile', 'In vitro to in vivo clearance', 'ML in the PBPK workflow', 'MIDD decisions'], intermediate: ['PBPK structure', 'Compartmental fit', 'Population variability'], advanced: ['Sensitivity', 'Absorption and distribution', 'DDI models', 'Estimation'], pro: ['QSP', 'Uncertainty propagation', 'Credibility'] },
