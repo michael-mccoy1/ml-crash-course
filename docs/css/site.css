@@ -380,3 +380,7 @@ nav.tabs button.qzt b,nav.tabs button.qzt[aria-selected="true"] b{color:inherit}
 
 .rail{top:24px;max-height:calc(100vh - 48px);opacity:0;pointer-events:none;transition:opacity .2s}
 .rail.show{opacity:1;pointer-events:auto}
+.gt{table-layout:fixed;width:100%;border-collapse:collapse;margin-top:2px}
+.gt th,.gt td{padding:1px 3px !important;text-align:right;white-space:normal;background:transparent !important;border:0 !important;color:var(--char) !important;font-size:10px !important;line-height:1.25;letter-spacing:0 !important;text-transform:none !important}
+.gt th{font-weight:600;color:var(--mid) !important}
+.gt th:first-child,.gt td:first-child{text-align:left;width:27%}

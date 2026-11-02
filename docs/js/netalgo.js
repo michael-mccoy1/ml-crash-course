@@ -273,46 +273,11 @@ L8.add({ short: 'Counting parameters', title: 'Counting parameters',
     return { render: async function(){ draw(); if (first) { first = false; try { if (!G.params && typeof gptLoadDemo === 'function' && typeof tf !== 'undefined') await gptLoadDemo(); } catch (e) { console.error(e); } if (G.params) applyGPT(); } else draw(); } };
   } });
 
-/* ---------- Step 8: networks of different sizes and different amounts of data ---------- */
-var NA_SC = { data: null, anim: null, size: '1000', ctl: false, busy: false };
-var NA_SCOL = ['#A1B1C4', '#6F8196', '#F78C85', '#BD120A', C.char];
-function naDecode(b64, n){ return shDecode(b64, n); }
-function naScalePanels(size){
-  var J = NA_SC.data, runs = J.runs[size], n = shGeom().total;
-  return runs.map(function(rn, i){
-    var ck = rn.ck.map(function(c){ return { t: c.t || (c.t = naDecode(c.mesh, n)), acc: c.acc, tr: c.tr, x: c.s }; });
-    return { n: +size, short: rn.params.toLocaleString() + ' parameters', color: NA_SCOL[i], ck: ck, titleAt: function(k){ return rn.params.toLocaleString() + ' parameters'; } };
-  });
-}
+/* ---------- Step 8: a network learning the double helix, live (helixnet.js) ---------- */
 L8.add({ short: 'Scaling networks', title: 'Network size against the amount of data',
-  change: 'Select the number of training points and press Play. Compare the five networks, then compare the three training set sizes in the right-hand chart.',
-  watch: 'The size of a network is its number of parameters. Five networks, from about 15 to about 100,000 parameters, are trained to fit a double helix, a 3D test shape of two spiral strands joined by rungs. Each network is trained on 100, 1,000 or 10,000 points, each labelled with its signed distance to the surface of the helix, for the same 12,000 updates. Grey lines show the true helix. Each red dot is a node: a point placed on the surface the network has learned. Nodes start in a loose cloud around the helix. During training each node moves along a straight line to the learned surface. A node with no learned surface along its line stays where it started, so a poorly trained network leaves a diffuse cloud and a well trained one leaves a sharp helix. Black specks are the training points inside the helix. The right-hand chart shows held-out accuracy at the end of training for all three training set sizes. Two results follow. First, with 100 training points every network stays near 0.55 on held-out points, while the larger networks reach 1.00 on the training points, which is overfitting. Second, returns diminish: with 10,000 points a network with about 10,000 parameters scores 0.91 and one with about 100,000 scores 0.94. The results are from a saved run of the code in this lesson.',
-  build: function(api){
-    var vp = api.el('pn', 'left:28px;top:20px;width:904px;height:300px', '<canvas width="880" height="276"></canvas>');
-    var c1 = api.el('pn', 'left:28px;top:330px;width:446px;height:190px', '<h4>Accuracy during training, held-out points</h4><canvas class="c1" width="420" height="146"></canvas>');
-    var c2 = api.el('pn', 'left:486px;top:330px;width:446px;height:190px', '<h4>Final accuracy against parameters</h4><canvas class="c2" width="420" height="146"></canvas>');
-    var ctl = api.addControl('Training data <select class="ds"><option value="100">100 points</option><option value="1000" selected>1,000 points</option><option value="10000">10,000 points</option></select>');
-    var ds = qs('.ds', ctl);
-    function drawScale(){
-      var J = NA_SC.data, sel = ds.value, series = [], labels = { '100': '100 points', '1000': '1,000 points', '10000': '10,000 points' }, cols = { '100': '#6F8196', '1000': '#F78C85', '10000': C.red };
-      J.data.forEach(function(n){ var runs = J.runs[String(n)]; series.push({ pts: runs.map(function(r){ return [Math.log10(r.params), r.ck[r.ck.length - 1].acc]; }), color: cols[String(n)], w: String(n) === sel ? 3.4 : 1.6, label: labels[String(n)] + ', test' }); });
-      var rs = J.runs[sel]; series.push({ pts: rs.map(function(r){ return [Math.log10(r.params), r.ck[r.ck.length - 1].tr]; }), color: C.char, dash: [5, 4], w: 1.8, nodot: true, label: 'training, ' + labels[sel] });
-      lineChart(qs('.c2', c2), series, { xl: 'parameters (log scale)', yl: 'accuracy', y0: 0.5, y1: 1, x0: 1, x1: 5.1, xticks: [[1, '10'], [2, '100'], [3, '1,000'], [4, '10,000'], [5, '100,000']].map(function(a){ return { v: a[0], t: a[1] }; }) });
-    }
-    async function prepare(){ if (NA_SC.data) return; api.busy('Loading the saved training runs'); await tick(); NA_SC.data = await loadJSON('scaling'); api.idle(); }
-    function setSize(){ var panels = naScalePanels(ds.value), xmax = NA_SC.data.steps[NA_SC.data.steps.length - 1]; if (NA_SC.anim) NA_SC.anim.setPanels(panels, 0, xmax); drawScale(); }
-    ds.addEventListener('change', setSize);
-    async function render(){
-      if (NA_SC.busy) return; NA_SC.busy = true;
-      try {
-        await prepare(); if (NA_SC.anim) { NA_SC.anim.draw(); drawScale(); return; }
-        var xmax = NA_SC.data.steps[NA_SC.data.steps.length - 1];
-        NA_SC.anim = shAnim({ canvas: qs('canvas', vp), chart: qs('.c1', c1), panels: naScalePanels(ds.value), x0: 0, x1: xmax, xl: 'training updates', dur: 14 });
-        shControls(api, NA_SC.anim); drawScale();
-      } finally { NA_SC.busy = false; }
-    }
-    return { render: render };
-  } });
+  change: 'Press Play and watch the tiles and the surface. Change the neurons per layer, the layers, the activation, the number of training points or the learning rate, then restart.',
+  watch: 'A network with three inputs (x, y, z), hidden layers of neurons and one output is trained on labelled points to say whether a point lies inside a thick double helix. Training runs in the page. Each tile in the diagram is one neuron, drawn as the region of a cross-section through the helix, at the height set by the slice slider, where that neuron is active. Orange is a positive activation and blue a negative one, and the lines between neurons are weights drawn the same way, thicker for larger values. The panels on the right compare the true helix with the surface the network has learned, and the cross-section of each. The chart gives balanced accuracy on 3,000 held-out points within 0.07 of the true surface, where 0.5 is chance. After 12,000 training steps in one run each: 10 points with 4 neurons in 1 layer scored 0.49; 100 points with 32 neurons in 3 layers, 0.54; 10,000 points with 8 neurons in 2 layers, 0.61; 10,000 points with 32 neurons in 3 layers, 0.93. With tanh in place of ReLU the last network scored 0.75.',
+  build: hxSimpleStep });
 
 L8.glossary([
   ['Loss', 'A number that measures how bad a prediction is. Training lowers it.'],
@@ -331,7 +296,8 @@ L8.glossary([
   ['Logit', 'The raw score a model gives a token before the softmax.'],
   ['Cross-entropy', 'Minus the natural log of the probability the model gave the correct token.'],
   ['Perplexity', 'e raised to the loss. The number of equally likely tokens the model is choosing between.'],
-  ['Double helix', 'A shape of two spiral strands joined by rungs. Used here as a 3D test function to fit.'],
+  ['Double helix', 'A shape of two thick spiral strands joined by rungs. Used here as a 3D test function to fit.'],
+  ['Cell', 'One cube of a fixed grid that fills the box. The inside map of a network is drawn as the cells it calls inside.'],
   ['Parameter', 'One number a model learns. A network\'s size is its number of parameters.'],
   ['Overfitting', 'Fitting the training points so closely, noise included, that held-out points are predicted worse.'],
   ['Balanced accuracy', 'The average of the share of inside points called inside and outside points called outside.']

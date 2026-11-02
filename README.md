@@ -30,6 +30,10 @@ Each lesson has four sections that open and close: **Beginner** (core machine le
 | 11 ML in PK and MIDD | Model families and PK tasks, predicted parameters as PBPK inputs, error propagation to exposure, surrogate models, covariate screening, ensembles for parameter uncertainty, ML on NCA parameters from sparse sampling, population PK with ML covariate models, hybrid mechanistic-ML models, sequence models, transfer from in vitro to in vivo, graph networks for PK parameters, LLMs in the workflow, generative design, credibility of ML components, validation design |
 | 12 Quiz | 97 questions, 10 drawn at random each round: multiple choice, select all, numeric, ordering, and challenges that train a boosting model, forest or tree against a goal. Each question has a schematic. 22 questions cover PK, PBPK, MIDD and machine learning in PK |
 
+## Saved runs
+
+`tools/` regenerates the saved training runs behind the 3D double helix steps in lessons 08 and 09 (`run_trees.py` and `run_scaling.py`, see `tools/README.md`).
+
 ## Notebooks
 
 `notebooks/` covers the same ideas in Python (Colab or local): setup, trees, networks, GPT, comparison, logD to HLM, Chemprop, data quality, and Chemprop fine-tuning.

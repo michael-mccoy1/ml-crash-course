@@ -235,83 +235,19 @@ L7.add({ short: 'Library designs', title: 'Boosting libraries compared',
     return { render: draw };
   } });
 
-/* ---------- Step 7: fitting a torus ---------- */
-var TA_SHAPE = { tr: null, te: null, B: null, anim: null, busy: false, panels: null };
-function taTorusPrep(){
-  if (TA_SHAPE.tr) return; var tr = TA_SHAPE.tr = shTrain(16000, 31); TA_SHAPE.te = shTest(2000, 77);
-  var B = { edges: {}, codes: {} }; ['x', 'y', 'z'].forEach(function(f, c){ var v = []; for (var i = 0; i < tr.n; i++) v.push(tr.X[i * 3 + c]); v.sort(function(a, b){ return a - b; }); var e = []; for (var q = 1; q < 64; q++) { var x = v[Math.floor(q / 64 * v.length)]; if (!e.length || x > e[e.length - 1]) e.push(x); } B.edges[f] = e; var codes = new Uint8Array(tr.n); for (var i2 = 0; i2 < tr.n; i2++) { var val = tr.X[i2 * 3 + c], k = 0; while (k < e.length && val > e[k]) k++; codes[i2] = k; } B.codes[f] = codes; });
-  TA_SHAPE.B = B;
-}
-function taLog(ms){ return Math.log10(Math.max(ms, 1)); }
-function taTimeTicks(hi){ var o = []; for (var v = 0; v <= hi; v++) o.push({ v: v, t: v < 3 ? Math.pow(10, v) + ' ms' : Math.pow(10, v - 3) + ' s' }); return o; }
-async function taTorusPanels(onProg){
-  taTorusPrep(); var tr = TA_SHAPE.tr, te = TA_SHAPE.te, B = TA_SHAPE.B, F = ['x', 'y', 'z'], n = tr.n, all = new Int32Array(n), i, vals = { x: 0, y: 0, z: 0 }, panels = [];
-  for (i = 0; i < n; i++) all[i] = i;
-  function ckOf(predict, ms, label){ return { t: shMesh(predict), acc: shAccuracy(te, predict), x: taLog(ms), label: label }; }
-  /* a single tree, grown one level deeper each checkpoint */
-  var treeCk = [], treeDs = []; [1, 2, 3, 4, 6, 8, 10, 13, 16, 20, 25, 30].forEach(function(d){ treeDs.push(d); }); for (var di = 0; di < treeDs.length; di++) { var d = treeDs[di], t0 = performance.now(), node = buildTree(B, F, tr.T, all, d, 1, 3, rng(1)), ms = performance.now() - t0; treeCk.push(ckOf((function(nd){ return function(x, y, z){ vals.x = x; vals.y = y; vals.z = z; return predictVals(nd, B, vals); }; })(node), ms, 'Tree, depth ' + d)); if (onProg) onProg('tree', d); await tick(); }
-  panels.push({ n: n, short: 'one tree', color: C.char, ck: treeCk, titleAt: function(k){ return treeCk[k].label; } });
-  /* a forest, one tree added at a time */
-  var rand = rng(9), trees = [], fKs = [2, 3, 5, 8, 12, 18, 26, 36, 50, 70, 100], fCk = [], fTime = 0, boot0 = new Int32Array(n);
-  /* the first tree of the forest is grown level by level, so the forest starts from a small tree as well */
-  for (i = 0; i < n; i++) boot0[i] = Math.floor(rand() * n);
-  for (var fd = 0, fDs = [1, 2, 3, 4, 6, 8, 12, 16, 20, 30]; fd < fDs.length; fd++) { var tD = performance.now(), nd0 = buildTree(B, F, tr.T, boot0, fDs[fd], 1, 2, rand), msD = performance.now() - tD; fCk.push(ckOf((function(nd){ return function(x, y, z){ vals.x = x; vals.y = y; vals.z = z; return predictVals(nd, B, vals); }; })(nd0), msD, 'Forest, first tree, depth ' + fDs[fd])); if (fd === fDs.length - 1) { trees.push(nd0); fTime = msD; } if (onProg) onProg('forest', 1); await tick(); }
-  for (var q = 1; q < 100; q++) { var tS = performance.now(), boot = new Int32Array(n); for (i = 0; i < n; i++) boot[i] = Math.floor(rand() * n); trees.push(buildTree(B, F, tr.T, boot, 30, 1, 2, rand)); fTime += performance.now() - tS; if (fKs.indexOf(q + 1) >= 0) { var cnt = q + 1; fCk.push(ckOf((function(c){ return function(x, y, z){ vals.x = x; vals.y = y; vals.z = z; var s = 0; for (var k = 0; k < c; k++) s += predictVals(trees[k], B, vals); return s / c; }; })(cnt), fTime, 'Forest, ' + cnt + (cnt === 1 ? ' tree' : ' trees'))); if (onProg) onProg('forest', cnt); await tick(); } }
-  panels.push({ n: n, short: 'forest', color: '#6F8196', ck: fCk, titleAt: function(k){ return fCk[k].label; } });
-  /* boosting, one round at a time */
-  var Fv = new Float64Array(n), res = new Float32Array(n), bt = [], lr = 0.15, bKs = [1, 2, 3, 5, 8, 12, 18, 26, 40, 60, 90, 140, 210, 300], bCk = [], bTime = 0, randB = rng(4);
-  for (var m = 0; m < 300; m++) { var tB = performance.now(); for (i = 0; i < n; i++) res[i] = tr.T[i] - Fv[i]; var tb = buildTree(B, F, res, all, 8, 3, 3, randB); bt.push(tb); for (i = 0; i < n; i++) Fv[i] += lr * predictTree(tb, B, i); bTime += performance.now() - tB;
-    if (bKs.indexOf(m + 1) >= 0) { var cm = m + 1; bCk.push(ckOf((function(c){ return function(x, y, z){ vals.x = x; vals.y = y; vals.z = z; var s = 0; for (var k = 0; k < c; k++) s += lr * predictVals(bt[k], B, vals); return s; }; })(cm), bTime, 'Boosting, ' + cm + (cm === 1 ? ' round' : ' rounds'))); if (onProg) onProg('boost', cm); await tick(); } }
-  panels.push({ n: n, short: 'boosting', color: C.red, ck: bCk, titleAt: function(k){ return bCk[k].label; } });
-  return panels;
+/* ---------- Steps 7 and 8: live tree models learning a thick double helix. The engine and the views are in treeviz.js. ---------- */
+function taHelixStep(api, defaults){
+  var pn = api.el('pn', 'left:28px;top:20px;width:904px;height:500px;padding:0;overflow:hidden', ''), ctl = api.addControl(''), inst = null;
+  return { render: async function(){ if (inst) return; api.busy('Preparing the helix'); await tick(); await tick(); var o = { ctl: ctl }; for (var k in defaults) o[k] = defaults[k]; inst = TV.mount(pn, o); api.idle(); } };
 }
 L7.add({ short: 'Fitting a helix', title: 'Fitting a double helix with three kinds of tree model',
-  change: 'Press Play. Drag the picture to rotate it, or drag the progress slider.',
-  watch: 'The target is a double helix: two spiral strands joined by rungs. Each model is trained on 16,000 points in 3D space, each labelled with its signed distance to the helix surface (negative inside, positive outside), and predicts that distance. Grey lines show the true helix. Each red dot is a node placed where the prediction of the model crosses zero near the true surface. Nodes start in a loose cloud around the helix and slide along straight lines to the surface the model has learned. A node the model cannot place stays at its start. Black specks are the training points inside the helix. A tree partitions space with axis-aligned planes, so its nodes land on a surface made of boxes. The single tree is grown one level deeper at each step. The forest first grows one tree level by level, then adds trees and averages them. Boosting adds small trees in sequence. The chart shows balanced accuracy on 2,000 held-out points within 0.25 of the surface, half inside and half outside, so a constant prediction scores 0.5.',
-  build: function(api){
-    var vp = api.el('pn', 'left:28px;top:20px;width:904px;height:300px', '<canvas width="880" height="276"></canvas>');
-    var cp = api.el('pn', 'left:28px;top:330px;width:904px;height:190px', '<canvas class="c2" width="880" height="158"></canvas>');
-    async function prepare(){ if (TA_SHAPE.panels) return; api.busy('Fitting the three models and building their surfaces'); await tick(); await tick(); TA_SHAPE.panels = await taTorusPanels(function(kind, k){ api.busy('Fitting ' + kind + ', step ' + k); }); api.idle(); }
-    async function renderInner(){
-      await prepare(); if (TA_SHAPE.anim) { TA_SHAPE.anim.draw(); return; }
-      var xs = []; TA_SHAPE.panels.forEach(function(p){ p.ck.forEach(function(c){ xs.push(c.x); }); }); var xhi = Math.ceil(Math.max.apply(null, xs));
-      TA_SHAPE.anim = shAnim({ canvas: qs('canvas', vp), chart: qs('.c2', cp), panels: TA_SHAPE.panels, x0: 0, x1: xhi, xl: 'training time (log scale)', xticks: taTimeTicks(xhi), dur: 16 });
-      shControls(api, TA_SHAPE.anim);
-    }
-    async function render(){ if (TA_SHAPE.busy) return; TA_SHAPE.busy = true; try { await renderInner(); } finally { TA_SHAPE.busy = false; } }
-    return { render: render };
-  } });
-
-/* ---------- Step 8: tree models against the amount of data ---------- */
-var TA_DATA = { j: null, anim: null, busy: false };
-function taDecode(b64, n){ return shDecode(b64, n); }
-var TA_DCOL = ['#A1B1C4', '#6F8196', '#BD120A', C.char];
-function taDataPanels(){
-  var J = TA_DATA.j, n = shGeom().total;
-  return J.sizes.map(function(sz, i){ var run = J.runs[String(sz)], ck = run.ck.map(function(c){ return { t: c.t || (c.t = taDecode(c.mesh, n)), acc: c.acc, tr: c.tr, x: c.s }; }); return { n: sz, short: sz.toLocaleString() + ' points', color: TA_DCOL[i], ck: ck, titleAt: function(k){ return sz.toLocaleString() + ' points'; } }; });
-}
+  change: 'Pick a model and press Restart, or use a preset. Drag the Steps slider or press Play to step through depth or rounds. Drag the 3D views to rotate them, and click a slice to move the cross.',
+  watch: 'The target is a thick double helix, two spiral strands joined by rungs, in the box from -1 to 1 on each axis. A model is trained on labelled points to predict the signed distance to the helix surface, negative inside and positive outside, clipped at 0.25. A third of the training points are drawn within 0.18 of the surface, which raises the score of every model. The left side draws the model as it is built. Each tile of the tree shows the box of space a node covers, the rule that splits it, the number of training points in it, and a bar for the share of those points that lie inside the helix. The orange outline follows the point marked by the cross through the tree. A single tree divides space with axis-aligned planes, so its surface is made of boxes. A forest averages trees fitted to bootstrap samples, and gradient boosting adds small trees one after another, each fitted to the error of the sum so far. The right side shows the helix and the surface the model has learned, found where the prediction crosses zero, next to a cross-section at the chosen height. The score is balanced accuracy on 6,000 held-out points within 0.15 of the surface, half inside and half outside, so a model that calls every point outside scores 0.5. With 100,000 training points and 200 boosting rounds of depth 10 the score is 0.976, and with one tree of depth 20 and 10,000 points it is 0.822.',
+  build: function(api){ return taHelixStep(api, { kind: 'boost', N: 10000, depth: 8, trees: 150, lr: 0.15, minLeaf: 3 }); } });
 L7.add({ short: 'Trees and data', title: 'Tree models against the amount of data',
-  change: 'Press Play to watch the same boosted model trained on 100, 1,000, 10,000 and 100,000 points. Read the chart on the right.',
-  watch: 'The same boosted model, 300 rounds of trees of depth 8, is trained on the double helix problem with 100, 1,000, 10,000 and 100,000 points, each labelled with its signed distance to the surface. Grey lines show the true helix and each red dot is a node placed on the surface the model has learned. Nodes start in a loose cloud and slide to that surface. A node the model cannot place stays at its start. Black specks are training points inside the helix, so more data gives more specks. The chart on the right shows balanced accuracy on 2,000 held-out points for one tree, a forest of 100 trees and the boosted model. Trees can only place splits where training points exist, so with 100 points all three models score close to 0.55. Each tenfold increase in data raises the scores, and boosting leads at 1,000 and 10,000 points. At 100,000 points the three are within 0.02 of each other, so the gain from more data shrinks. These results come from a saved run of the code in this lesson.',
-  build: function(api){
-    var vp = api.el('pn', 'left:28px;top:20px;width:904px;height:300px', '<canvas width="880" height="276"></canvas>');
-    var c1 = api.el('pn', 'left:28px;top:330px;width:446px;height:190px', '<h4>Balanced accuracy during boosting, held-out points</h4><canvas class="c1" width="420" height="146"></canvas>');
-    var c2 = api.el('pn', 'left:486px;top:330px;width:446px;height:190px', '<h4>Final balanced accuracy against training set size</h4><canvas class="c2" width="420" height="146"></canvas>');
-    function drawScale(){
-      var J = TA_DATA.j, ser = [['tree', 'one tree', C.char], ['forest', 'forest of 100 trees', '#6F8196'], ['boost', 'boosting, 300 rounds', C.red]].map(function(f){ return { pts: J.sizes.map(function(n){ return [Math.log10(n), J.runs[String(n)][f[0]]]; }), color: f[2], w: 2.8, label: f[1] }; });
-      lineChart(qs('.c2', c2), ser, { xl: 'training points (log scale)', yl: 'accuracy', y0: 0.5, y1: 1, x0: 2, x1: 5.1, xticks: [[2, '100'], [3, '1,000'], [4, '10,000'], [5, '100,000']].map(function(a){ return { v: a[0], t: a[1] }; }) });
-    }
-    async function prepare(){ if (TA_DATA.j) return; api.busy('Loading the saved training runs'); await tick(); TA_DATA.j = await loadJSON('tree_data'); api.idle(); }
-    async function render(){
-      if (TA_DATA.busy) return; TA_DATA.busy = true;
-      try {
-        await prepare(); if (TA_DATA.anim) { TA_DATA.anim.draw(); drawScale(); return; }
-        TA_DATA.anim = shAnim({ canvas: qs('canvas', vp), chart: qs('.c1', c1), panels: taDataPanels(), x0: 0, x1: 300, xl: 'boosting rounds', dur: 14 });
-        shControls(api, TA_DATA.anim); drawScale();
-      } finally { TA_DATA.busy = false; }
-    }
-    return { render: render };
-  } });
+  change: 'Choose a model and run the training-points sweep. Then change the number of training points above and step through the model to see the surface it learns.',
+  watch: 'The same live models are trained on 10, 100, 1,000, 10,000 and 100,000 points. The sweep button trains the chosen model at each size with the current settings and plots held-out accuracy against the number of points, with one line for each model type that has been run. For a tree of depth 20, a forest of 60 trees of depth 20, and boosting with 150 rounds of depth 8, the scores at 10, 100, 1,000, 10,000 and 100,000 points are 0.505, 0.554, 0.692, 0.822 and 0.849 for the tree, 0.502, 0.600, 0.779, 0.874 and 0.901 for the forest, and 0.504, 0.630, 0.811, 0.943 and 0.962 for boosting. For boosting the gain from each tenfold increase in points is 0.126, 0.181, 0.132 and 0.019. With few points the splits fall far from the surface and the learned shape is a few large boxes. With more points the splits follow the strands and rungs. The last tenfold increase adds 0.019 for boosting, 0.027 for the tree and 0.027 for the forest. These values are measured with seed 1 and change with the seed.',
+  build: function(api){ return taHelixStep(api, { kind: 'boost', N: 1000, depth: 8, trees: 150, lr: 0.15, minLeaf: 3 }); } });
 
 L7.glossary([
   ['Sum of squared errors (SSE)', 'The sum of the squared differences between each lab value and its group mean.'],
@@ -329,7 +265,8 @@ L7.glossary([
   ['Validation set', 'Training compounds held back to compare settings. It is not the test set.'],
   ['Level-wise growth', 'Split every node at one depth before going deeper.'],
   ['Leaf-wise growth', 'Always split the leaf with the largest gain.'],
-  ['Double helix', 'Two spiral strands joined by rungs. Used here as a 3D shape to fit.'],
+  ['Double helix', 'Two thick spiral strands joined by rungs. Used here as a 3D shape to fit.'],
+  ['Cell', 'One cube of a fixed grid that fills the box. The inside map of a model is drawn as the cells it calls inside.'],
   ['Balanced accuracy', 'The mean of the fraction of inside points classified as inside and the fraction of outside points classified as outside.']
 ]);
 setUses(L7, [['endpoint'], ['endpoint'], ['endpoint'], ['endpoint'], ['endpoint'], [], [], []]);
