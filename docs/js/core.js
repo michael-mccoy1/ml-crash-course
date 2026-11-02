@@ -261,6 +261,8 @@ function buildStep(L, s, idx, total, parent){
   s.api = api;
   function fit(){ var w = screen.clientWidth; if (w) inner.style.transform = 'scale(' + (w / 960) + ')'; }
   if (window.ResizeObserver) new ResizeObserver(fit).observe(screen); fit();
+  var zb = h('button', 'btn sm ghost zoomb', 'Enlarge'), sw = qs('.stagewrap', sec); zb.type = 'button'; zb.addEventListener('click', function(){ var big = sw.classList.toggle('big'); zb.textContent = big ? 'Fit to screen' : 'Enlarge'; fit(); });
+  if (sbar.parentNode) sbar.insertBefore(zb, sbar.firstChild);
   s.safe = function(fn){ try { var r = fn(); if (r && r.catch) r.catch(function(e){ if (!(e instanceof Cancel)) console.error(e); }); return r; } catch (e) { if (!(e instanceof Cancel)) console.error(e); } };
   s.handlers = s.build(api) || {};
   var pb = qs('[data-play]', sec); if (pb) { if (!s.handlers.play) pb.style.display = 'none'; else pb.addEventListener('click', function(){ s.play(); }); }
