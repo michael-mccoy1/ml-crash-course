@@ -137,6 +137,8 @@ var STEP_TITLES = {
     'Surrogate models': 'Surrogate models',
     'Covariate screening': 'Covariate screening',
     'Ensembles for uncertainty': 'Ensembles for parameter uncertainty',
+    'Sparse sampling': 'Sparse sampling',
+    'Population PK and ML': 'Population PK with ML covariate models',
     'Hybrid ODE': 'Hybrid mechanistic-ML models',
     'Sequence models': 'Sequence models for profiles',
     'Transfer to in vivo': 'Transfer from in vitro to in vivo',
