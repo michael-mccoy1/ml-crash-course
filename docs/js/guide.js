@@ -10,6 +10,8 @@ var GUIDE = {
     ai: { goals: ['Distinguish prediction from generation.', 'Identify where each is reliable and where it is not.', 'Apply checks before relying on a model output.'] },
     treealgo: { goals: ['Compute and compare candidate splits.', 'Explain how depth, leaf size, bagging and boosting change a model.', 'Tune hyperparameters without using the test set.'] },
     netalgo: { goals: ['Compare gradient descent, momentum and Adam on a loss surface.', 'Follow backpropagation and attention with worked numbers.', 'Explain how initialisation, weight decay and network size affect training.'] },
+    pk: { goals: ['Relate in vitro clearance to in vivo clearance with IVIVE.', 'Identify the parameters a PBPK model needs and where predictions can supply them.', 'State the evidence expected of a model under ICH M15.'] },
+    mlpk: { goals: ['Match the model families in this course to tasks in PK, PBPK and MIDD.', 'Propagate the error of a predicted parameter to a predicted exposure.', 'Assess whether a machine learning component is fit for a given context of use.'] },
     compare: { goals: ['Compare models on accuracy and training time.', 'State what a fair comparison requires.'] }
   },
   steps: {
