@@ -13,6 +13,8 @@ async function pkcHLM(){
     var q = ds.TRAIN.filter(function(i){ return !(ds.cens && ds.cens[i]); }).map(function(i){ return ds.Y[i]; }).sort(function(a, b){ return a - b; }), med = q[Math.floor(q.length / 2)];
     var m = fitBoost(ds.BASE.slice(), ds.TRAIN, 150, 0.08, 3), rm = rmse(ds.TEST, m.F, ds.Y);
     PKC_HLM = { median: med, rmse: rm, n: q.length };
+    var ld = await loadDataset('logD'); D = ld;
+    var m2 = fitBoost(ld.BASE.slice(), ld.TRAIN, 150, 0.08, 3); PKC_HLM.rmseLogD = rmse(ld.TEST, m2.F, ld.Y);
   } finally { D = keep; }
   return PKC_HLM;
 }
@@ -75,7 +77,8 @@ function pkcSim(m, tEnd){
 
 /* ---------- 1. Sensitivity ---------- */
 var PKC_PARAMS = [
-  { id: 'clint', label: 'CLint (unbound hepatic)', ml: 'HLM model of this course' },
+  { id: 'clint', label: 'CLint', ml: true },
+  { id: 'logp', label: 'logP (sets all Kp)', ml: true },
   { id: 'fup', label: 'Fraction unbound in plasma', ml: 'none in this course' },
   { id: 'bp', label: 'Blood to plasma ratio', ml: 'none in this course' },
   { id: 'kp', label: 'Tissue partition (all Kp)', ml: 'derived from logP and fup' },
@@ -85,9 +88,17 @@ var PKC_PARAMS = [
   { id: 'flows', label: 'Organ blood flows (all)', ml: 'physiology, not predicted' },
   { id: 'vad', label: 'Adipose volume', ml: 'physiology, not predicted' }
 ];
+/* Perturbation of each input. CLint and logP use the test error of the course models; the other inputs use a factor of 2 in each direction. */
+function pkcLevels(id){
+  var h = PKC_HLM;
+  if (id === 'clint') { var f = Math.pow(10, h.rmse); return { lo: 1 / f, hi: f, text: 'ML error, factor ' + f.toFixed(1) }; }
+  if (id === 'logp') return { lo: -h.rmseLogD, hi: h.rmseLogD, text: 'ML error, +/- ' + h.rmseLogD.toFixed(2) };
+  return { lo: 0.5, hi: 2, text: 'assumed, factor 2' };
+}
 function pkcPerturbed(clintU, id, f){
   var b = PKC_BASE, o = {};
   if (id === 'clint') return pkcBaseModel(clintU * f);
+  if (id === 'logp') return pkcBaseModel(clintU, { logP: Math.max(-1, b.logP + f) });
   if (id === 'fup') return pkcBaseModel(clintU, { fup: Math.min(1, b.fup * f) });
   if (id === 'bp') return pkcBaseModel(clintU, { bp: b.bp * f });
   if (id === 'ka') return pkcBaseModel(clintU, { ka: b.ka * f });
@@ -101,51 +112,52 @@ function pkcPerturbed(clintU, id, f){
 }
 LESSONS.pk.add({ level: 'advanced', short: 'Sensitivity', title: 'Parameter sensitivity',
   change: 'Press Run to repeat the analysis. Change the baseline log10 CLint and run again.',
-  watch: 'A PBPK prediction is a function of many inputs, and an error in an input changes the prediction by an amount that depends on the model structure. Local one-at-a-time sensitivity analysis changes one input at a time by a fixed factor and records the change in the output. Here each input is multiplied by 0.5 and by 2 for a 100 mg oral dose of a typical compound, and the outputs are AUC from 0 to 24 h and Cmax from the whole-body model in this course. The factor of 2 is applied to every input in the same way, so the bars compare inputs and are not a statement of their real uncertainty. Every baseline value except CLint is an assumption, listed below the chart. Machine learning in this step. CLint is the input that a machine learning model predicts, and the test error of that model is the factor applied to CLint in the right-hand panel. A surrogate model reduces the cost of the many runs a sensitivity ranking needs (lesson 11, Surrogate models). A surrogate is validated by comparing its predictions with the full model on simulations not used to train it.',
+  watch: 'This step asks which input of the whole-body PBPK model matters most when that input is a machine learning prediction. Each input is changed one at a time for a 100 mg oral dose of a typical compound, and the outputs are AUC from 0 to 24 h and Cmax. CLint is changed by the test error of the HLM boosted-trees model of lesson 02, computed in the page, and logP is changed by the test error of the boosted-trees model for AstraZeneca logD, used here as the error of a lipophilicity prediction because the course has no logP model. The other inputs have no model in the course and are changed by a factor of 2 in each direction, shown as grey bars, so their bars compare inputs and are not measured errors. The ranking on the right orders all inputs by the larger of the two effects on AUC and gives the rank of each ML-predicted input. Every baseline value except CLint is an assumption, listed below the chart.',
   build: function(api){
-    var cp = api.el('pn', 'left:28px;top:20px;width:604px;height:330px', '<h4>Change in the output for 0.5 and 2 times each input</h4><canvas width="574" height="284"></canvas>');
+    var cp = api.el('pn', 'left:28px;top:20px;width:604px;height:330px', '<h4>Change in the output at the ML error or a factor of 2</h4><canvas width="574" height="284"></canvas>');
     var sp = api.el('pn', 'left:644px;top:20px;width:288px;height:330px;overflow:auto', '<div class="sv" style="font-size:12.5px;line-height:1.5;color:' + C.char + '"></div>');
     var mp = api.el('pn', 'left:28px;top:362px;width:904px;height:158px;overflow:auto', '<div class="mv" style="font-size:12.5px;line-height:1.5;color:' + C.char + '"></div>');
     var ctl = api.addControl('Baseline log10 CLint (mL/min/kg) <input type="range" min="-0.5" max="3" step="0.05" value="1.3" style="width:180px"> <b class="cv"></b> <button type="button" class="btn sm" data-run>Run</button> <span class="rs" style="font-size:12px"></span>');
     var rg = qs('input', ctl), cvEl = qs('.cv', ctl), rs = qs('.rs', ctl), res = null, busy = false, H = null;
-    function rows(){ return res ? PKC_PARAMS.map(function(p, k){ var r = res.rows[p.id]; return { p: p, lo: r.lo, hi: r.hi, aucLo: Math.log2(r.aucLo / res.base.auc), aucHi: Math.log2(r.aucHi / res.base.auc), cmLo: Math.log2(r.cmLo / res.base.cmax), cmHi: Math.log2(r.cmHi / res.base.cmax) }; }) : []; }
+    function rows(){ return res ? PKC_PARAMS.map(function(p, k){ var r = res.rows[p.id]; return { p: p, name: p.label + ' (' + pkcLevels(p.id).text + ')', ml: p.ml === true, lo: r.lo, hi: r.hi, aucLo: Math.log2(r.aucLo / res.base.auc), aucHi: Math.log2(r.aucHi / res.base.auc), cmLo: Math.log2(r.cmLo / res.base.cmax), cmHi: Math.log2(r.cmHi / res.base.cmax) }; }) : []; }
     function draw(){
       var g = cv(qs('canvas', cp)), x = g.x; x.clearRect(0, 0, g.w, g.h);
       if (!res) { x.fillStyle = C.mid; x.font = '13px Aptos, "Segoe UI", sans-serif'; x.textAlign = 'center'; x.fillText(busy ? 'Simulating' : 'Press Run', g.w / 2, g.h / 2); return; }
-      var R = rows().sort(function(a, b){ return Math.max(Math.abs(b.aucLo), Math.abs(b.aucHi)) - Math.max(Math.abs(a.aucLo), Math.abs(a.aucHi)); }), lim = 0, left = 188, panelW = (g.w - left - 18) / 2;
+      var R = rows().sort(function(a, b){ return Math.max(Math.abs(b.aucLo), Math.abs(b.aucHi)) - Math.max(Math.abs(a.aucLo), Math.abs(a.aucHi)); }), lim = 0, left = 262, panelW = (g.w - left - 18) / 2;
       R.forEach(function(r){ lim = Math.max(lim, Math.abs(r.aucLo), Math.abs(r.aucHi), Math.abs(r.cmLo), Math.abs(r.cmHi)); }); lim = Math.max(1, Math.ceil(lim));
       var top = 30, rh = (g.h - top - 34) / R.length, cx = [left + panelW / 2, left + panelW + 8 + panelW / 2];
       x.font = '700 12px Aptos, "Segoe UI", sans-serif'; x.textAlign = 'center'; x.fillStyle = C.char; x.fillText('AUC 0 to 24 h', cx[0], 16); x.fillText('Cmax', cx[1], 16);
       cx.forEach(function(c){ x.strokeStyle = C.silver; x.lineWidth = 1; for (var t = -lim; t <= lim; t++) { var px = c + t / lim * (panelW / 2 - 6); x.beginPath(); x.moveTo(px, top - 4); x.lineTo(px, g.h - 34); x.stroke(); x.fillStyle = C.mid; x.font = '10.5px Aptos, "Segoe UI", sans-serif'; x.textAlign = 'center'; x.fillText((t === 0 ? '1' : (t > 0 ? Math.pow(2, t) : '1/' + Math.pow(2, -t))) + '', px, g.h - 20); } });
       x.fillStyle = C.char; x.font = '11.5px Aptos, "Segoe UI", sans-serif'; x.fillText('output relative to baseline (log scale)', left + panelW + 4, g.h - 5);
       R.forEach(function(r, k){
-        var y = top + k * rh + rh / 2; x.textAlign = 'right'; x.fillStyle = r.p.id === 'clint' ? C.dred : C.char; x.font = (r.p.id === 'clint' ? '700 ' : '') + '11.5px Aptos, "Segoe UI", sans-serif'; x.fillText(r.p.label, left - 8, y + 4);
+        var y = top + k * rh + rh / 2; x.textAlign = 'right'; x.fillStyle = r.ml ? C.dred : C.char; x.font = (r.ml ? '700 ' : '') + '11px Aptos, "Segoe UI", sans-serif'; x.fillText(r.name, left - 8, y + 4);
         [[cx[0], r.aucLo, r.aucHi], [cx[1], r.cmLo, r.cmHi]].forEach(function(b){ var c = b[0], sc = (panelW / 2 - 6) / lim;
-          x.fillStyle = C.bg; x.fillRect(Math.min(c, c + b[1] * sc), y - rh * 0.3, Math.abs(b[1] * sc), rh * 0.6); x.fillStyle = C.red; x.fillRect(Math.min(c, c + b[2] * sc), y - rh * 0.3, Math.abs(b[2] * sc), rh * 0.6); });
+          x.fillStyle = r.ml ? '#E9A3A3' : '#C9D3DE'; x.fillRect(Math.min(c, c + b[1] * sc), y - rh * 0.3, Math.abs(b[1] * sc), rh * 0.6); x.fillStyle = r.ml ? C.red : '#6F8196'; x.fillRect(Math.min(c, c + b[2] * sc), y - rh * 0.3, Math.abs(b[2] * sc), rh * 0.6); });
       });
       x.textAlign = 'left'; x.fillStyle = C.bg; x.fillRect(left, g.h - 34 + 14, 0, 0);
     }
     function panels(){
       if (!res) { qs('.sv', sp).innerHTML = busy ? '<div class="ol">Running</div>' : '<div class="ol">Result</div>'; return; }
-      var R = rows(), ord = R.slice().sort(function(a, b){ return Math.max(Math.abs(b.aucLo), Math.abs(b.aucHi)) - Math.max(Math.abs(a.aucLo), Math.abs(a.aucHi)); }), rank = ord.map(function(r){ return r.p.id; }).indexOf('clint') + 1, h = PKC_HLM;
-      var f = Math.pow(10, h.rmse);
-      qs('.sv', sp).innerHTML = '<div class="ol">Baseline</div><div style="margin-bottom:8px">AUC 0 to 24 h <b>' + pkcFmt(res.base.auc) + '</b> mg h/L, Cmax <b>' + pkcFmt(res.base.cmax) + '</b> mg/L.</div><div class="ol">Test error of the course model</div><div>The HLM boosted-trees model has a test RMSE of <b>' + h.rmse.toFixed(2) + '</b> log10 units, a factor of <b>' + f.toFixed(1) + '</b> in CLint. Moving CLint by that factor changes AUC by <b>' + pkcLog2Fmt(Math.log2(res.rmseUp.auc / res.base.auc)) + '</b> (CLint times ' + f.toFixed(1) + ') and <b>' + pkcLog2Fmt(Math.log2(res.rmseDown.auc / res.base.auc)) + '</b> (CLint divided by ' + f.toFixed(1) + '). CLint ranks <b>' + rank + '</b> of ' + R.length + ' by the effect on AUC at a factor of 2.</div>';
+      var R = rows(), eff = function(r){ return Math.max(Math.abs(r.aucLo), Math.abs(r.aucHi)); }, ord = R.slice().sort(function(a, b){ return eff(b) - eff(a); }), h = PKC_HLM, html = '<div class="ol">Baseline</div><div style="margin-bottom:6px">AUC 0 to 24 h <b>' + pkcFmt(res.base.auc) + '</b> mg h/L, Cmax <b>' + pkcFmt(res.base.cmax) + '</b> mg/L.</div><div class="ol">ML-predicted inputs at their test error</div>';
+      R.filter(function(r){ return r.ml; }).forEach(function(r){ var rk = ord.indexOf(r) + 1; html += '<div style="margin-bottom:4px"><b>' + r.p.label.split(' (')[0] + '</b>, rank <b>' + rk + '</b> of ' + R.length + ': AUC ' + pkcLog2Fmt(r.aucLo) + ' to ' + pkcLog2Fmt(r.aucHi) + ', Cmax ' + pkcLog2Fmt(r.cmLo) + ' to ' + pkcLog2Fmt(r.cmHi) + '.</div>'; });
+      var mlOrd = ord.filter(function(r){ return r.ml; });
+      html += '<div style="margin-top:4px">Of the two ML-predicted inputs, <b>' + mlOrd[0].p.label.split(' (')[0] + '</b> has the larger effect on AUC. Test RMSE: HLM CLint ' + h.rmse.toFixed(2) + ' log10 units, logD ' + h.rmseLogD.toFixed(2) + ' log units.</div>';
+      qs('.sv', sp).innerHTML = html;
     }
     function table(){
       var h = PKC_HLM; qs('.mv', mp).innerHTML = '<div class="ol">Baseline assumptions</div>' +
-        '<div style="font-size:12px;line-height:1.4">Oral dose 100 mg, 70 kg, logP ' + PKC_BASE.logP.toFixed(1) + ' (sets Kp), fup ' + PKC_BASE.fup + ', blood to plasma ratio ' + PKC_BASE.bp + ', renal clearance ' + PKC_BASE.clr + ' L/h, ka ' + PKC_BASE.ka + ' per h, gut fraction ' + PKC_BASE.F + '. Hepatic clearance is the well-stirred model on the HLM CLint per kg, with no protein or liver weight scaling. A model would supply CLint (HLM boosted trees) and logP (RDKit); the other inputs have no model in this course. Changing fup also changes Kp. Fup and gut fraction are capped at 1.</div>';
+        '<div style="font-size:12px;line-height:1.4">Oral dose 100 mg, 70 kg, logP ' + PKC_BASE.logP.toFixed(1) + ' (sets Kp), fup ' + PKC_BASE.fup + ', blood to plasma ratio ' + PKC_BASE.bp + ', renal clearance ' + PKC_BASE.clr + ' L/h, ka ' + PKC_BASE.ka + ' per h, gut fraction ' + PKC_BASE.F + '. Hepatic clearance is the well-stirred model on the HLM CLint per kg, with no protein or liver weight scaling. CLint is predicted by the HLM boosted-trees model (test RMSE ' + h.rmse.toFixed(2) + ' log10 units). The logP error is the test RMSE of the logD boosted-trees model (' + h.rmseLogD.toFixed(2) + ' log units), a proxy: the course has no logP model. The other inputs have no model in the course. Changing fup also changes Kp. Fup and gut fraction are capped at 1.</div>';
     }
     async function run(){
       if (busy) return; busy = true; var tok = ++api.tok; api.busy('Simulating'); draw(); panels();
       try {
-        await pkcHLM(); var clintU = PKE.pbpk.clintUFromHLM(+rg.value, PKC_BASE.bw, 1), t0 = performance.now(), out = { rows: {} }, k = 0, total = PKC_PARAMS.length * 2 + 3, f = Math.pow(10, PKC_HLM.rmse);
+        await pkcHLM(); var clintU = PKE.pbpk.clintUFromHLM(+rg.value, PKC_BASE.bw, 1), t0 = performance.now(), out = { rows: {} }, k = 0, total = PKC_PARAMS.length * 2 + 1;
         function step(label){ k++; rs.textContent = label + ' (' + k + ' of ' + total + ')'; return pkcTick(); }
         out.base = pkcSim(pkcBaseModel(clintU), 24); await step('Baseline');
         for (var i = 0; i < PKC_PARAMS.length; i++) {
-          var p = PKC_PARAMS[i], lo = pkcSim(pkcPerturbed(clintU, p.id, 0.5), 24); await step(p.label); var hi = pkcSim(pkcPerturbed(clintU, p.id, 2), 24); await step(p.label);
+          var p = PKC_PARAMS[i], lv = pkcLevels(p.id), lo = pkcSim(pkcPerturbed(clintU, p.id, lv.lo), 24); await step(p.label); var hi = pkcSim(pkcPerturbed(clintU, p.id, lv.hi), 24); await step(p.label);
           out.rows[p.id] = { aucLo: lo.auc, aucHi: hi.auc, cmLo: lo.cmax, cmHi: hi.cmax };
         }
-        out.rmseUp = pkcSim(pkcPerturbed(clintU, 'clint', f), 24); await step('CLint, one test RMSE'); out.rmseDown = pkcSim(pkcPerturbed(clintU, 'clint', 1 / f), 24); await step('CLint, one test RMSE');
         out.secs = (performance.now() - t0) / 1000; res = out; rs.textContent = 'Done in ' + out.secs.toFixed(1) + ' s.';
       } finally { api.idle(); busy = false; }
       draw(); panels();
@@ -154,13 +166,13 @@ LESSONS.pk.add({ level: 'advanced', short: 'Sensitivity', title: 'Parameter sens
     rg.addEventListener('input', function(){ cvEl.textContent = (+rg.value).toFixed(2); });
     async function render(){ await pkcHLM(); rg.value = Math.round(PKC_HLM.median * 20) / 20; cvEl.textContent = (+rg.value).toFixed(2); table(); if (!res) await run(); else { draw(); panels(); } }
     async function play(tok){
-      await render(); api.cap('Each bar is the change in the output when one input is multiplied by 2 (red) or by 0.5 (grey).'); await api.sleep(3600);
-      api.cap('The inputs are ranked by the larger of the two effects on AUC.'); await api.sleep(3200);
-      api.cap('The panel on the right applies the test error of the course CLint model, instead of a factor of 2.'); await api.sleep(3600); api.cap(null);
+      await render(); api.cap('Red bars: inputs predicted by a machine learning model, changed by its test error. Grey bars: inputs without a model, changed by a factor of 2.'); await api.sleep(4200);
+      api.cap('The inputs are ordered by the larger of the two effects on AUC.'); await api.sleep(3200);
+      api.cap('The panel on the right gives the rank of CLint and logP among all inputs.'); await api.sleep(3400); api.cap(null);
     }
     return { render: render, play: play };
   } });
-GUIDE.steps['pk/Sensitivity'] = { notice: 'The fraction reaching the gut tissue, fup and CLint change AUC the most. The absorption rate ka changes Cmax but not AUC.', q: 'Why is the effect of CLint on AUC smaller than proportional?', a: 'Hepatic clearance saturates at hepatic blood flow as CLint rises, so the extraction ratio approaches 1 and AUC stops falling in proportion to CLint.' };
+GUIDE.steps['pk/Sensitivity'] = { notice: 'Red bars are inputs predicted by a machine learning model, at its test error. Grey bars are inputs changed by a factor of 2.', q: 'Why is the effect of CLint on AUC smaller than proportional?', a: 'Hepatic clearance saturates at hepatic blood flow as CLint rises, so the extraction ratio approaches 1 and AUC stops falling in proportion to CLint.' };
 
 /* ---------- 2. Absorption and distribution ---------- */
 /* Transit compartment absorption (Savic et al. 2007, J Pharmacokinet Pharmacodyn 34:711-726): n transit compartments in series with rate ktr, followed by an absorption
@@ -175,7 +187,7 @@ function pkcAbsorb(n, mtt, V, CL, dose, tEnd){
 }
 LESSONS.pk.add({ level: 'advanced', short: 'Absorption and distribution', title: 'Absorption and distribution',
   change: 'Change the mean transit time and the number of transit compartments. Change logP and the fraction unbound.',
-  watch: 'Absorption and distribution shape the profile independently of clearance. Absorption: a first-order input has an exponential delay with mean 1 / ka, and a chain of n transit compartments in series followed by an absorption compartment, all with rate ktr = (n + 1) / MTT, has the same mean absorption time MTT but a delayed, narrower input. Both curves below have the same dose, clearance, volume and mean absorption time, so AUC is identical and only tmax and Cmax differ. Distribution: in the whole-body model the tissue to plasma partition coefficients Kp set the volume of distribution at steady state, Vss, equal to the blood amount plus the sum of Kp times tissue volume over all tissues, and the terminal half-life follows from the slowest eigenvalue of the model. Machine learning in this step. The partition coefficients and the absorption inputs are computed here from logP and assumed values. Machine learning models can predict them from structure (lesson 11, Predicted parameters as PBPK inputs). The effect of a prediction error on Vss and half-life is quantified by repeating the simulation across the error range of the input (lesson 11, Error propagation to exposure).',
+  watch: 'Distribution inputs of a PBPK model, the tissue partition coefficients Kp, are computed from logP and fup, so a lipophilicity prediction from a machine learning model sets Vss and the terminal half-life. In the whole-body model Vss is the blood amount plus the sum of Kp times tissue volume over all tissues, and the terminal half-life follows from the slowest eigenvalue of the model. The right-hand chart shows both against logP, with the range of logP that corresponds to the test error of the AstraZeneca logD boosted-trees model (a proxy, since the course has no logP model) drawn as a thick segment on each curve. The readout gives Vss and half-life over that range and over the test error of the HLM CLint model. Absorption is shown on the left for the effect of the absorption input on the profile: a first-order input has an exponential delay with mean 1 / ka, and a chain of n transit compartments, all with rate ktr = (n + 1) / MTT, has the same mean absorption time MTT with a delayed, narrower input. No model in the course predicts MTT or ka, so these are set by the sliders.',
   build: function(api){
     var cp = api.el('pn', 'left:28px;top:20px;width:440px;height:330px', '<h4>Absorption: same mean absorption time</h4><canvas width="410" height="276"></canvas>');
     var dp = api.el('pn', 'left:488px;top:20px;width:444px;height:330px', '<h4>Distribution: whole-body model</h4><canvas width="414" height="276"></canvas>');
@@ -190,10 +202,11 @@ LESSONS.pk.add({ level: 'advanced', short: 'Absorption and distribution', title:
       lineChart(qs('canvas', cp), [{ pts: foPts, color: C.char, w: 2.6, nodot: true, label: 'first-order, ka = 1 / MTT' }, { pts: chPts, color: C.red, w: 2.8, nodot: true, label: n + ' transit compartments' }], { xl: 'time (h)', yl: 'plasma concentration (mg/L)', x0: 0, x1: tEnd, y0: 0 });
       var h = await pkcHLM(), clintU = PKE.pbpk.clintUFromHLM(h.median, PKC_BASE.bw, 1), pts = [], pts2 = [], lps = [], k;
       for (k = 0; k <= 16; k++) { var l = 0.25 * k, e = eigen(l, fu, clintU); pts.push([l, Math.log10(e.vss)]); pts2.push([l, Math.log10(e.thalf)]); }
-      var cur = eigen(lp, fu, clintU);
+      var cur = eigen(lp, fu, clintU), rl = h.rmseLogD, fC = Math.pow(10, h.rmse), lo = eigen(Math.max(0, lp - rl), fu, clintU), hi = eigen(Math.min(4, lp + rl), fu, clintU), cLo = eigen(lp, fu, clintU / fC), cHi = eigen(lp, fu, clintU * fC);
       var tk = function(a, b){ var o = []; for (var e = a; e <= b; e++) o.push({ v: e, t: String(Math.pow(10, e)) }); return o; };
-      lineChart(qs('canvas', dp), [{ pts: pts, color: C.char, w: 2.6, nodot: true, label: 'Vss (L)' }, { pts: pts2, color: C.red, w: 2.6, nodot: true, label: 'terminal half-life (h)' }, { pts: [[lp, Math.log10(cur.vss)]], color: C.char, w: 1, label: '' }, { pts: [[lp, Math.log10(cur.thalf)]], color: C.red, w: 1, label: '' }], { xl: 'logP', yl: 'Vss or half-life (log scale)', x0: 0, x1: 4, y0: 0, y1: 3.5, yticks: [{ v: 0, t: '1' }, { v: 0.5, t: '3' }, { v: 1, t: '10' }, { v: 1.5, t: '30' }, { v: 2, t: '100' }, { v: 2.5, t: '300' }, { v: 3, t: '1000' }, { v: 3.5, t: '3000' }] });
+      lineChart(qs('canvas', dp), [{ pts: pts, color: C.char, w: 2.6, nodot: true, label: 'Vss (L)' }, { pts: pts2, color: C.red, w: 2.6, nodot: true, label: 'terminal half-life (h)' }, { pts: [[Math.max(0, lp - rl), Math.log10(eigen(Math.max(0, lp - rl), fu, clintU).vss)], [Math.min(4, lp + rl), Math.log10(eigen(Math.min(4, lp + rl), fu, clintU).vss)]], color: '#A1B1C4', w: 7, nodot: true, label: '' }, { pts: [[Math.max(0, lp - rl), Math.log10(eigen(Math.max(0, lp - rl), fu, clintU).thalf)], [Math.min(4, lp + rl), Math.log10(eigen(Math.min(4, lp + rl), fu, clintU).thalf)]], color: '#E9A3A3', w: 7, nodot: true, label: '' }, { pts: [[lp, Math.log10(cur.vss)]], color: C.char, w: 1, label: '' }, { pts: [[lp, Math.log10(cur.thalf)]], color: C.red, w: 1, label: '' }], { xl: 'logP', yl: 'Vss or half-life (log scale)', x0: 0, x1: 4, y0: 0, y1: 3.5, yticks: [{ v: 0, t: '1' }, { v: 0.5, t: '3' }, { v: 1, t: '10' }, { v: 1.5, t: '30' }, { v: 2, t: '100' }, { v: 2.5, t: '300' }, { v: 3, t: '1000' }, { v: 3.5, t: '3000' }] });
       qs('.rv', rp).innerHTML = '<div style="display:flex;gap:26px;flex-wrap:wrap;margin-bottom:6px"><div><div class="ol">First-order input</div><b>tmax ' + pkcFmt(fo.summary.tmax) + ' h, Cmax ' + pkcFmt(fo.summary.cmax) + ' mg/L</b></div><div><div class="ol">Transit chain</div><b>tmax ' + pkcFmt(tmaxC) + ' h, Cmax ' + pkcFmt(cmaxC) + ' mg/L</b></div><div><div class="ol">Whole-body model at logP ' + lp.toFixed(1) + ', fup ' + fu.toFixed(2) + '</div><b>Vss ' + pkcFmt(cur.vss) + ' L, mean residence time ' + pkcFmt(cur.mrt) + ' h, terminal half-life ' + pkcFmt(cur.thalf) + ' h</b></div></div>' +
+        '<div style="font-size:12px;line-height:1.45;margin-bottom:4px"><b>ML error range.</b> logP +/- ' + rl.toFixed(2) + ' (logD model test RMSE): Vss ' + pkcFmt(lo.vss) + ' to ' + pkcFmt(hi.vss) + ' L, terminal half-life ' + pkcFmt(lo.thalf) + ' to ' + pkcFmt(hi.thalf) + ' h. CLint divided and multiplied by ' + fC.toFixed(1) + ' (HLM model test RMSE ' + h.rmse.toFixed(2) + ' log10 units): terminal half-life ' + pkcFmt(cLo.thalf) + ' to ' + pkcFmt(cHi.thalf) + ' h, Vss unchanged.</div>' +
         '<div style="font-size:12px;line-height:1.4">Transit chain: dA0/dt = -ktr A0, dAi/dt = ktr (Ai-1 - Ai), ktr = (n + 1) / MTT (Savic et al. 2007), after a one-compartment disposition with V = ' + PK.V + ' L, CL = ' + PK.CL + ' L/h, dose ' + PK.dose + ' mg, complete absorption. Distribution: perfusion-limited whole-body model at the HLM median CLint, renal 1 L/h, Kp from PKE.pbpk; Vss = bp (Va + Vv + Vp) + sum of Kp V. The half-life is ln 2 over the slowest eigenvalue. Neutral compounds assumed.</div>';
     }
     ['pkc2mtt', 'pkc2n', 'pkc2lp', 'pkc2fu'].forEach(function(id){ $(id).addEventListener('input', draw); });
@@ -201,11 +214,11 @@ LESSONS.pk.add({ level: 'advanced', short: 'Absorption and distribution', title:
     async function play(tok){
       await draw(); api.cap('Both inputs have the same mean absorption time, so AUC is identical. The transit chain delays the peak and raises it.'); await api.sleep(3800);
       await api.anim(2600, function(t){ $('pkc2n').value = Math.round(4 - 4 * t); draw(); }); api.cap('With no transit compartment the chain reduces to the first-order input.'); await api.sleep(3200);
-      $('pkc2n').value = 4; await api.anim(3000, function(t){ $('pkc2lp').value = (0.5 + 3 * t).toFixed(1); draw(); }); api.cap('A higher logP raises Kp in adipose and other lipid-rich tissue, so Vss and the terminal half-life increase while CL is unchanged.'); await api.sleep(3800); api.cap(null);
+      $('pkc2n').value = 4; await api.anim(3000, function(t){ $('pkc2lp').value = (0.5 + 3 * t).toFixed(1); draw(); }); api.cap('A higher logP raises Kp in adipose and other lipid-rich tissue, so Vss and the terminal half-life increase. The thick segments span the test error of the logD model.'); await api.sleep(4200); api.cap(null);
     }
     return { render: render, play: play };
   } });
-GUIDE.steps['pk/Absorption and distribution'] = { notice: 'AUC is the same for both inputs. Only tmax and Cmax differ.', q: 'Why does the terminal half-life rise with logP at fixed clearance?', a: 'The volume of distribution rises with the partition coefficients, and the half-life is proportional to the volume divided by the clearance.' };
+GUIDE.steps['pk/Absorption and distribution'] = { notice: 'The thick segments on the right chart span the test error of the lipophilicity model.', q: 'Why does the terminal half-life rise with logP at fixed clearance?', a: 'The volume of distribution rises with the partition coefficients, and the half-life is proportional to the volume divided by the clearance.' };
 
 /* ---------- 3. DDI models ---------- */
 /* Equations: ICH M12 Drug interaction studies, Step 4 (21 May 2024), Section 2.1.2.1 (basic method: risk of reversible inhibition excluded if Ki,u > 50 Cmax,u, that is Cmax,u / Ki,u < 0.02,
@@ -219,26 +232,26 @@ function pkcDynamic(fm, x, kInh, cl0, V, ka, F, dose, mode, tEnd){
 }
 LESSONS.pk.add({ level: 'advanced', short: 'DDI models', title: 'Drug-drug interaction models',
   change: 'Set the fraction metabolised by the inhibited enzyme and the ratio of inhibitor concentration to Ki.',
-  watch: 'A static mechanistic model converts an in vitro inhibition constant into a predicted change in exposure of a victim drug. For reversible inhibition of one enzyme in the liver, with negligible intestinal and extrahepatic clearance, the AUC ratio is AUCR = 1 / (fm / (1 + [I]/Ki) + (1 - fm)), where fm is the fraction of hepatic clearance mediated by the inhibited enzyme, [I] is the unbound inhibitor concentration at the enzyme and Ki the unbound inhibition constant (ICH M12, Section 7.5.1). The static model uses one inhibitor concentration and therefore ignores its time course. The dynamic panel simulates the victim profile with the clearance reduced by the static factor, and with the clearance following an inhibitor concentration that decays after a single dose. Machine learning in this step. The static model needs fm and an inhibition constant, and a machine learning model can predict either from structure. The prediction error propagates to the AUC ratio (lesson 11, Error propagation to exposure), and the AUC ratio is recomputed across the error range to see whether it crosses the 0.80 to 1.25 limits.',
+  watch: 'A static mechanistic model converts an in vitro inhibition constant into a predicted change in exposure of a victim drug. For reversible inhibition of one enzyme in the liver, with negligible intestinal and extrahepatic clearance, the AUC ratio is AUCR = 1 / (fm / (1 + [I]/Ki) + (1 - fm)), where fm is the fraction of hepatic clearance mediated by the inhibited enzyme, [I] is the unbound inhibitor concentration at the enzyme and Ki the unbound inhibition constant (ICH M12, Section 7.5.1). When Ki, or the ratio [I] / Ki, is predicted by a machine learning model, its error moves the AUC ratio along the curve. The error slider sets the standard deviation of the prediction error of log10 [I] / Ki, and the thick segment on the selected curve and the AUCR range in the readout cover one standard deviation each way. No data set in the course trains a model for Ki or fm, so the size of this error is an assumption. The static model uses one inhibitor concentration and ignores its time course. The dynamic panel simulates the victim profile with the clearance reduced by the static factor, and with the clearance following an inhibitor concentration that decays after a single dose.',
   build: function(api){
-    var cp = api.el('pn', 'left:28px;top:20px;width:444px;height:316px', '<h4>Static AUC ratio</h4><canvas width="414" height="262"></canvas>');
-    var dp = api.el('pn', 'left:488px;top:20px;width:444px;height:316px', '<h4>Victim drug profile, dynamic simulation</h4><canvas width="414" height="262"></canvas>');
-    var rp = api.el('pn', 'left:28px;top:346px;width:904px;height:174px;overflow:auto', '<div class="dv" style="font-size:12.5px;line-height:1.5;color:' + C.char + '"></div>');
-    var ctl = api.addControl('fm <input id="pkc3fm" type="range" min="0" max="1" step="0.05" value="0.8" style="width:120px"> <b class="v1"></b> [I] / Ki <input id="pkc3x" type="range" min="-2" max="2" step="0.05" value="0.6" style="width:150px"> <b class="v2"></b> Inhibitor half-life (h) <input id="pkc3t" type="range" min="1" max="24" step="1" value="6" style="width:100px"> <b class="v3"></b>');
+    var cp = api.el('pn', 'left:28px;top:20px;width:444px;height:288px', '<h4>Static AUC ratio</h4><canvas width="414" height="234"></canvas>');
+    var dp = api.el('pn', 'left:488px;top:20px;width:444px;height:288px', '<h4>Victim drug profile, dynamic simulation</h4><canvas width="414" height="234"></canvas>');
+    var rp = api.el('pn', 'left:28px;top:318px;width:904px;height:202px;overflow:auto', '<div class="dv" style="font-size:12.5px;line-height:1.5;color:' + C.char + '"></div>');
+    var ctl = api.addControl('fm <input id="pkc3fm" type="range" min="0" max="1" step="0.05" value="0.8" style="width:120px"> <b class="v1"></b> [I] / Ki <input id="pkc3x" type="range" min="-2" max="2" step="0.05" value="0.6" style="width:120px"> <b class="v2"></b> Error of predicted log10 [I] / Ki (assumed SD) <input id="pkc3e" type="range" min="0" max="1" step="0.05" value="0.3" style="width:90px"> <b class="v4"></b> Inhibitor half-life (h) <input id="pkc3t" type="range" min="1" max="24" step="1" value="6" style="width:100px"> <b class="v3"></b>');
     var P = { cl: 10, V: 50, ka: 1, F: 0.8, dose: 100 };
     function draw(){
-      var fm = +$('pkc3fm').value, x = Math.pow(10, +$('pkc3x').value), th = +$('pkc3t').value; qs('.v1', ctl).textContent = fm.toFixed(2); qs('.v2', ctl).textContent = pkcFmt(x); qs('.v3', ctl).textContent = th;
+      var fm = +$('pkc3fm').value, x = Math.pow(10, +$('pkc3x').value), th = +$('pkc3t').value; qs('.v1', ctl).textContent = fm.toFixed(2); qs('.v2', ctl).textContent = pkcFmt(x); qs('.v3', ctl).textContent = th; var er = +$('pkc3e').value; qs('.v4', ctl).textContent = er.toFixed(2);
       var curves = [0.2, 0.5, 0.8, 0.95].map(function(f, k){ var pts = [], e; for (e = -2; e <= 2.001; e += 0.1) pts.push([e, pkcAucr(f, Math.pow(10, e))]); return { pts: pts, color: ['#A1B1C4', '#6F8196', '#34373F', '#891515'][k], w: 2.2, nodot: true, label: 'fm ' + f }; });
       var cur = []; for (var e = -2; e <= 2.001; e += 0.1) cur.push([e, pkcAucr(fm, Math.pow(10, e))]);
       var ymax = Math.max(2, Math.ceil(pkcAucr(0.95, 100))), xt = [-2, -1, 0, 1, 2].map(function(v){ return { v: v, t: String(Math.pow(10, v)) }; });
-      lineChart(qs('canvas', cp), curves.concat([{ pts: cur, color: C.red, w: 3.4, nodot: true, label: 'selected fm ' + fm.toFixed(2) }, { pts: [[Math.log10(x), pkcAucr(fm, x)]], color: C.red, w: 1, label: '' }]), { xl: '[I] / Ki (log scale)', yl: 'AUC ratio', x0: -2, x1: 2, y0: 1, y1: ymax, xticks: xt });
+      lineChart(qs('canvas', cp), curves.concat([{ pts: cur, color: C.red, w: 3.4, nodot: true, label: 'selected fm ' + fm.toFixed(2) }, { pts: [[Math.max(-2, Math.log10(x) - er), pkcAucr(fm, Math.pow(10, Math.max(-2, Math.log10(x) - er)))], [Math.min(2, Math.log10(x) + er), pkcAucr(fm, Math.pow(10, Math.min(2, Math.log10(x) + er)))]], color: '#E9A3A3', w: 8, nodot: true, label: 'one SD of assumed ML error' }, { pts: [[Math.log10(x), pkcAucr(fm, x)]], color: C.red, w: 1, label: '' }]), { xl: '[I] / Ki (log scale)', yl: 'AUC ratio', x0: -2, x1: 2, y0: 1, y1: ymax, xticks: xt });
             var s0 = pkcAucr(fm, 1e-9), st = pkcAucr(fm, x), tEnd = 48, noI = pkcDynamic(fm, x, 0, P.cl, P.V, P.ka, P.F, P.dose, 'none', tEnd), cst = pkcDynamic(fm, x, 0, P.cl, P.V, P.ka, P.F, P.dose, 'const', tEnd), dyn = pkcDynamic(fm, x, Math.LN2 / th, P.cl, P.V, P.ka, P.F, P.dose, 'decay', tEnd), pts = function(r){ var o = [], i; for (i = 0; i < r.t.length; i += 10) o.push([r.t[i], r.c[i]]); return o; };
       lineChart(qs('canvas', dp), [{ pts: pts(noI), color: C.char, w: 2.6, nodot: true, label: 'no inhibitor' }, { pts: pts(cst), color: C.red, w: 2.8, nodot: true, label: 'CL reduced by the static factor' }, { pts: pts(dyn), color: '#6F8196', w: 2.4, nodot: true, dash: [6, 4], label: 'inhibitor decays after one dose' }], { xl: 'time (h)', yl: 'plasma concentration (mg/L)', x0: 0, x1: tEnd, y0: 0 });
-      var basic = x < 0.02;
-      qs('.dv', rp).innerHTML = '<div style="display:flex;gap:26px;flex-wrap:wrap;margin-bottom:6px"><div><div class="ol">Static AUCR</div><b style="font-size:18px;color:' + C.red + '">' + st.toFixed(2) + '</b></div><div><div class="ol">Dynamic, constant inhibitor</div><b style="font-size:18px">' + (cst.auc / noI.auc).toFixed(2) + '</b> <span style="font-size:11.5px">(AUC 0 to 48 h, equal to the static value)</span></div><div><div class="ol">Dynamic, decaying inhibitor</div><b style="font-size:18px">' + (dyn.auc / noI.auc).toFixed(2) + '</b> <span style="font-size:11.5px">(AUC 0 to 48 h)</span></div><div><div class="ol">Cmax ratio, constant inhibitor</div><b style="font-size:18px">' + (cst.cmax / noI.cmax).toFixed(2) + '</b></div></div>' +
+      var basic = x < 0.02, aLo = pkcAucr(fm, Math.pow(10, Math.log10(x) - er)), aHi = pkcAucr(fm, Math.pow(10, Math.log10(x) + er));
+      qs('.dv', rp).innerHTML = '<div style="display:flex;gap:26px;flex-wrap:wrap;margin-bottom:6px"><div><div class="ol">Static AUCR</div><b style="font-size:18px;color:' + C.red + '">' + st.toFixed(2) + '</b></div><div><div class="ol">Dynamic, constant inhibitor</div><b style="font-size:18px">' + (cst.auc / noI.auc).toFixed(2) + '</b> <span style="font-size:11.5px">(0 to 48 h)</span></div><div><div class="ol">Dynamic, decaying inhibitor</div><b style="font-size:18px">' + (dyn.auc / noI.auc).toFixed(2) + '</b> <span style="font-size:11.5px">(AUC 0 to 48 h)</span></div><div><div class="ol">Cmax ratio, constant inhibitor</div><b style="font-size:18px">' + (cst.cmax / noI.cmax).toFixed(2) + '</b></div><div><div class="ol">AUCR over assumed ML error</div><b style="font-size:18px">' + aLo.toFixed(2) + ' to ' + aHi.toFixed(2) + '</b> <span style="font-size:11.5px">(' + (aLo < 1.25 && aHi > 1.25 ? 'crosses 1.25' : (aLo > 1.25 ? 'above 1.25' : 'below 1.25')) + ')</span></div></div>' +
         '<div style="font-size:12px;line-height:1.4">ICH M12 (Step 4, 21 May 2024): the basic method excludes reversible inhibition if Cmax,u / Ki,u is below 0.02 (Section 2.1.2.1). At [I] / Ki = ' + pkcFmt(x) + ' the basic criterion is ' + (basic ? 'met' : 'not met') + '. An AUCR between 0.80 and 1.25 is considered low risk (Section 7.5.1). Limits here: one enzyme, reversible inhibition, no intestinal term (Fg = 1), one inhibitor concentration. Victim: CL ' + P.cl + ' L/h, V ' + P.V + ' L, ka ' + P.ka + ' per h, F ' + P.F + ', dose ' + P.dose + ' mg. The decaying inhibitor is an illustrative extension, not an M12 model.</div>';
     }
-    ['pkc3fm', 'pkc3x', 'pkc3t'].forEach(function(id){ $(id).addEventListener('input', draw); });
+    ['pkc3fm', 'pkc3x', 'pkc3e', 'pkc3t'].forEach(function(id){ $(id).addEventListener('input', draw); });
     async function play(tok){
       $('pkc3fm').value = 0.8; $('pkc3x').value = 0.6; draw(); api.cap('For fm = 0.8 and [I] / Ki near 4, the static model predicts a rise in AUC of about 2.8-fold.'); await api.sleep(3600);
       await api.anim(2600, function(t){ $('pkc3fm').value = (0.8 - 0.6 * t).toFixed(2); draw(); }); api.cap('A low fm limits the effect: the other clearance pathways are not inhibited.'); await api.sleep(3400);
@@ -246,7 +259,7 @@ LESSONS.pk.add({ level: 'advanced', short: 'DDI models', title: 'Drug-drug inter
     }
     return { render: draw, play: play };
   } });
-GUIDE.steps['pk/DDI models'] = { notice: 'The curves for a high fm rise steeply when [I] / Ki exceeds 1.', q: 'Why can the static model overstate an interaction?', a: 'It uses one inhibitor concentration, such as the steady-state maximum, and ignores that the inhibitor concentration falls between doses.' };
+GUIDE.steps['pk/DDI models'] = { notice: 'The thick segment on the selected curve is the AUC ratio range for the assumed error of a predicted [I] / Ki.', q: 'Why can the static model overstate an interaction?', a: 'It uses one inhibitor concentration, such as the steady-state maximum, and ignores that the inhibitor concentration falls between doses.' };
 
 /* ---------- 4. Estimation ---------- */
 /* Pooled objective: sum of squared residuals of the one-compartment oral model (F = 1, so CL/F and V/F) for one Theoph subject, with ka profiled out by a bounded
@@ -263,13 +276,13 @@ function pkcProfile(S, cl, v){
 function pkcResid(S, cl, v){ var ka = pkcProfile(S, cl, v).ka, i, r = []; for (i = 0; i < S.t.length; i++) r.push(S.conc[i] - pkcPred(S.doseMg, cl, v, ka, S.t[i])); return r; }
 LESSONS.pk.add({ level: 'advanced', short: 'Estimation', title: 'Parameter estimation',
   change: 'Select a subject, select an optimiser, click the map to set a start, and press Run.',
-  watch: 'Estimating PK parameters from observed concentrations is an optimisation: choose the parameters that minimise the sum of squared residuals between the model and the data. Here a one-compartment oral model is fitted to one subject of the public Theoph data set (12 subjects, oral theophylline). The map shows the objective over CL/F and V/F, with ka chosen to minimise the objective at every point. Gradient descent on the logarithm of the objective follows the local slope with a fixed learning rate, as in lesson 09. Levenberg-Marquardt, the standard least-squares method, uses the Jacobian of the residuals and converges in a few iterations. The same objective, optimiser and local-minimum behaviour apply when the model is a neural network. Machine learning in this step. Training a machine learning model is the same estimation problem, and a learned function can replace one unknown term inside the ODE (lesson 11, Hybrid mechanistic-ML models). The mechanistic parameters are assessed by the standard errors and correlations reported here. The learned term is assessed by its error on held-out data.',
+  watch: 'Estimating PK parameters from observed concentrations is an optimisation: choose the parameters that minimise the sum of squared residuals between the model and the data. Here a one-compartment oral model is fitted to one subject of the public Theoph data set (12 subjects, oral theophylline). The map shows the objective over CL/F and V/F, with ka chosen to minimise the objective at every point. Gradient descent on the logarithm of the objective follows the local slope with a fixed learning rate, as in lesson 09. Levenberg-Marquardt, the standard least-squares method, uses the Jacobian of the residuals and converges in a few iterations. Training a machine learning model is the same procedure with different symbols: the weights are the parameters, the loss is the objective and the optimiser is chosen as in lesson 09. The readout lists the iterations and final objective of the two optimisers from the same start, so a run of each gives the comparison. In a hybrid model (lesson 11, Hybrid mechanistic-ML models) a learned function stands in for one unknown term of the ODE, and its weights are estimated in the same loop as the mechanistic parameters. The mechanistic parameters are assessed with the standard errors and correlations reported here, and the learned term with its error on held-out data.',
   build: function(api){
     var mp = api.el('pn', 'left:28px;top:20px;width:440px;height:500px', '<h4>Objective: sum of squared residuals (log scale)</h4><canvas width="410" height="414"></canvas><div class="mm" style="font-size:11.5px;color:' + C.mid + ';margin-top:4px"></div>');
     var dp = api.el('pn', 'left:488px;top:20px;width:444px;height:210px', '<h4>Data and fit at the current iterate</h4><canvas width="414" height="160"></canvas>');
     var rp = api.el('pn', 'left:488px;top:240px;width:444px;height:280px;overflow:auto', '<div class="ev" style="font-size:12px;line-height:1.4;color:' + C.char + '"></div>');
     var ctl = api.addControl('Subject <select id="pkc4s"></select> Optimiser <span class="seg" data-opt><button type="button" data-v="0" class="on">Gradient descent</button><button type="button" data-v="1">Levenberg-Marquardt</button></span> Learning rate <input id="pkc4lr" type="range" min="-3" max="-0.5" step="0.1" value="-1.5" style="width:100px"> <b class="v1"></b> <button type="button" class="btn sm" data-run>Run</button> <button type="button" class="btn sm ghost" data-reset>Reset</button>');
-    var TH = null, S = null, grid = null, opt = 0, start = { u: Math.log(0.9), v: Math.log(70) }, path = [], cur = null, fin = null, LIM = { u0: Math.log(0.3), u1: Math.log(12), v0: Math.log(6), v1: Math.log(160) };
+    var last = {}, TH = null, S = null, grid = null, opt = 0, start = { u: Math.log(0.9), v: Math.log(70) }, path = [], cur = null, fin = null, LIM = { u0: Math.log(0.3), u1: Math.log(12), v0: Math.log(6), v1: Math.log(160) };
     var NG = 56;
     function makeGrid(){
       grid = []; var min = Infinity, i, j;
@@ -328,22 +341,22 @@ LESSONS.pk.add({ level: 'advanced', short: 'Estimation', title: 'Parameter estim
       var nca = PKE.nca(S.t, S.conc, S.doseMg), u = cur ? cur.u : start.u, v = cur ? cur.v : start.v, p = pkcProfile(S, Math.exp(u), Math.exp(v)), html = '<div class="ol">Current iterate</div><div>CL/F ' + pkcFmt(Math.exp(u)) + ' L/h, V/F ' + pkcFmt(Math.exp(v)) + ' L, ka ' + pkcFmt(p.ka) + ' per h, sum of squared residuals ' + p.sse.toFixed(2) + ' (mg/L)<sup>2</sup>. Iterations: ' + Math.max(0, path.length - 1) + '.</div>';
       if (fin) { var cc = covariance(Math.exp(fin.u), Math.exp(fin.v)); html += '<div class="ol" style="margin-top:6px">At the end of the run</div><div>Standard errors (asymptotic, log scale): CL/F ' + (cc.sd[0] * 100).toFixed(1) + '%, V/F ' + (cc.sd[1] * 100).toFixed(1) + '%, ka ' + (cc.sd[2] * 100).toFixed(1) + '%. Correlations: CL/F with V/F ' + cc.corr[0][1].toFixed(2) + ', CL/F with ka ' + cc.corr[0][2].toFixed(2) + ', V/F with ka ' + cc.corr[1][2].toFixed(2) + '. Approximate: one subject, 11 observations.</div>'; }
       html += '<div class="ol" style="margin-top:6px">Non-compartmental analysis of the same subject</div><div>CL/F ' + pkcFmt(nca.clF) + ' L/h, Vz/F ' + pkcFmt(nca.vzF) + ' L, half-life ' + pkcFmt(nca.thalf) + ' h. The two methods use different assumptions and need not agree.</div>' +
-        '<div style="margin-top:6px;color:' + C.mid + '">Optimisers: lesson 09 applied to the logarithm of this objective.</div>';
+        '<div class="ol" style="margin-top:6px">Optimisers from the current start</div><div>' + ['Gradient descent', 'Levenberg-Marquardt'].map(function(nm, k){ return nm + ': ' + (last[k] ? last[k].it + ' iterations, objective ' + last[k].f.toFixed(2) + ' (mg/L)<sup>2</sup>' : 'not run'); }).join('. ') + '. Training a model runs the same loop on its weights (lesson 09).</div>';
       qs('.ev', rp).innerHTML = html;
     }
     function all(){ drawMap(); drawFit(); readout(); qs('.mm', mp).textContent = 'Shading: bands of ' + (1 / 4).toFixed(2) + ' in log10 of the objective above its minimum. Circle: start. Line: path. Triangle: current iterate. Click the map to set the start.'; }
-    async function setSubject(i){ S = TH.subjects[i]; path = []; cur = null; fin = null; api.busy('Computing the objective'); await pkcTick(); makeGrid(); api.idle(); all(); }
+    async function setSubject(i){ S = TH.subjects[i]; path = []; cur = null; fin = null; last = {}; api.busy('Computing the objective'); await pkcTick(); makeGrid(); api.idle(); all(); }
     async function runOpt(){
       var tok = ++api.tok, P = opt === 0 ? runGD() : runLM(); path = []; fin = null; cur = null;
       var stepN = Math.max(1, Math.ceil(P.length / 60)), k;
       for (k = 0; k < P.length; k += stepN) { path = P.slice(0, k + 1); cur = P[k]; all(); await new Promise(function(r){ setTimeout(r, ANIM ? 30 : 0); }); if (api.tok !== tok) return; }
-      path = P; cur = P[P.length - 1]; fin = cur; all();
+      path = P; cur = P[P.length - 1]; fin = cur; last[opt] = { it: P.length - 1, f: Math.exp(cur.f) }; all();
     }
     qsa('[data-opt] button', ctl).forEach(function(b){ b.addEventListener('click', function(){ opt = +b.dataset.v; qsa('[data-opt] button', ctl).forEach(function(x){ x.classList.toggle('on', x === b); }); path = []; fin = null; cur = null; all(); }); });
     qs('[data-run]', ctl).addEventListener('click', runOpt);
     qs('[data-reset]', ctl).addEventListener('click', function(){ api.tok++; path = []; fin = null; cur = null; all(); });
     $('pkc4lr').addEventListener('input', function(){ qs('.v1', ctl).textContent = Math.pow(10, +this.value).toFixed(3); });
-    qs('canvas', mp).addEventListener('click', function(e){ var c = qs('canvas', mp), m = c._map; if (!m) return; var r = c.getBoundingClientRect(), px = (e.clientX - r.left) / r.width * 410, py = (e.clientY - r.top) / r.height * 414; if (px < m.L || px > m.R || py < m.T || py > m.B) return; start = { u: LIM.u0 + (px - m.L) / (m.R - m.L) * (LIM.u1 - LIM.u0), v: LIM.v0 + (m.B - py) / (m.B - m.T) * (LIM.v1 - LIM.v0) }; path = []; cur = null; fin = null; all(); });
+    qs('canvas', mp).addEventListener('click', function(e){ var c = qs('canvas', mp), m = c._map; if (!m) return; var r = c.getBoundingClientRect(), px = (e.clientX - r.left) / r.width * 410, py = (e.clientY - r.top) / r.height * 414; if (px < m.L || px > m.R || py < m.T || py > m.B) return; start = { u: LIM.u0 + (px - m.L) / (m.R - m.L) * (LIM.u1 - LIM.u0), v: LIM.v0 + (m.B - py) / (m.B - m.T) * (LIM.v1 - LIM.v0) }; path = []; cur = null; fin = null; last = {}; all(); });
     async function render(){
       if (!TH) { TH = await pkcTheoph(); var sel = $('pkc4s'); sel.innerHTML = TH.subjects.map(function(s, i){ return '<option value="' + i + '">' + s.id + ' (' + s.wt + ' kg, ' + s.doseMg.toFixed(0) + ' mg)</option>'; }).join(''); sel.addEventListener('change', function(){ setSubject(+sel.value); }); qs('.v1', ctl).textContent = Math.pow(10, +$('pkc4lr').value).toFixed(3); await setSubject(0); } else all();
     }
