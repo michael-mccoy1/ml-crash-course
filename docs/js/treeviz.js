@@ -160,19 +160,19 @@ var TV = (function(){
 /* ---------- interface: schematic, 3D views, slices, charts, controls ---------- */
 TV.mount = function(root, opts){
   opts = opts || {};
-  var CW = 904, CH = 500, dpr = Math.min(window.devicePixelRatio || 1, 2), G = 64, GT = 80, CLIP = TV.CLIP;
+  var CW = 904, CH = 500, dpr = Math.min(window.devicePixelRatio || 1, 1.5), G = 64, GT = 80, CLIP = TV.CLIP;
   var OR = [216, 90, 48], BL = [55, 138, 221], GR = [104, 112, 128];
   var TXT = opts.txt || '#2a2c33', TX2 = opts.tx2 || '#5f636d', BRD = opts.brd || '#c3c6cd', BG = opts.bg || '#ffffff';
   root.innerHTML = '<canvas class="tvc" style="display:block;width:' + CW + 'px;height:' + CH + 'px;touch-action:none"></canvas>' + (opts.ctl ? '' : '<div class="tvctl" style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12.5px;color:' + TX2 + ';padding:7px 2px 0"></div>');
   var cvs = root.querySelector('canvas'), ctl = opts.ctl || root.querySelector('.tvctl'), g = cvs.getContext('2d'), bs = 0;
   var S = { kind: opts.kind || 'boost', N: opts.N || 10000, depth: opts.depth || 8, trees: opts.trees || 150, lr: opts.lr || 0.15, minLeaf: opts.minLeaf || 3, mtry: opts.mtry || 3, seed: 1, boxes: false, z: 0 };
-  var model = null, data = null, test = TV.makeTest(1), shown = 0, sel = 0, follow = true, training = false, playing = false, probe = [0.45, 0, 0], sweepRes = {}, sweeping = '', ang = 0.7, tilt = 0.5, drag = null, dirty = true, accTree = [], tgtSurf = null, lrnSurf = null, tgtSlice = null, lrnSlice = null, stripCache = {}, lastFrame = 0;
+  var model = null, data = null, test = TV.makeTest(1), shown = 0, sel = 0, follow = true, training = false, playing = false, probe = [0.45, 0, 0], sweepRes = {}, sweeping = '', ang = 0.7, tilt = 0.5, drag = null, dirty = true, accTree = [], tgtSurf = null, lrnSurf = null, tgtSlice = null, lrnSlice = null, stripCache = {}, lastFrame = 0, vis = true, rotOn = true, vDirty = true, lastRot = 0, cost = 0;
   function sel1(id, label, opts2, val){ return '<label>' + label + ' <select id="' + id + '" style="height:28px;font-size:12.5px">' + opts2.map(function(o){ return '<option value="' + o[0] + '"' + (String(o[0]) === String(val) ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>'; }
   var rng20 = []; for (var d0 = 1; d0 <= 20; d0++) rng20.push([d0, d0]);
   if (opts.ctl) { ctl.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12.5px;padding:6px 0;flex-basis:100%;width:100%'; }
   ctl.innerHTML =
     sel1('tvk', 'Model', [['tree', 'Decision tree'], ['forest', 'Random forest'], ['boost', 'Gradient boosting']], S.kind) +
-    sel1('tvn', 'Training points', [[10, '10'], [100, '100'], [1000, '1,000'], [10000, '10,000'], [100000, '100,000']], S.N) +
+    sel1('tvn', 'Training points', [[10, '10'], [100, '100'], [1000, '1,000'], [10000, '10,000'], [30000, '30,000']], S.N) +
     sel1('tvd', 'Maximum depth', rng20, S.depth) +
     sel1('tvt', 'Trees or rounds', [[1, '1'], [3, '3'], [10, '10'], [30, '30'], [60, '60'], [100, '100'], [150, '150'], [200, '200'], [300, '300']], S.trees) +
     sel1('tvl', 'Learning rate', [[0.05, '0.05'], [0.1, '0.1'], [0.15, '0.15'], [0.3, '0.3'], [1, '1']], S.lr) +
@@ -181,7 +181,7 @@ TV.mount = function(root, opts){
     '<span style="display:flex;gap:8px;align-items:center;flex-basis:100%"><button type="button" id="tvp" style="height:28px">Play</button><button type="button" id="tvr" style="height:28px">Restart</button><button type="button" id="tvs" style="height:28px">New random seed</button>' +
     '<label id="tvpl">Steps <input type="range" id="tvg" min="0" max="0" value="0" style="width:150px;vertical-align:middle"> <span id="tvgo"></span></label>' +
     '<label>Slice height <input type="range" id="tvz" min="-85" max="85" value="0" style="width:110px;vertical-align:middle"></label>' +
-    '<label><input type="checkbox" id="tvb"> Show partition boxes</label></span>' +
+    '<label><input type="checkbox" id="tvb"> Show partition boxes</label><label><input type="checkbox" id="tvo" checked> Rotate</label></span>' +
     '<span style="display:flex;gap:8px;align-items:center;flex-basis:100%">Presets: <button type="button" id="tvc" style="height:28px">Crisp helix</button><button type="button" id="tvh" style="height:28px">Few points, shallow tree</button><button type="button" id="tvw" style="height:28px">Run the training-points sweep</button><span id="tvst"></span></span>';
   function $(id){ return ctl.querySelector('#' + id); }
   function setSel(id, v){ $(id).value = String(v); }
@@ -336,7 +336,7 @@ TV.mount = function(root, opts){
     x.fillStyle = TX2; x.font = '11px Aptos,Segoe UI,sans-serif'; x.fillText('Cross at (' + probe[0].toFixed(2) + ', ' + probe[1].toFixed(2) + ', ' + S.z.toFixed(2) + ').', 452, 392); x.fillText('Click a slice to move the cross. Its path through the tree is outlined.', 452, 406);
     var kinds = ['tree', 'forest', 'boost'], cols = { tree: rgb(GR), forest: rgb(BL), boost: rgb(OR) }, nm = { tree: 'tree', forest: 'forest', boost: 'boosting' }, ser = [];
     kinds.forEach(function(k){ if (sweepRes[k]) ser.push({ pts: sweepRes[k].map(function(p){ return [p[0], p[1]]; }), col: cols[k], dots: true }); });
-    chart(x, 470, 452, 410, 38, 'Held-out accuracy against training points (sweep, log axis)', ser, 10, 100000, true, [], 'points');
+    chart(x, 470, 452, 410, 38, 'Held-out accuracy against training points (sweep, log axis)', ser, 10, 30000, true, [], 'points');
     var lx = 480; kinds.forEach(function(k){ if (sweepRes[k]) { x.fillStyle = cols[k]; x.fillRect(lx, 457, 8, 3); x.fillStyle = TX2; x.font = '10.5px Aptos,Segoe UI,sans-serif'; x.fillText(nm[k], lx + 11, 462); lx += 70; } });
     dirty = false;
   }
@@ -352,17 +352,23 @@ TV.mount = function(root, opts){
     }
   }
   function frame(now){
-    if (!cvs.offsetParent) { requestAnimationFrame(frame); return; }
+    if (!vis || document.hidden || !cvs.offsetParent) { lastRot = 0; setTimeout(function(){ requestAnimationFrame(frame); }, 250); return; }
     ensure();
-    if (!drag) ang += 0.008;
+    var rot = rotOn && !drag && now - lastRot > Math.max(50, cost * 3);
+    if (rot) { ang += 0.00048 * (lastRot ? Math.min(200, now - lastRot) : 16); lastRot = now; }
     stepTraining();
     if (playing && !training && model) { if (now - lastFrame > (S.kind === 'tree' ? 700 : 260)) { lastFrame = now; var mx = parseInt($('tvg').max, 10); if (shown >= mx) { playing = false; $('tvp').textContent = 'Play'; } else { shown++; follow = false; updateSlider(); refreshLearned(); } } }
-    if (dirty) drawStatic();
-    g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(layer, 0, 0); g.setTransform(bs, 0, 0, bs, 0, 0);
-    if (tgtSurf) { splatView(vT, tgtSurf, [118, 126, 142], GT); g.drawImage(vT.c, 452, 22, VS, VS); }
-    g.strokeStyle = BRD; g.lineWidth = 0.7; g.strokeRect(452, 22, VS, VS); g.strokeRect(682, 22, VS, VS);
-    if (lrnSurf) { splatView(vL, lrnSurf, [224, 104, 56], G); g.drawImage(vL.c, 682, 22, VS, VS); } else { g.fillStyle = TX2; g.font = '12px Aptos,Segoe UI,sans-serif'; g.fillText(model && (S.kind === 'tree' || model.snaps.length) ? 'The model calls every point outside,' : 'Training', 690, 130); if (model && (S.kind === 'tree' || model.snaps.length)) g.fillText('so there is no surface to draw.', 690, 146); }
-    if (S.boxes && model && model.trees.length) boxes(g, S.kind === 'tree' ? model.trees[0] : model.trees[Math.min(sel, model.trees.length - 1)], S.kind === 'tree' ? shown : 99);
+    if (rot || dirty || vDirty) {
+      var t0 = performance.now(); vDirty = false;
+      if (dirty) drawStatic();
+      g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(layer, 0, 0); g.setTransform(bs, 0, 0, bs, 0, 0);
+      if (tgtSurf) { splatView(vT, tgtSurf, [118, 126, 142], GT); g.drawImage(vT.c, 452, 22, VS, VS); }
+      g.strokeStyle = BRD; g.lineWidth = 0.7; g.strokeRect(452, 22, VS, VS); g.strokeRect(682, 22, VS, VS);
+      if (lrnSurf) { splatView(vL, lrnSurf, [224, 104, 56], G); g.drawImage(vL.c, 682, 22, VS, VS); } else { g.fillStyle = TX2; g.font = '12px Aptos,Segoe UI,sans-serif'; g.fillText(model && (S.kind === 'tree' || model.snaps.length) ? 'The model calls every point outside,' : 'Training', 690, 130); if (model && (S.kind === 'tree' || model.snaps.length)) g.fillText('so there is no surface to draw.', 690, 146); }
+      if (S.boxes && model && model.trees.length) boxes(g, S.kind === 'tree' ? model.trees[0] : model.trees[Math.min(sel, model.trees.length - 1)], S.kind === 'tree' ? shown : 99);
+      cost = cost ? cost * 0.7 + (performance.now() - t0) * 0.3 : performance.now() - t0;
+      if (cost > 45 && rotOn) { rotOn = false; $('tvo').checked = false; }
+    }
     requestAnimationFrame(frame);
   }
   function readParams(){ S.kind = $('tvk').value; S.N = +$('tvn').value; S.depth = +$('tvd').value; S.trees = +$('tvt').value; S.lr = +$('tvl').value; S.minLeaf = +$('tvm').value; S.mtry = +$('tvf').value; }
@@ -376,12 +382,14 @@ TV.mount = function(root, opts){
   });
   $('tvg').addEventListener('input', function(){ shown = parseInt(this.value, 10); follow = S.kind === 'tree' ? false : shown >= (model ? model.snaps.length - 1 : 0); playing = false; $('tvp').textContent = 'Play'; updateSlider(); refreshLearned(); });
   $('tvz').addEventListener('input', function(){ S.z = this.value / 100; makeTgtSlice(); refreshLearned(); });
-  $('tvb').addEventListener('change', function(){ S.boxes = this.checked; });
+  $('tvb').addEventListener('change', function(){ S.boxes = this.checked; vDirty = true; });
+  $('tvo').addEventListener('change', function(){ rotOn = this.checked; cost = 0; });
+  if ('IntersectionObserver' in window) new IntersectionObserver(function(es){ vis = es[es.length - 1].isIntersecting; if (vis) vDirty = true; }).observe(cvs);
   function applyPreset(p){ S.kind = p.kind; S.N = p.N; S.depth = p.depth; S.trees = p.trees; S.lr = p.lr; S.minLeaf = p.minLeaf; S.mtry = p.mtry || 3; setSel('tvk', S.kind); setSel('tvn', S.N); setSel('tvd', S.depth); setSel('tvt', S.trees); setSel('tvl', S.lr); setSel('tvm', S.minLeaf); setSel('tvf', S.mtry); train(); }
-  $('tvc').addEventListener('click', function(){ applyPreset({ kind: 'boost', N: 100000, depth: 10, trees: 200, lr: 0.15, minLeaf: 3 }); });
+  $('tvc').addEventListener('click', function(){ applyPreset({ kind: 'boost', N: 30000, depth: 10, trees: 200, lr: 0.15, minLeaf: 3 }); });
   $('tvh').addEventListener('click', function(){ applyPreset({ kind: 'tree', N: 1000, depth: 8, trees: 1, lr: 0.15, minLeaf: 1 }); });
   $('tvw').addEventListener('click', function(){
-    if (sweeping) return; var kind = S.kind, Ns = [10, 100, 1000, 10000, 100000], res = [], i = 0; sweeping = kind; sweepRes[kind] = res; var st = $('tvst');
+    if (sweeping) return; var kind = S.kind, Ns = [10, 100, 1000, 10000, 30000], res = [], i = 0; sweeping = kind; sweepRes[kind] = res; var st = $('tvst');
     (function next(){
       if (i >= Ns.length) { sweeping = ''; st.textContent = ''; dirty = true; return; }
       st.textContent = 'Sweep, ' + kind + ': ' + Ns[i].toLocaleString() + ' points';
@@ -398,7 +406,7 @@ TV.mount = function(root, opts){
     if (S.kind !== 'tree' && p[1] >= 364 && p[1] <= 390 && p[0] >= 8 && p[0] < 8 + 14 * 30 && model) { var cnt = model.snaps.length ? model.snaps[Math.min(shown, model.snaps.length - 1)].count : 0, first = Math.max(0, cnt - 14), k = first + Math.floor((p[0] - 8) / 30); if (k < cnt) { sel = k; dirty = true; } return; }
     if (p[0] >= 452 && p[0] <= 902 && p[1] >= 22 && p[1] <= 242) { drag = [ev.clientX, ev.clientY, ang, tilt]; cvs.setPointerCapture(ev.pointerId); }
   });
-  cvs.addEventListener('pointermove', function(ev){ if (!drag) return; ang = drag[2] + (ev.clientX - drag[0]) * 0.01; tilt = Math.max(-0.2, Math.min(1.4, drag[3] + (ev.clientY - drag[1]) * 0.008)); });
+  cvs.addEventListener('pointermove', function(ev){ if (!drag) return; ang = drag[2] + (ev.clientX - drag[0]) * 0.01; tilt = Math.max(-0.2, Math.min(1.4, drag[3] + (ev.clientY - drag[1]) * 0.008)); vDirty = true; });
   cvs.addEventListener('pointerup', function(){ drag = null; });
   ensure(); makeTgtSlice();
   setTimeout(function(){ tgtSurf = TV.surface(TV.targetField(GT), GT); dirty = true; train(); requestAnimationFrame(frame); }, 30);
